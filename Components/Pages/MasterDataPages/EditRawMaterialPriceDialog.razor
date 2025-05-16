@@ -1,0 +1,113 @@
+@using GCBQuotationSystem.Models
+
+@inject MasterDataServices MasterDataService
+@inject DialogService DialogService
+@inject NotificationService NotificationService
+
+<RadzenCard Style="max-width: 500px; margin: 0 auto;">
+    <div class="container">
+        <div class="row mb-4">
+            <div class="col">
+                <h4 class="mb-0">Edit Raw Material Price</h4>
+                <p class="text-muted mb-0">@MaterialDetail?.Material?.MaterialName</p>
+                <small class="text-muted">For @PriceMonth.ToString("MMMM yyyy")</small>
+            </div>
+        </div>
+
+        <div class="row mb-4">
+            <div class="col-md-12">
+                <RadzenFormField Text="Price" Variant="Variant.Filled">
+                    <RadzenNumeric @bind-Value="@MaterialDetail.Price" 
+                                  Style="width: 100%;" 
+                                  Min="0" 
+                                  Step="0.01" 
+                                  Format="c2" />
+                </RadzenFormField>
+            </div>
+        </div>
+
+        <div class="row mb-2">
+            <div class="col-md-12">
+                <RadzenFormField Text="Remarks" Variant="Variant.Filled">
+                    <RadzenTextArea @bind-Value="@Remarks" 
+                                   Style="width: 100%; min-height: 100px;" 
+                                   Placeholder="Enter any notes about this price change..." />
+                </RadzenFormField>
+            </div>
+        </div>
+
+        <div class="d-flex justify-content-end mt-4">
+            <RadzenButton Click="Cancel" 
+                         ButtonStyle="ButtonStyle.Light" 
+                         Text="Cancel" 
+                         Icon="cancel"
+                         class="me-2" />
+            <RadzenButton Click="SaveChanges" 
+                         ButtonStyle="ButtonStyle.Primary" 
+                         Text="Save Changes" 
+                         Icon="save" />
+        </div>
+    </div>
+</RadzenCard>
+
+@code {
+    [Parameter] public RawMaterialPriceDetail MaterialDetail { get; set; }
+    [Parameter] public DateOnly PriceMonth { get; set; }
+    
+    private string Remarks { get; set; } = string.Empty;
+    private decimal OriginalPrice;
+
+    protected override void OnInitialized()
+    {
+        // Store the original price to detect changes
+        OriginalPrice = MaterialDetail.Price;
+    }
+
+    private void Cancel()
+    {
+        // Close the dialog without saving changes
+        DialogService.Close(null);
+    }
+
+    private async Task SaveChanges()
+    {
+        try
+        {
+            // Update the price detail
+            await MasterDataService.UpdatePriceDetailAsync(MaterialDetail);
+            
+            // If remarks were provided, update the parent price update record
+            if (!string.IsNullOrWhiteSpace(Remarks))
+            {
+                var priceUpdate = await MasterDataService.GetPriceUpdateByMonthAsync(PriceMonth);
+                if (priceUpdate != null)
+                {
+                    // Append the new remark to any existing remarks
+                    if (!string.IsNullOrEmpty(priceUpdate.Remark))
+                    {
+                        priceUpdate.Remark += $"\n{DateTime.Now:g}: {Remarks}";
+                    }
+                    else
+                    {
+                        priceUpdate.Remark = $"{DateTime.Now:g}: {Remarks}";
+                    }
+                    
+                    await MasterDataService.UpdatePriceUpdateAsync(priceUpdate);
+                }
+            }
+            
+            // Close the dialog and return the updated detail
+            DialogService.Close(MaterialDetail);
+        }
+        catch (Exception ex)
+        {
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Error",
+                Detail = $"Failed to save changes: {ex.Message}",
+                Duration = 5000
+            });
+        }
+    }
+} 

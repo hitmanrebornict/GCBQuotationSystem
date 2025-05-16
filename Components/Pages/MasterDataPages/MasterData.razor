@@ -1,0 +1,331 @@
+@page "/masterdata"
+@using GCBQuotationSystem.Models
+
+@inject MasterDataServices MasterDataService
+@inject DialogService DialogService
+@inject NotificationService NotificationService
+
+<div class="container mx-auto p-4">
+    <RadzenCard class="mb-4 shadow-sm">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h3 class="m-0">Raw Material Prices</h3>
+            
+            <div class="d-flex align-items-center">
+                <span class="me-2">Select Quarter:</span>
+                <RadzenDropDown 
+                    TValue="QuarterItem"
+                    @bind-Value="selectedQuarter"
+                    Data="@quarters"
+                    TextProperty="Text"
+                    Change="OnQuarterChanged"
+                    Style="width:150px" />
+            </div>
+        </div>
+
+        @if (rawMaterialPriceDetails != null && rawMaterialPriceDetails.Any())
+        {
+            <div class="d-flex justify-content-end mb-3">
+                <RadzenButton 
+                    Text="Edit" 
+                    Icon="edit"
+                    Click="OpenBulkEditDialog" 
+                    ButtonStyle="ButtonStyle.Secondary" 
+                    class="me-2" />
+                <RadzenButton 
+                    Text="Save" 
+                    Icon="content_copy"
+                    Click="ApplyToAllMonthsInQuarter" 
+                    ButtonStyle="ButtonStyle.Primary" 
+                    class="me-2" />
+            </div>
+
+            <RadzenDataGrid 
+                @ref="detailsGrid" 
+                Data="@rawMaterialPriceDetails" 
+                TItem="RawMaterialPriceDetail" 
+                AllowPaging="true" 
+                PageSize="10" 
+                AllowSorting="true"
+                class="mb-3">
+                <Columns>
+                    <RadzenDataGridColumn TItem="RawMaterialPriceDetail" Property="Material.MaterialName" Title="Raw Material" />
+                    <RadzenDataGridColumn TItem="RawMaterialPriceDetail" Property="Price" Title="Price" FormatString="{0:C}">
+                        <EditTemplate Context="priceDetail">
+                            <RadzenNumeric @bind-Value="priceDetail.Price" Style="width:100%" Step="0.01" />
+                        </EditTemplate>
+                    </RadzenDataGridColumn>
+                   @*  <RadzenDataGridColumn TItem="RawMaterialPriceDetail" Title="Actions" TextAlign="TextAlign.Center" Width="120px">
+                        <Template Context="priceDetail">
+                            @if (detailsGrid.IsRowInEditMode(priceDetail))
+                            {
+                                <div class="d-flex justify-content-center">
+                                    <RadzenButton Icon="save" ButtonStyle="ButtonStyle.Success" Size="ButtonSize.Small" Click="@(() => SaveRow(priceDetail))" class="me-1" />
+                                    <RadzenButton Icon="cancel" ButtonStyle="ButtonStyle.Danger" Size="ButtonSize.Small" Click="@(() => CancelEdit(priceDetail))" />
+                                </div>
+                            }
+                            else
+                            {
+                                <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small" Click="@(() => OpenEditDialog(priceDetail))" />
+                            }
+                        </Template>
+                    </RadzenDataGridColumn> *@
+                </Columns>
+            </RadzenDataGrid>
+        }
+        else
+        {
+            <div class="text-center p-5 bg-light rounded">
+                <i class="rz-icon-database" style="font-size: 3rem; color: #ccc;"></i>
+                <p class="mt-3 mb-4">No data available for the selected quarter.</p>
+                <RadzenButton 
+                    Text="Create New Record" 
+                    Icon="add_circle"
+                    Click="CreateNewRecord" 
+                    ButtonStyle="ButtonStyle.Primary" />
+            </div>
+        }
+    </RadzenCard>
+</div>
+
+@code {
+    // List of quarters for two years.
+    List<QuarterItem> quarters = new();
+    // The currently selected quarter.
+    QuarterItem selectedQuarter;
+    // The raw material price details for the selected quarter.
+    List<RawMaterialPriceDetail> rawMaterialPriceDetails = new();
+    RawMaterialPriceUpdate? currentPriceUpdate;
+
+    RadzenDataGrid<RawMaterialPriceDetail> detailsGrid;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Generate 8 quarters (2 years) starting with the current quarter
+        var now = DateTime.Today;
+        var currentYear = now.Year;
+        var currentQuarter = (now.Month - 1) / 3 + 1;
+        
+        quarters = new List<QuarterItem>();
+        
+        for (int yearOffset = 0; yearOffset < 2; yearOffset++)
+        {
+            int year = currentYear + yearOffset;
+            int startQuarter = yearOffset == 0 ? currentQuarter : 1;
+            
+            for (int q = startQuarter; q <= 4; q++)
+            {
+                int startMonth = (q - 1) * 3 + 1;
+                int endMonth = q * 3;
+                
+                quarters.Add(new QuarterItem 
+                { 
+                    Text = $"Q{q}/{year}",
+                    StartDate = new DateOnly(year, startMonth, 1),
+                    EndDate = new DateOnly(year, endMonth, DateTime.DaysInMonth(year, endMonth))
+                });
+            }
+        }
+
+        // Set default quarter to current quarter
+        selectedQuarter = quarters.First();
+        await LoadData();
+    }
+
+    async Task OnQuarterChanged(object value)
+    {
+        // Reload the data when the user changes the quarter
+        await LoadData();
+    }
+
+    async Task LoadData()
+    {
+        // Retrieve the price update record for the first month of the selected quarter
+        currentPriceUpdate = await MasterDataService.GetPriceUpdateByMonthAsync(selectedQuarter.StartDate);
+        if (currentPriceUpdate != null)
+        {
+            rawMaterialPriceDetails = currentPriceUpdate.RawMaterialPriceDetails.ToList();
+        }
+        else
+        {
+            rawMaterialPriceDetails = new List<RawMaterialPriceDetail>();
+        }
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    async Task EditRow(RawMaterialPriceDetail detail)
+    {
+        await detailsGrid.EditRow(detail);
+    }
+
+    async Task SaveRow(RawMaterialPriceDetail detail)
+    {
+        await detailsGrid.UpdateRow(detail);
+        // Persist the updated detail.
+        await MasterDataService.UpdatePriceDetailAsync(detail);
+        NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Success, Summary = "Updated", Detail = "Price updated successfully" });
+    }
+
+    void CancelEdit(RawMaterialPriceDetail detail)
+    {
+        detailsGrid.CancelEditRow(detail);
+    }
+
+    async Task CreateNewRecord()
+    {
+        // Open the dialog to create a new record.
+        var result = await DialogService.OpenAsync<CreateRawMeterialPriceDialog>("Create New Raw Material Price",
+            new Dictionary<string, object>() { { "SelectedQuarter", selectedQuarter } });
+        if (result is RawMaterialPriceUpdate created)
+        {
+            NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Success, Summary = "Created", Detail = "New record created successfully" });
+            StateHasChanged();
+        }
+    }
+
+    async Task ApplyToAllMonthsInQuarter()
+    {
+        if (currentPriceUpdate == null)
+        {
+            NotificationService.Notify(new NotificationMessage { 
+                Severity = NotificationSeverity.Error, 
+                Summary = "Error", 
+                Detail = "No price data available to apply to the quarter." 
+            });
+            return;
+        }
+
+        // Get the start and end months of the quarter
+        int startMonth = selectedQuarter.StartDate.Month;
+        int endMonth = startMonth + 2; // 3 months per quarter
+        int year = selectedQuarter.StartDate.Year;
+
+        // Loop through each month in the quarter
+        for (int m = startMonth; m <= endMonth; m++)
+        {
+            // Skip the first month if it's the source month
+            if (m == startMonth) continue;
+
+            // Build a DateOnly for the quarter month
+            DateOnly quarterMonth = new DateOnly(year, m, 1);
+
+            // Get any existing record for this month
+            var record = await MasterDataService.GetPriceUpdateByMonthAsync(quarterMonth);
+            if (record != null)
+            {
+                // Update the existing record with current record's prices
+                record.Remark = currentPriceUpdate.Remark + $" (Applied from Q{(startMonth-1)/3+1}/{year})";
+                foreach (var detail in record.RawMaterialPriceDetails)
+                {
+                    var matching = currentPriceUpdate.RawMaterialPriceDetails.FirstOrDefault(d => d.MaterialId == detail.MaterialId);
+                    if (matching != null)
+                    {
+                        detail.Price = matching.Price;
+                    }
+                }
+                await MasterDataService.UpdatePriceUpdateAsync(record);
+            }
+            else
+            {
+                // No record exists for this month; create a new record using the current record as a template
+                RawMaterialPriceUpdate newRecord = new RawMaterialPriceUpdate
+                {
+                    PriceMonth = quarterMonth,
+                    UpdateDate = DateTime.Now,
+                    Remark = currentPriceUpdate.Remark + $" (Applied from Q{(startMonth-1)/3+1}/{year})",
+                    RawMaterialPriceDetails = currentPriceUpdate.RawMaterialPriceDetails
+                        .Select(d => new RawMaterialPriceDetail
+                        {
+                            MaterialId = d.MaterialId,
+                            Price = d.Price,
+                            Material = d.Material
+                        }).ToList()
+                };
+                await MasterDataService.CreatePriceUpdateAsync(newRecord);
+            }
+        }
+        NotificationService.Notify(new NotificationMessage { 
+            Severity = NotificationSeverity.Success, 
+            Summary = "Quarter Applied", 
+            Detail = "Prices applied to all months in the quarter." 
+        });
+    }
+
+    async Task OpenEditDialog(RawMaterialPriceDetail detail)
+    {
+        // Open the edit dialog instead of inline editing
+        var parameters = new Dictionary<string, object>
+        {
+            { "MaterialDetail", detail },
+            { "PriceMonth", selectedQuarter.StartDate }
+        };
+        
+        var result = await DialogService.OpenAsync<EditRawMaterialPriceDialog>("Edit Raw Material Price", 
+            parameters,
+            new DialogOptions
+            {
+                Width = "500px",
+                Height = "auto",
+                CloseDialogOnEsc = true,
+                CloseDialogOnOverlayClick = false
+            });
+            
+        if (result != null)
+        {
+            // Refresh the data grid to show the updated price
+            await LoadData();
+            NotificationService.Notify(new NotificationMessage 
+            { 
+                Severity = NotificationSeverity.Success, 
+                Summary = "Updated", 
+                Detail = "Price updated successfully" 
+            });
+        }
+    }
+
+    async Task OpenBulkEditDialog()
+    {
+        if (currentPriceUpdate == null || !rawMaterialPriceDetails.Any())
+        {
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Warning,
+                Summary = "No Data",
+                Detail = "No price data available to edit.",
+                Duration = 3000
+            });
+            return;
+        }
+
+        // Open the bulk edit dialog
+        var parameters = new Dictionary<string, object>
+        {
+            { "MaterialDetails", rawMaterialPriceDetails },
+            { "PriceMonth", selectedQuarter.StartDate },
+            { "PriceUpdate", currentPriceUpdate }
+        };
+        
+        var result = await DialogService.OpenAsync<EditRawMaterialPricesDialog>("Edit Raw Material Prices", 
+            parameters,
+            new DialogOptions
+            {
+                Width = "800px",
+                Height = "auto",
+                CloseDialogOnEsc = true,
+                CloseDialogOnOverlayClick = false
+            });
+            
+        if (result != null)
+        {
+            // Refresh the data grid to show the updated prices
+            await LoadData();
+            NotificationService.Notify(new NotificationMessage 
+            { 
+                Severity = NotificationSeverity.Success, 
+                Summary = "Updated", 
+                Detail = "Prices updated successfully" 
+            });
+        }
+    }
+}
+    

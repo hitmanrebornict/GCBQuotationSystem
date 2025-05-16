@@ -1,0 +1,410 @@
+﻿
+@inject DialogService DialogServices
+
+@inject QuoteDataServices QuoteDataService
+
+@inject UserPreferenceSettings UserPreferenceSetting
+
+@* <div class="card p-3 shadow-sm rounded" style="margin-bottom:8px;">
+    <div class="d-flex align-items-center justify-content-between">
+        <h5>Total Cost: <b>@recipeDetailModified.TotalCost.ToString("C", new System.Globalization.CultureInfo("en-GB"))</b></h5>
+
+        <RadzenButton Text="Save & Close"
+        Style="background-color:#3B82F6"
+        Click="OnSaveAndClose"
+        Icon="check"
+        ButtonStyle="ButtonStyle.Primary" />
+
+    </div>
+
+</div>
+ *@
+@if (recipeDetailModified != null)
+{
+    <div class="card p-3 shadow-sm rounded mb-4">
+        <h5>Recipe Code: <b>@recipeDetailModified.QuotationRecipe1.Recipe.RecipeCode</b></h5>
+        <p>Period: <b>@recipeDetailModified.QuotationRecipe1.PeriodMonth.ToString("MMMM yyyy")</b></p>
+    </div>
+
+
+    <div class="card p-3 shadow-sm rounded mb-3">
+        <h6 class="mb-2">Raw Material Costs</h6>
+        <RadzenDataGrid Data="@recipeDetailModified.QuotationRecipe1.QuotationRawMaterialCosts" TItem="QuotationRawMaterialCost"
+        Style="width: 100%;" ShowPaging="false">
+            <Columns>
+                <RadzenDataGridColumn TItem="QuotationRawMaterialCost" Property="MaterialName" Title="Material Name"/>
+                <RadzenDataGridColumn TItem="QuotationRawMaterialCost" Property="Cost" Title="Cost">
+                    <Template Context="data">
+
+                        <RadzenNumeric @bind-Value="data.Cost"
+                        Change="@(async (value) => await OnRawMaterialCostChanged(data))"
+                        TValue="decimal"
+                        Style="width: 100%;"
+                        Format="£0.00 per tonne"
+                        Step="0.01" />
+                    </Template>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="QuotationRawMaterialCost" Property="CostAmount" Title="Cost Amount">
+                    <Template Context="data">
+                        <RadzenText Text="@data.CostAmount.ToString("C")" />
+                    </Template>
+                </RadzenDataGridColumn>
+            </Columns>
+        </RadzenDataGrid>
+    </div>
+
+    <div class="card p-3 shadow-sm rounded mb-3">
+        <h6 class="mb-2">Terminal Cost (@recipeDetailModified.QuotationRecipe1.QuotationTerminalCost?.TerminalName)</h6>
+
+        <ul class="list-group">
+            <li class="list-group-item d-flex justify-content-between">
+                <span>Butter</span>
+                <RadzenNumeric @bind-Value="@recipeDetailModified.QuotationRecipe1.QuotationTerminalCost.Butter"
+                Change="@(async() =>
+                await OnTerminalCostChanged(
+                recipeDetailModified.QuotationRecipe1.QuotationTerminalCost,
+                recipeDetailModified.QuotationRecipe1.QuotationRawMaterialCosts.FirstOrDefault(x => x.MaterialName == "Cocoa Mass"),
+                recipeDetailModified.QuotationRecipe1.QuotationRawMaterialCosts.FirstOrDefault(x => x.MaterialName == "Cocoa Butter")))"
+                TValue="decimal"
+                Style="width: 50%;"
+                Format="0.00"
+                Step="0.01" />
+            </li>
+            <li class="list-group-item d-flex justify-content-between">
+                <span>Liquor</span>
+                <RadzenNumeric @bind-Value="@recipeDetailModified.QuotationRecipe1.QuotationTerminalCost.Liquor"
+                Change="@(async() =>
+                await OnTerminalCostChanged(
+                recipeDetailModified.QuotationRecipe1.QuotationTerminalCost,
+                recipeDetailModified.QuotationRecipe1.QuotationRawMaterialCosts.FirstOrDefault(x => x.MaterialName == "Cocoa Mass"),
+                recipeDetailModified.QuotationRecipe1.QuotationRawMaterialCosts.FirstOrDefault(x => x.MaterialName == "Cocoa Butter")))"
+                TValue="decimal"
+                Style="width: 50%;"
+                Format="0.00"
+                Step="0.01" />
+            </li>
+            <li class="list-group-item d-flex justify-content-between">
+                <span>Powder</span>
+                <RadzenNumeric @bind-Value="@recipeDetailModified.QuotationRecipe1.QuotationTerminalCost.Powder"
+                Change="@(async() =>
+                await OnTerminalCostChanged(
+                recipeDetailModified.QuotationRecipe1.QuotationTerminalCost,
+                recipeDetailModified.QuotationRecipe1.QuotationRawMaterialCosts.FirstOrDefault(x => x.MaterialName == "Cocoa Mass"),
+                recipeDetailModified.QuotationRecipe1.QuotationRawMaterialCosts.FirstOrDefault(x => x.MaterialName == "Cocoa Butter")))"
+                TValue="decimal"
+                Style="width: 50%;"
+                Format="0.00"
+                Step="0.01" />
+            </li>
+        </ul>
+    </div>
+
+    <div class="card p-3 shadow-sm rounded mb-3">
+        <h6 class="mb-2">Premium Costs</h6>
+        <RadzenDataGrid Data="@recipeDetailModified.QuotationRecipe1.QuotationPremiumCosts" TItem="QuotationPremiumCost"
+        Style="width: 100%;" ShowPaging="false">
+            <Columns>
+                <RadzenDataGridColumn TItem="QuotationPremiumCost" Property="PremiumName" Title="Premium Name" />
+                <RadzenDataGridColumn TItem="QuotationPremiumCost" Property="Cost" Title="Cost">
+                    <Template Context="data">
+
+                        <RadzenNumeric @bind-Value="data.Cost"
+                        Change="@(async (value) => await OnPremiumCostChanged(data))"
+                        TValue="decimal"
+                        Style="width: 100%;"
+                                       Format="£0.00 per tonne"
+                        Step="0.01" />
+                    </Template>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="QuotationPremiumCost" Property="CostAmount" Title="Cost Amount">
+                    <Template Context="data">
+                        <RadzenText Text="@data.CostAmount.ToString("C")" />
+                    </Template>
+                </RadzenDataGridColumn>
+            </Columns>
+        </RadzenDataGrid>
+    </div>
+
+    <div class="card p-3 shadow-sm rounded mb-3">
+        <h6 class="mb-2">Packaging Cost</h6>
+        <RadzenDataGrid Data="packagingCosts" TItem="QuotationPackagingCost"
+        Style="width: 100%;" ShowPaging="false">
+            <Columns>
+                <RadzenDataGridColumn TItem="QuotationPackagingCost" Property="PackagingName" Title="Packaging Name" />
+                <RadzenDataGridColumn TItem="QuotationPackagingCost" Property="Cost" Title="Cost">
+                    <Template Context="data">
+
+                        <RadzenNumeric @bind-Value="data.Cost"
+                        Change="@(async (value) => await OnPackagingCostChanged(data))"
+                        TValue="decimal"
+                        Style="width: 100%;"
+                                       Format="£0.00 per tonne"
+                        Step="0.01" />
+                    </Template>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="QuotationPackagingCost" Property="CostAmount" Title="Cost Amount">
+                    <Template Context="data">
+                        <RadzenText Text="@data.CostAmount.ToString("C")" />
+                    </Template>
+                </RadzenDataGridColumn>
+            </Columns>
+        </RadzenDataGrid>
+    </div>
+
+    <div class="card p-3 shadow-sm rounded mb-3">
+        <h6 class="mb-2">Delivery Cost</h6>
+        <RadzenDataGrid Data="deliveryCosts" TItem="QuotationDeliveryCost"
+        Style="width: 100%;" ShowPaging="false">
+            <Columns>
+                <RadzenDataGridColumn TItem="QuotationDeliveryCost" Property="DeliveryName" Title="Delivery Name" />
+                <RadzenDataGridColumn TItem="QuotationDeliveryCost" Property="CostAmount" Title="Cost">
+                    <Template Context="data">
+
+                        <RadzenNumeric @bind-Value="data.CostAmount"
+                        Change="@(async (value) => await OnDeliveryCostChanged(data))"
+                        TValue="decimal"
+                        Style="width: 100%;"
+                        Format="c"
+                        Step="0.01" />
+                    </Template>
+                </RadzenDataGridColumn>
+
+            </Columns>
+        </RadzenDataGrid>
+    </div>
+
+    <div class="card p-3 shadow-sm rounded mb-3">
+        <h6 class="mb-2">Additional Costs</h6>
+        <RadzenDataGrid Data="@recipeDetailModified.QuotationRecipe1.QuotationAdditionalCosts" TItem="QuotationAdditionalCost"
+        Style="width: 100%;" ShowPaging="false">
+            <Columns>
+                <RadzenDataGridColumn TItem="QuotationAdditionalCost" Property="CostName" Title="Name" />
+                <RadzenDataGridColumn TItem="QuotationAdditionalCost" Property="Cost" Title="Cost">
+                    <Template Context="data">
+
+                        <RadzenNumeric @bind-Value="data.Cost"
+                        Change="@(async (value) => await OnAddtionalCostChanged(data))"
+                        TValue="decimal"
+                        Style="width: 100%;"
+                        Format="0.00"
+                        Step="0.01" />
+                    </Template>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="QuotationAdditionalCost" Property="CostAmount" Title="Cost Amount">
+                    <Template Context="data">
+                        <RadzenText Text="@data.CostAmount.ToString("C")" />
+                    </Template>
+                </RadzenDataGridColumn>
+            </Columns>
+        </RadzenDataGrid>
+    </div>
+
+}
+else
+{
+    <p>No detail to show.</p>
+}
+
+@code {
+    [Parameter]
+    public RecipeTotalCost recipeDetailOriginal { get; set; }
+
+    [Parameter]
+    public RecipeTotalCost recipeDetailModified { get; set; }
+
+    [CascadingParameter] 
+    private Dialog _dialog { get; set; }
+
+    [Parameter]
+    public decimal weightRatio { get; set; }
+
+    private decimal recipeQuantity;
+    public Dictionary<string, decimal> ingredientDict;
+
+    List<QuotationDeliveryCost> deliveryCosts = new List<QuotationDeliveryCost>();
+    List<QuotationPackagingCost> packagingCosts = new List<QuotationPackagingCost>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        
+        // recipeDetailModified = QuoteDetailServices.DeepClone(recipeDetailOriginal);
+        recipeQuantity = recipeDetailModified.QuotationRecipe1.Quantity;
+        ingredientDict = recipeDetailModified.QuotationRecipe1.Recipe.RecipeIngredients.ToDictionary(x => x.Material.MaterialName, x => x.Amount);
+        packagingCosts.Add(recipeDetailModified.QuotationRecipe1.QuotationPackagingCost);
+        deliveryCosts.Add(recipeDetailModified.QuotationRecipe1.QuotationDeliveryCost);
+        SetTitleContent();
+        _dialog.Options.CloseDialogOnOverlayClick = false;
+        _dialog.Options.ShowClose = !_dialog.Options.ShowClose;
+        DialogServices.Refresh();
+    }
+
+    // private void OnCostChanged()
+    // {
+    //     recipeDetailModified.TotalCost =
+    //         recipeDetailModified.QuotationRecipe1.QuotationRawMaterialCosts.Sum(x => x.CostAmount) +
+    //         recipeDetailModified.QuotationRecipe1.QuotationPremiumCosts.Sum(x => x.CostAmount) +
+    //         (recipeDetailModified.QuotationRecipe1.QuotationPackagingCost?.CostAmount ?? 0) +
+    //         (recipeDetailModified.QuotationRecipe1.QuotationDeliveryCost?.CostAmount ?? 0) +
+
+    //         recipeDetailModified.QuotationRecipe1.QuotationAdditionalCosts.Sum(x => x.CostAmount);
+
+    // }
+
+    private void OnSaveAndClose()
+    {
+
+        DialogServices.Close(recipeDetailModified);
+
+    }
+
+    private void OnCancel(){
+        DialogServices.Close(null);
+    
+    }
+
+    private async Task OnRawMaterialCostChanged(QuotationRawMaterialCost data){
+
+        recipeDetailModified.TotalCost -= data.CostAmount;
+
+        data.CostAmount = data.Cost * ingredientDict[data.MaterialName] / 100 * weightRatio;
+        recipeDetailModified.TotalCost += data.CostAmount;
+   
+        DialogServices.Refresh();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task OnTerminalCostChanged(QuotationTerminalCost terminal, QuotationRawMaterialCost cocoaMassPrice, QuotationRawMaterialCost cocoaButterPrice)
+    {
+
+        recipeDetailModified.TotalCost -= (cocoaButterPrice.CostAmount + cocoaMassPrice.CostAmount);
+
+
+        cocoaMassPrice.Cost = QuoteDataService.CalculateMassTotal(terminal.Liquor, terminal.LifeGbp);
+        cocoaMassPrice.CostAmount = cocoaMassPrice.Cost * ingredientDict["Cocoa Mass"] / 100 * weightRatio;
+
+        cocoaButterPrice.Cost = QuoteDataService.CalculateMassTotal(terminal.Butter, terminal.LifeGbp);
+        cocoaButterPrice.CostAmount = cocoaButterPrice.Cost  * ingredientDict["Cocoa Butter"] / 100 * weightRatio; 
+
+        recipeDetailModified.TotalCost += (cocoaButterPrice.CostAmount + cocoaMassPrice.CostAmount);
+        DialogServices.Refresh();
+        await InvokeAsync(StateHasChanged);
+    }
+
+
+    private async Task OnPowderCostChanged(QuotationRawMaterialCost data){
+
+        recipeDetailModified.TotalCost -= data.CostAmount;
+
+        List<RecipeIngredient> recipeIngredient = recipeDetailModified.QuotationRecipe1.Recipe.RecipeIngredients.ToList();
+        var ingredientDict = recipeIngredient.ToDictionary(x => x.Material.MaterialName, x => x.Amount);
+
+        data.CostAmount = data.Cost * ingredientDict[data.MaterialName] / 100 * weightRatio;
+        recipeDetailModified.TotalCost += data.CostAmount;
+        DialogServices.Refresh();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task OnLiquorCostChanged(QuotationRawMaterialCost data)
+    {
+
+        recipeDetailModified.TotalCost -= data.CostAmount;
+
+        List<RecipeIngredient> recipeIngredient = recipeDetailModified.QuotationRecipe1.Recipe.RecipeIngredients.ToList();
+        var ingredientDict = recipeIngredient.ToDictionary(x => x.Material.MaterialName, x => x.Amount);
+
+        data.CostAmount = data.Cost * ingredientDict[data.MaterialName] / 100 * weightRatio;
+        recipeDetailModified.TotalCost += data.CostAmount;
+        DialogServices.Refresh();
+        await InvokeAsync(StateHasChanged);
+    }
+
+
+
+    private async Task OnPremiumCostChanged(QuotationPremiumCost data)
+    {
+
+        recipeDetailModified.TotalCost -= data.CostAmount;
+
+        data.CostAmount = data.Cost / 2 * weightRatio;
+        recipeDetailModified.TotalCost += data.CostAmount;
+        DialogServices.Refresh();
+        await InvokeAsync(StateHasChanged);
+    }
+
+
+    private async Task OnAddtionalCostChanged(QuotationAdditionalCost data)
+    {
+        if(data.CostName == "Discount"){
+            recipeDetailModified.TotalCost -= data.CostAmount;
+
+            data.CostAmount = -(recipeDetailModified.TotalCost * data.Cost / 100);
+            recipeDetailModified.TotalCost += data.CostAmount;
+        }
+        else if(data.CostName == "ORD Rebate"){
+            recipeDetailModified.TotalCost -= data.CostAmount;
+
+            data.CostAmount = -(recipeDetailModified.TotalCost * data.Cost / 100);
+            recipeDetailModified.TotalCost += data.CostAmount;
+        }
+        else{
+            recipeDetailModified.TotalCost -= data.CostAmount;
+
+            data.CostAmount = data.Cost * weightRatio;
+            recipeDetailModified.TotalCost += data.CostAmount;
+        }
+
+       
+        DialogServices.Refresh();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task OnPackagingCostChanged(QuotationPackagingCost data)
+    {
+
+        recipeDetailModified.TotalCost -= data.CostAmount;
+
+        data.CostAmount = data.Cost * weightRatio;
+        recipeDetailModified.TotalCost += data.CostAmount;
+        DialogServices.Refresh();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task OnDeliveryCostChanged(QuotationDeliveryCost data)
+    {
+
+        recipeDetailModified.TotalCost =
+            recipeDetailModified.QuotationRecipe1.QuotationRawMaterialCosts.Sum(x => x.CostAmount) +
+            recipeDetailModified.QuotationRecipe1.QuotationPremiumCosts.Sum(x => x.CostAmount) +
+            (recipeDetailModified.QuotationRecipe1.QuotationPackagingCost?.CostAmount ?? 0) +
+            (recipeDetailModified.QuotationRecipe1.QuotationDeliveryCost?.CostAmount ?? 0) +
+
+            data.CostAmount;
+
+        Console.WriteLine(recipeDetailModified.TotalCost);
+        Console.WriteLine(recipeDetailModified.TotalCost);
+        DialogServices.Refresh();
+       
+        await InvokeAsync(StateHasChanged);
+    }
+
+    
+    void SetTitleContent()
+    {
+        _dialog.Title = null; // clear default title
+        _dialog.Options.TitleContent = service => 
+        @<RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Start" Gap="10px">
+            <h5>Total Cost: <b>@recipeDetailModified.TotalCost.ToString("C")</b></h5>
+            <RadzenRow>
+                <RadzenButton Text="Save & Exit"
+                              ButtonStyle="ButtonStyle.Primary"
+                              Click="@OnSaveAndClose"
+                              Style="background-color:#3B82F6"
+                               />
+                <RadzenButton Text="Cancel"
+                              ButtonStyle="ButtonStyle.Light"
+                              Click="@OnCancel" />
+            </RadzenRow>
+        </RadzenStack>;
+    
+    }
+}

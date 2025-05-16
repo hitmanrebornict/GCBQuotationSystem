@@ -1,0 +1,83 @@
+﻿@inherits RadzenComponent
+@inject DialogService DialogService
+
+<RadzenTemplateForm Data="@costDetails" TItem="CostDetails" Submit="@OnSubmit">
+    <ChildContent>
+        <RadzenFieldset Text="Raw Material Costs" Style="margin-bottom:20px">
+            <div class="row" style="margin-bottom:10px">
+                <div class="col-md-6">
+                    <RadzenLabel Text="Sugar:" />
+                </div>
+                <div class="col-md-6">
+                    <RadzenTextBox @bind-Value="costDetails.Sugar" Style="width:100%" />
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-6">
+                    <RadzenLabel Text="Cocoa Mass:" />
+                </div>
+                <div class="col-md-6">
+                    <RadzenTextBox @bind-Value="costDetails.CocoaMass" Style="width:100%" />
+                </div>
+            </div>
+        </RadzenFieldset>
+
+        <RadzenFieldset Text="Terminal Cost" Style="margin-bottom:20px">
+            <div class="row">
+                <div class="col-md-6">
+                    <RadzenLabel Text="Energy:" />
+                </div>
+                <div class="col-md-6">
+                    <RadzenTextBox @bind-Value="costDetails.Energy" Style="width:100%" />
+                </div>
+            </div>
+        </RadzenFieldset>
+
+        <RadzenFieldset Text="Packaging Costs" Style="margin-bottom:20px">
+            <div class="row">
+                <div class="col-md-6">
+                    <RadzenLabel Text="Box Cost:" />
+                </div>
+                <div class="col-md-6">
+                    <RadzenTextBox @bind-Value="costDetails.BoxCost" Style="width:100%" />
+                </div>
+            </div>
+        </RadzenFieldset>
+
+        <RadzenFieldset Text="Delivery Costs" Style="margin-bottom:20px">
+            <div class="row">
+                <div class="col-md-6">
+                    <RadzenLabel Text="Freight:" />
+                </div>
+                <div class="col-md-6">
+                    <RadzenTextBox @bind-Value="costDetails.Freight" Style="width:100%" />
+                </div>
+            </div>
+        </RadzenFieldset>
+
+        <div style="text-align: right; margin-top:20px">
+            <RadzenButton ButtonType="ButtonType.Submit" Text="Edit" Style="margin-right:10px" />
+            <RadzenButton Text="Cancel" ButtonStyle="ButtonStyle.Danger" Click="@(() => DialogService.Close(null))" />
+        </div>
+    </ChildContent>
+</RadzenTemplateForm>
+
+@code {
+    // Model to hold the cost details for the dialog.
+    public class CostDetails
+    {
+        public string Sugar { get; set; } = "0.00";
+        public string CocoaMass { get; set; } = "0.00";
+        public string Energy { get; set; } = "0.00";
+        public string BoxCost { get; set; } = "0.00";
+        public string Freight { get; set; } = "0.00";
+    }
+
+    CostDetails costDetails = new CostDetails();
+
+    void OnSubmit()
+    {
+        // For demo purposes, simply close the dialog and return the cost details.
+        DialogService.Close(costDetails);
+    }
+}

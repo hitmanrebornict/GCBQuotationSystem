@@ -1,0 +1,87 @@
+@inject MasterDataServices MasterDataServices
+@inject DialogService DialogService
+@inject NotificationService NotificationService
+
+<RadzenTemplateForm TItem="Customer" Data="@newCustomer" Submit="@HandleSubmit">
+    <div class="row mb-3">
+        <div class="col-md-6">
+            <RadzenFormField Text="Customer Name" Variant="Variant.Filled">
+                <RadzenTextBox @bind-Value="@newCustomer.CustName" Name="CustName" />
+                <RadzenRequiredValidator Component="CustName" Text="Customer name is required" />
+            </RadzenFormField>
+        </div>
+    </div>
+
+    <div class="row mb-3">
+        <div class="col-md-6">
+            <RadzenFormField Text="Invoice Address 1" Variant="Variant.Filled">
+                <RadzenTextBox @bind-Value="@newCustomer.InvoiceAddress1" Name="InvoiceAddress1" />
+            </RadzenFormField>
+        </div>
+        <div class="col-md-6">
+            <RadzenFormField Text="Invoice Address 2" Variant="Variant.Filled">
+                <RadzenTextBox @bind-Value="@newCustomer.InvoiceAddress2" Name="InvoiceAddress2" />
+            </RadzenFormField>
+        </div>
+    </div>
+
+    <div class="row mb-3">
+        <div class="col-md-4">
+            <RadzenFormField Text="Invoice City" Variant="Variant.Filled">
+                <RadzenTextBox @bind-Value="@newCustomer.InvoiceCity" Name="InvoiceCity" />
+            </RadzenFormField>
+        </div>
+        <div class="col-md-4">
+            <RadzenFormField Text="Invoice Postcode" Variant="Variant.Filled">
+                <RadzenTextBox @bind-Value="@newCustomer.InvoicePostcode" Name="InvoicePostcode" />
+            </RadzenFormField>
+        </div>
+        <div class="col-md-4">
+            <RadzenFormField Text="Country" Variant="Variant.Filled">
+                <RadzenDropDown @bind-Value="@newCustomer.CountryId" Data="@countries" 
+                                TextProperty="CountryName" ValueProperty="CountryId" 
+                                Name="CountryId" />
+                <RadzenRequiredValidator Component="CountryId" Text="Country is required" />
+            </RadzenFormField>
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <div class="col d-flex justify-content-end">
+            <RadzenButton ButtonType="ButtonType.Button" ButtonStyle="ButtonStyle.Light" 
+                          Text="Cancel" Click="@Cancel" Class="me-2" />
+            <RadzenButton ButtonType="ButtonType.Submit" ButtonStyle="ButtonStyle.Primary" 
+                          Text="Save" />
+        </div>
+    </div>
+</RadzenTemplateForm>
+
+@code {
+    private Customer newCustomer = new Customer();
+    private List<Country> countries = new List<Country>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Load countries for dropdown
+        countries = await MasterDataServices.GetAllCountriesAsync();
+    }
+
+    private async Task HandleSubmit()
+    {
+        try
+        {
+            await MasterDataServices.AddCustomerAsync(newCustomer);
+            NotificationService.Notify(NotificationSeverity.Success, "Success", "Customer added successfully");
+            DialogService.Close(true);
+        }
+        catch (Exception ex)
+        {
+            NotificationService.Notify(NotificationSeverity.Error, "Error", $"Failed to add customer: {ex.Message}");
+        }
+    }
+
+    private void Cancel()
+    {
+        DialogService.Close(false);
+    }
+}

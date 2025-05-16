@@ -1,0 +1,423 @@
+﻿@page "/"
+@inject MasterDataServices MDS
+@inject NotificationService NotificationService
+@inject DialogService DialogService
+@inject GenerateQuoteServices GenerateQuoteService
+@inject QuoteDataServices QuoteDataService
+@inject NavigationManager NavigationManager
+@inject UserPreferenceSettings UserPreferenceSetting
+
+<PageTitle>Home</PageTitle>
+<RadzenCard class="p-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <RadzenText Text="New Quotation" TextStyle="TextStyle.DisplayH5" class="mb-0"></RadzenText>
+        <RadzenButton Text="Generate" Click="@GenerateQuote" ButtonStyle="ButtonStyle.Primary" class="px-4"></RadzenButton>
+    </div>
+    
+    <hr class="my-4" />
+    
+    <div class="row mb-4">
+        <div class="col-md-4 mb-3">
+            <RadzenText TextStyle="TextStyle.Subtitle2" class="mb-2">Customer</RadzenText>
+            <RadzenDropDown TValue="int"
+                @bind-Value="selectedCustomer"
+                Data="@customers"
+                TextProperty="CustName"
+                ValueProperty="CustNo"
+                Placeholder="Select Customer"
+                Change="OnCustomerChanged"
+                Class="w-100" />
+        </div>
+        
+        <div class="col-md-4 mb-3">
+            <RadzenText TextStyle="TextStyle.Subtitle2" class="mb-2">Delivery Address</RadzenText>
+            <RadzenDropDown TValue="int"
+                @bind-Value="selectedDelivery"
+                Data="@deliveryAddresses"
+                TextProperty="DeliveryName"
+                ValueProperty="DeliveryId"
+                Placeholder="Select Delivery Address"
+                Class="w-100" />
+        </div>
+    </div>
+
+    <RadzenText TextStyle="TextStyle.H6" class="mb-3">Recipe Periods</RadzenText>
+    
+    <RadzenDataGrid @ref="grid" 
+        Data="@RecipePeriods" 
+        TItem="RecipePeriod"
+        Class="mb-4"
+        GridLines="DataGridGridLines.Horizontal"
+        AllowFiltering="false"
+        AllowColumnResize="true"
+        AllowAlternatingRows="true">
+        <Columns>
+            <RadzenDataGridColumn TItem="RecipePeriod" Title="Recipe" Width="200px">
+                <Template Context="data">
+                    <RadzenDropDown @bind-Value="data.SelectedRecipe"
+                        Data="@recipes"
+                        TextProperty="RecipeCode"
+                        Style="width:100%"
+                        Change="@(() => OnRecipeSelected(data))" />
+                </Template>
+            </RadzenDataGridColumn>
+
+            <RadzenDataGridColumn TItem="RecipePeriod" Title="Period From" Width="180px">
+                <Template Context="data">
+                    <RadzenDatePicker @bind-Value="data.PeriodFrom"
+                        DateFormat="MM/yyyy"
+                        ShowDays=false
+                        CurrentDateChanged="@(date => OnFromDateChanged(date, data))"
+                        Style="width:100%" />
+                </Template>
+            </RadzenDataGridColumn>
+
+            <RadzenDataGridColumn TItem="RecipePeriod" Title="Period To" Width="180px">
+                <Template Context="data">
+                    <RadzenDatePicker @bind-Value="data.PeriodTo"
+                        DateFormat="MM/yyyy"
+                        ShowDays=false
+                        CurrentDateChanged="@(date => OnToDateChanged(date, data))"
+                        Style="width:100%" />
+                </Template>
+            </RadzenDataGridColumn>
+
+            <RadzenDataGridColumn TItem="RecipePeriod" Title="Premium">
+                <Template Context="data">
+                    <RadzenDropDown @bind-Value="data.SelectedPremiumList"
+                        Data="@premiums"
+                        TextProperty="PremiumName"
+                        Multiple="true"
+                        Style="width:100%" />
+                </Template>
+            </RadzenDataGridColumn>
+        </Columns>
+    </RadzenDataGrid>
+</RadzenCard>
+
+
+
+
+
+
+@*  <h3>Raw Material Price (By Quarter)</h3>
+
+    @foreach (var quarterGroup in recipeTotalCostList
+       .GroupBy(r => r.Quarter)
+       .Select(group => group.First())) // Only select the first entry of each quarter group (unique quarters)
+    {
+        <h4>@quarterGroup.Quarter</h4> <!-- Display quarter like Q1/2025 -->
+
+        <RadzenDataGrid Data="@quarterGroup.QuotationRecipe1.QuotationRawMaterialCosts" TItem="QuotationRawMaterialCost" @ref="RawMaterialGrid">
+            <Columns>
+                <RadzenDataGridColumn TItem="QuotationRawMaterialCost" Property="MaterialName" Title="Material" />
+                <RadzenDataGridColumn TItem="QuotationRawMaterialCost" Property="CostAmount" Title="Cost" >
+                    <Template Context="data">
+                            @data.CostAmount
+                        </Template>
+                    <EditTemplate Context="data">
+                        <RadzenNumeric TValue="decimal" @bind-Value="data.CostAmount" />
+                    </EditTemplate>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn Context="order" Filterable="false" Sortable="false" TextAlign="TextAlign.Right" Frozen="true" FrozenPosition="FrozenColumnPosition.Right">
+                    <Template Context="order">
+                        <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Light" Variant="Variant.Flat" Size="ButtonSize.Medium" class="rz-my-1 rz-ms-1" Click="@(args => EditRow(order))" @onclick:stopPropagation="true" />
+                    </Template>
+                    <EditTemplate Context="order">
+                        <RadzenButton Icon="close" ButtonStyle="ButtonStyle.Light" Variant="Variant.Flat" Size="ButtonSize.Medium" class="rz-my-1 rz-ms-1" aria-label="Cancel" Click="@((args) => CancelEdit(order))" />
+                    </EditTemplate>
+                </RadzenDataGridColumn>
+            </Columns>
+        </RadzenDataGrid> *@
+
+
+
+@code {
+    // Lists to hold the data
+    List<Customer> customers = new();
+    List<CustomerDeliveryDetail> deliveryAddresses = new();
+
+    public class RecipePeriod
+    {
+        public Recipe SelectedRecipe { get; set; }
+        public DateTime? PeriodFrom { get; set; } = DateTime.Now;
+        public DateTime? PeriodTo { get; set; }
+        public List<Premium> SelectedPremiumList { get; set; } = new();
+        public Decimal SelectedQuantity { get; set; } = 1000;
+    }
+
+
+    private List<RecipePeriod> RecipePeriods = new();
+
+    RadzenDataGrid<RecipePeriod>? grid;
+
+    private void OnRecipeSelected(RecipePeriod selectedRow)
+    {
+        if (selectedRow == RecipePeriods.Last() && selectedRow.SelectedRecipe != null)
+        {
+            RecipePeriods.Add(new RecipePeriod());
+            recipes.Remove(selectedRow.SelectedRecipe);
+            grid.Reload();
+            StateHasChanged();
+        }
+    }
+
+    // Selected values
+    int selectedCustomer;
+    int selectedDelivery;
+
+    List<Recipe> recipes = new();
+    List<Premium> premiums = new();
+    List<RecipeTotalCost> recipeTotalCostList = new List<RecipeTotalCost>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Load all customers
+        customers = await MDS.GetAllCustomersAsync();
+        recipes = await MDS.GetRecipesAsync();
+
+        var recipeGroupBy = recipes.GroupBy(r => r.ProductType.TypeName).ToList();
+        premiums = await MDS.GetAllPremiumsAsync();
+
+        RecipePeriods.Add(new RecipePeriod(){
+            PeriodFrom = DateTime.Now,
+        });
+        await grid.Reload();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    async Task OnCustomerChanged(object value)
+    {
+        if (selectedCustomer > 0)
+        {
+            // Load delivery addresses for the selected customer
+            deliveryAddresses = await MDS.GetDeliveryDetailsForCustomerAsync(selectedCustomer);
+
+            if(deliveryAddresses.Count() == 1){
+                selectedDelivery = deliveryAddresses.FirstOrDefault().DeliveryId;
+            }
+        }
+        else
+        {
+            deliveryAddresses.Clear();
+        }
+    }
+
+    private async Task GenerateQuote()
+    {
+        var WeightRatio = UserPreferenceSetting.WeightRatio;
+
+        QuoteDataService.newQuotation = new Quote
+            {
+                CustomerId = selectedCustomer,
+                DeliveryDetailId = selectedDelivery,
+                CreatedAt = DateTime.Now
+            };
+
+        // Create a list to store the QuotationRecipe objects in memory
+        var quotationRecipes = new List<QuotationRecipe>();
+
+        var financialCost = await GenerateQuoteService.GetFinancialCostAsync();
+
+        List<AdditionalCost> additionalCostsList = await GenerateQuoteService.GetAdditionalCosts();
+
+        // Generate the QuotationRecipe records for each RecipePeriod
+        foreach (var recipePeriod in RecipePeriods)
+        {
+            decimal localTotalCost = 0;
+            if (recipePeriod.SelectedRecipe != null)
+            {
+                DateTime startDate = recipePeriod.PeriodFrom ?? DateTime.MinValue;
+                DateTime endDate = recipePeriod.PeriodTo ?? startDate;
+
+                // If PeriodTo is null, treat the period as a single month
+                if (recipePeriod.PeriodTo == null)
+                {
+                    endDate = startDate;
+                }
+
+                // Generate the list of months between startDate and endDate
+                var periodMonths = GetMonthsBetweenDates(startDate, endDate);
+
+                foreach (var month in periodMonths)
+                {
+                    var dateOnlyMonth = DateOnly.FromDateTime(month);
+                    string quarter = GenerateQuoteService.GetQuarter(dateOnlyMonth);
+                    decimal selectedQuantity = recipePeriod.SelectedQuantity;
+
+                    //Create New QuotationRecipe
+                    var quotationRecipe = new QuotationRecipe
+                        {
+                            Recipe = recipePeriod.SelectedRecipe,
+                            RecipeId = recipePeriod.SelectedRecipe.RecipeId,
+                            PeriodMonth = dateOnlyMonth,
+                            Quantity = recipePeriod.SelectedQuantity
+                        };
+
+                    //Add Premium into QuotationRecipe
+                    if (recipePeriod.SelectedPremiumList != null || recipePeriod.SelectedPremiumList.Count() > 0)
+                    {
+                        List<QuotationPremiumCost> quotationPremiumList = new List<QuotationPremiumCost>();
+
+                        foreach (var selectedPremium in recipePeriod.SelectedPremiumList)
+                        {
+                            QuotationPremiumCost qpc = new QuotationPremiumCost()
+                                {
+                                    PremiumName = selectedPremium.PremiumName,
+                                    Cost = selectedPremium.PremiumCost,
+                                    CostAmount = selectedPremium.PremiumCost / 2 
+                                };
+
+                            quotationPremiumList.Add(qpc);
+                        }
+
+                        quotationRecipe.QuotationPremiumCosts = quotationPremiumList;
+                    }
+
+                    //Calculate Terminal Cost
+                    var terminalCost = await GenerateQuoteService.GetTerminalCostByDate(dateOnlyMonth);
+
+                    var quotationTerminalCost = new QuotationTerminalCost
+						{
+							TerminalName = terminalCost.PeriodName,
+                            TerminalPeriod = terminalCost.TerminalPeriod,
+							LifeGbp = terminalCost.LifeGbp,
+                            Liquor = terminalCost.Liquor,
+                            Butter = terminalCost.Butter,
+							Powder = terminalCost.Powder
+						};
+
+                    quotationRecipe.QuotationTerminalCost = quotationTerminalCost;
+
+                    //Calculate Raw Material Cost
+                    var rawMaterialPrice = await GenerateQuoteService.GetRawMaterialCostByRecipeID(dateOnlyMonth);
+
+                    foreach(var rmp in rawMaterialPrice){
+                        if(rmp.Material.MaterialName == "Cocoa Mass"){
+                            rmp.Price = QuoteDataService.CalculateMassTotal(quotationTerminalCost.Liquor , quotationTerminalCost.LifeGbp);
+                        }
+                        else if(rmp.Material.MaterialName == "Cocoa Butter"){
+                            rmp.Price = QuoteDataService.CalculateMassTotal(quotationTerminalCost.Butter, quotationTerminalCost.LifeGbp);
+
+                        }
+                    }
+
+                    var rawPriceDict = rawMaterialPrice.ToDictionary(p => p.MaterialId, p => p.Price);
+
+                    var quotationRawMaterialCostsList = recipePeriod.SelectedRecipe.RecipeIngredients
+                                .Where(i => rawPriceDict.ContainsKey(i.MaterialId))
+                                .Select(i => new QuotationRawMaterialCost
+                                    {
+                                        MaterialName = i.Material.MaterialName.ToString(),
+                                        Cost = rawPriceDict[i.MaterialId],
+                                        CostAmount = rawPriceDict[i.MaterialId] * (i.Amount / 100),
+
+                                    }).ToList();
+
+
+
+                    quotationRecipe.QuotationRawMaterialCosts = quotationRawMaterialCostsList;
+                    quotationRecipe.Recipe.RecipeIngredients = recipePeriod.SelectedRecipe.RecipeIngredients;
+
+                    //Calculate Packaging Cost
+
+                    quotationRecipe.QuotationPackagingCost = new QuotationPackagingCost
+						{
+							PackagingName = recipePeriod.SelectedRecipe.PackagingMaterial.Packaging,
+                            Cost = recipePeriod.SelectedRecipe.PackagingMaterial.CostPerTon.Value,
+                            CostAmount = recipePeriod.SelectedRecipe.PackagingMaterial.CostPerTon.Value 
+						};
+
+                    quotationRecipe.QuotationDeliveryCost = new QuotationDeliveryCost
+                        {
+                           DeliveryName = "Delivery",
+                           CostAmount = 100,
+                        };
+
+
+
+                    foreach(var ac in additionalCostsList)
+                    {
+                        var addtionalCost = new QuotationAdditionalCost
+							{
+								CostName = ac.CostName,
+                                Cost = ac.DefaultAmount ,
+                                CostAmount = ac.DefaultAmount,
+
+							};
+
+                        quotationRecipe.QuotationAdditionalCosts.Add(addtionalCost);
+                    }
+
+                    // Add each QuotationRecipe to the list in memory
+                    quotationRecipes.Add(quotationRecipe);
+
+
+                    localTotalCost = quotationRecipe.QuotationPremiumCosts.Sum(x => x.CostAmount) +
+                    quotationRecipe.QuotationRawMaterialCosts.Sum(x => x.CostAmount) +
+                    quotationRecipe.QuotationPackagingCost.CostAmount +
+                    quotationRecipe.QuotationDeliveryCost.CostAmount +
+                    quotationRecipe.QuotationAdditionalCosts.Sum(x => x.CostAmount)
+
+                    ;
+
+                    var recipeTotalCost = new RecipeTotalCost
+                        {
+                            QuotationRecipe1 = quotationRecipe,
+                            TotalCost = localTotalCost,
+                            Quarter = quarter,
+                            RawMaterialPriceDetailList = rawMaterialPrice
+                        };
+
+                    recipeTotalCostList.Add(recipeTotalCost);
+                }
+            }
+            else;
+        }
+
+        QuoteDataService.OriginalRecipeTotalList = recipeTotalCostList;
+
+        QuoteDataService.RecipeTotalCostList = QuoteDataService.ConvertRecipeCostListToPreferredUnit(recipeTotalCostList, UserPreferenceSetting.WeightRatio);
+
+        QuoteDataService.RecipeCostMatrix = await QuoteDataService.PrepareCostMatrix(QuoteDataService.RecipeTotalCostList);
+
+        // Optionally show a notification or close the dialog
+        NotificationService.Notify(NotificationSeverity.Success, "Quotation generated successfully.");
+        // }
+
+        // Navigate to the next page (QuoteDetailPage)
+        NavigationManager.NavigateTo("/SaveNewQuote");
+    }
+
+    private List<DateTime> GetMonthsBetweenDates(DateTime startDate, DateTime endDate)
+    {
+        var months = new List<DateTime>();
+
+        for (var dt = startDate; dt <= endDate; dt = dt.AddMonths(1))
+        {
+            months.Add(new DateTime(dt.Year, dt.Month, 1));  // Start of each month
+        }
+
+        Console.WriteLine(string.Join(", ", months));
+        return months;
+
+        
+    }
+
+    private List<RecipeCostMatrix> recipeCostMatrix = new();
+
+    
+
+
+    void OnFromDateChanged(DateTime args, RecipePeriod data)
+    {
+        data.PeriodFrom = new DateTime(args.Year, args.Month, 1);
+    }
+
+    void OnToDateChanged(DateTime args, RecipePeriod data)
+    {
+        data.PeriodTo = new DateTime(args.Year, args.Month, DateTime.DaysInMonth(args.Year, args.Month));
+    }
+
+}
+

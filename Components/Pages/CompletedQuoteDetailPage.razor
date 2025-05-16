@@ -1,0 +1,530 @@
+﻿@page "/QuoteDetailPage/{quoteID:int}"
+
+@inject QuoteDetailServices QuoteDetailService
+@inject QuoteDataServices QuoteDataService
+@inject GenerateQuoteServices GenerateQuoteService
+@inject IJSRuntime JS
+@inject UserPreferenceSettings UserPreferenceSetting
+
+@using iText.Kernel.Pdf;
+@using iText.Layout;
+@using iText.Layout.Element;
+@using System.IO.Compression;
+
+<div class="container-fluid mb-4">
+    <div class="row mb-3">
+        <div class="col-md-6">
+            <RadzenSelectBar @bind-Value=@SelectBarValue TValue="bool" class="w-100">
+                <Items>
+                    <RadzenSelectBarItem Text="Summary" Value="true" />
+                    <RadzenSelectBarItem Text="Listing" Value="false" />
+                </Items>
+            </RadzenSelectBar>
+        </div>
+        <div class="col-md-6 d-flex justify-content-end">
+            <div class="btn-group">
+                @* @if (quote.StatusId != 3)
+                {
+                    <RadzenButton Text="Update" Icon="arrow_upward" ButtonType="ButtonType.Submit" 
+                        Click="@(async() => await updateQuote(quote))" 
+                        ButtonStyle="ButtonStyle.Primary" class="me-2" />
+                } *@
+
+                @if (quote.StatusId == 1)
+                {
+                    <RadzenButton Icon="upload_file" ButtonType="ButtonType.Submit" Text="Post" 
+                        Click="@(async() => await postQuote(quote))" 
+                        ButtonStyle="ButtonStyle.Primary" class="me-2" />
+                }
+                else if (quote.StatusId == 2)
+                {
+                    <RadzenButton Icon="check" ButtonType="ButtonType.Submit" Text="Complete" 
+                        Click="@(async() => await completeQuote(quote))" 
+                        ButtonStyle="ButtonStyle.Primary" class="me-2" />
+                }
+
+                <RadzenButton Text="Duplicate" ButtonType="ButtonType.Submit" 
+                    Click="DuplicateQuotation" Icon="content_copy" 
+                    ButtonStyle="ButtonStyle.Secondary" class="me-2" />
+
+                <div class="btn-group">
+                    <RadzenButton Icon="file_download" Text="Excel" ButtonType="ButtonType.Submit" 
+                        Click="ExportSummaryAndRedirect" 
+                        ButtonStyle="ButtonStyle.Info" class="me-2" />
+                    <RadzenButton Icon="file_download" Text="PDF" ButtonType="ButtonType.Submit" 
+                        Click="ExportSummaryToPDF" 
+                        ButtonStyle="ButtonStyle.Info" />
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <RadzenCard class="shadow-sm mb-4">
+        @if (load)
+        {
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="d-flex align-items-center mb-3">
+                        <h4 class="me-3 mb-0">Quotation ID: @quote.QuoteId</h4>
+                        @if (status == "Created")
+                        {
+                            <RadzenBadge Text="Created" BadgeStyle="BadgeStyle.Warning" />
+                        }
+                        else if (status == "Confirmed")
+                        {
+                            <RadzenBadge Text="Confirmed" BadgeStyle="BadgeStyle.Info" />
+                        }
+                        else if (status == "Completed")
+                        {
+                            <RadzenBadge Text="Completed" BadgeStyle="BadgeStyle.Success" />
+                        }
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Quote Date:</strong></p>
+                            <p><strong>Customer Name:</strong></p>
+                        </div>
+                        <div class="col-md-6">
+                            <p>@quote.CreatedAt?.ToString("dd MMM yyyy hh:mm tt")</p>
+                            <p>@quote.Customer.CustName</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </RadzenCard>
+
+    @if(SelectBarValue)
+    {
+        @if(isDataLoaded)
+        {
+            <QuoteDetailPage 
+                isInCompletedQuotePage="true"
+                QuoteRemark="@QuoteRemark"
+                CustomerRemark="@CustomerRemark" />
+        }
+        else
+        {
+            <div class="text-center p-5">
+                <RadzenProgressBar Value="100" ShowValue="false" Mode="ProgressBarMode.Indeterminate" 
+                    Style="width: 50%; margin: 0 auto;" />
+                <p class="mt-3">Loading quote details...</p>
+            </div>
+        }
+    }
+    else
+    {
+        <div class="alert alert-info">
+            <i class="rz-icon-info-circle me-2"></i>
+            Listing view is currently under development.
+        </div>
+    }
+</div>
+
+
+
+@code {
+    [Parameter]
+    public int quoteID { get; set; }
+
+
+    private Quote quote = new Quote();
+    private Dictionary<string, decimal> terminalCosts = new();
+    private List<QuotationRawMaterialCost> rawMaterialCosts = new();
+    private bool load = false;
+    private List<RecipeCostMatrix> quarterViewCost = new List<RecipeCostMatrix>();
+
+    bool SelectBarValue = true;
+
+    private string QuoteRemark, CustomerRemark;
+
+
+    private List<CostSummaryRow> costMatrix;
+    private List<string> periodColumns = new();
+    private string status;
+
+    private bool isDataLoaded = false;
+    private string custName;
+
+    protected override async Task OnInitializedAsync()
+    {
+        quote = await QuoteDetailService.GetQuoteAsync(quoteID);
+
+        if(quote != null){
+            custName = quote.Customer.CustName;
+            status = quote.Status.StatusName;
+            QuoteRemark = quote.Remark;
+            CustomerRemark = quote.CustomerRemark;
+        }
+        load = true;
+
+        // Assuming quote has a list of recipes and their costs
+        List<RecipeTotalCost> recipeTotalCostList = new List<RecipeTotalCost>();
+
+        // Transform the quote into RecipeTotalList
+        foreach (var quotationRecipe in quote.QuotationRecipes)
+        {
+            // Calculate the total cost for the recipe
+            decimal localTotalCost = quotationRecipe.QuotationPremiumCosts.Sum(x => x.CostAmount) +
+                                     quotationRecipe.QuotationRawMaterialCosts.Sum(x => x.CostAmount) +
+                                     quotationRecipe.QuotationPackagingCost.CostAmount +
+                                     quotationRecipe.QuotationDeliveryCost.CostAmount +
+                                     quotationRecipe.QuotationAdditionalCosts.Sum(x => x.CostAmount);
+
+            // Create a new RecipeTotalCost object for this recipe
+            var recipeTotalCost = new RecipeTotalCost
+                {
+                    QuotationRecipe1 = quotationRecipe,
+                    TotalCost = localTotalCost,
+                    Quarter = GenerateQuoteService.GetQuarter(quotationRecipe.PeriodMonth) // Assuming you need this format for Quarter
+                };
+            // Add the recipe total cost to the list
+            recipeTotalCostList.Add(recipeTotalCost);
+        }
+
+        QuoteDataService.ClearAllRecipeData();
+
+        QuoteDataService.RecipeTotalCostList = QuoteDataService.ConvertRecipeCostListToPreferredUnit(recipeTotalCostList, UserPreferenceSetting.WeightRatio);
+
+        QuoteDataService.OriginalRecipeTotalList = recipeTotalCostList; 
+        QuoteDataService.RecipeCostMatrix = await QuoteDataService.PrepareCostMatrix(QuoteDataService.RecipeTotalCostList);
+        quarterViewCost = await QuoteDataService.PrepareQuarterCostMatrix(recipeTotalCostList);
+
+        if(QuoteDataService.RecipeTotalCostList != null && QuoteDataService.RecipeCostMatrix != null){
+            isDataLoaded = true;
+        }
+
+        // Step 1: Flatten all recipe entries by period and recipe code
+        var grouped = quote.QuotationRecipes
+        .GroupBy(r => r.Recipe.RecipeCode) // Group by RecipeCode
+        .ToDictionary(
+        g => g.Key,
+        g => g.GroupBy(r => r.PeriodMonth.ToString("MMM yyyy"))
+        .ToDictionary(
+        period => period.Key,
+        periodData => new
+        {
+        RMCost = periodData.Sum(x => x.QuotationRawMaterialCosts.Sum(c => c.CostAmount)),
+        PKCost = periodData.Sum(x => x.QuotationPackagingCost?.CostAmount ?? 0),
+        DLVCost = periodData.Sum(x => x.QuotationDeliveryCost?.CostAmount ?? 0),
+        PRMCost = periodData.Sum(x => x.QuotationPremiumCosts.Sum(c => c.CostAmount)),
+        ADDCost = periodData.Sum(x => x.QuotationAdditionalCosts.Sum(c => c.CostAmount))
+        })
+        );
+
+        // Step 2: Get all unique period columns (months)
+        periodColumns = grouped.Values
+        .SelectMany(r => r.Keys)
+        .Distinct()
+        .OrderBy(p => DateTime.ParseExact(p, "MMM yyyy", null))
+        .ToList();
+
+        // Step 3: Transform into rows by recipe code and cost type
+        costMatrix = grouped.SelectMany(recipeGroup =>
+        new List<CostSummaryRow>
+        {
+        new CostSummaryRow
+        {
+        RecipeCode = recipeGroup.Key,
+        CostType = "Raw Material",
+        PeriodCosts = recipeGroup.Value.ToDictionary(
+        p => p.Key,
+        p => p.Value.RMCost
+        )
+        },
+        new CostSummaryRow
+        {
+        RecipeCode = recipeGroup.Key,
+        CostType = "Packaging",
+        PeriodCosts = recipeGroup.Value.ToDictionary(
+        p => p.Key,
+        p => p.Value.PKCost
+        )
+        },
+        new CostSummaryRow
+        {
+        RecipeCode = recipeGroup.Key,
+        CostType = "Delivery",
+        PeriodCosts = recipeGroup.Value.ToDictionary(
+        p => p.Key,
+        p => p.Value.DLVCost
+        )
+        },
+        new CostSummaryRow
+        {
+        RecipeCode = recipeGroup.Key,
+        CostType = "Premium",
+        PeriodCosts = recipeGroup.Value.ToDictionary(
+        p => p.Key,
+        p => p.Value.PRMCost
+        )
+        },
+        new CostSummaryRow
+        {
+        RecipeCode = recipeGroup.Key,
+        CostType = "Additional",
+        PeriodCosts = recipeGroup.Value.ToDictionary(
+        p => p.Key,
+        p => p.Value.ADDCost
+        )
+        }
+        }).ToList();
+
+        // Step 4: Add a row for TotalCost (sum of all costs for each recipe across periods)
+        foreach (var recipeCode in grouped.Keys)
+        {
+        var totalCostRow = new CostSummaryRow { RecipeCode = recipeCode, CostType = "Total Cost" };
+        foreach (var period in periodColumns)
+        {
+        decimal totalCost = costMatrix
+        .Where(row => row.RecipeCode == recipeCode)
+        .Sum(row => row.PeriodCosts.TryGetValue(period, out var value) ? value : 0);
+        totalCostRow.PeriodCosts[period] = totalCost;
+        }
+        costMatrix.Add(totalCostRow);
+        }
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    public class CostSummaryRow
+    {
+        public string RecipeCode { get; set; }
+        public string CostType { get; set; }
+        public Dictionary<string, decimal> PeriodCosts { get; set; } = new();
+        public decimal TotalCost => PeriodCosts.Values.Sum();  // Calculate the sum of all period costs
+    }
+
+
+    private async Task ExportSummaryAndRedirect()
+    {
+        string folderPath = Path.Combine(Environment.CurrentDirectory, "wwwroot", "securefiles");
+        Directory.CreateDirectory(folderPath);
+
+        string fileName = $"QuoteSummary_{quoteID}_{DateTime.Now:yyyyMMddHHmmss}.xlsx";
+        string fullPath = Path.Combine(folderPath, fileName);
+
+        using var workbook = new ClosedXML.Excel.XLWorkbook();
+        var worksheet = workbook.Worksheets.Add("Summary");
+
+        worksheet.Cell(1, 1).Value = "Recipe Code";
+
+        var periods = QuoteDataService.RecipeCostMatrix
+            .SelectMany(r => r.PeriodCosts.Keys)
+            .Distinct()
+            .OrderBy(p => DateTime.TryParse(p, out var dt) ? dt : DateTime.MaxValue)
+            .ToList();
+
+        for (int i = 0; i < periods.Count; i++)
+            worksheet.Cell(1, i + 2).Value = periods[i];
+
+        for (int i = 0; i < QuoteDataService.RecipeCostMatrix.Count; i++)
+        {
+            var recipe = QuoteDataService.RecipeCostMatrix[i];
+            worksheet.Cell(i + 2, 1).Value = recipe.RecipeCode;
+
+            for (int j = 0; j < periods.Count; j++)
+            {
+                if (recipe.PeriodCosts.TryGetValue(periods[j], out var value))
+                    worksheet.Cell(i + 2, j + 2).Value = value;
+            }
+        }
+
+        workbook.SaveAs(fullPath);
+
+        // Open the download link in a new tab, requires user to be authorized
+        var downloadUrl = $"api/SecureFiles/{fileName}";
+        await JS.InvokeVoidAsync("open", downloadUrl, "_blank");
+    }
+
+    private async Task DuplicateQuotation(){
+
+        QuoteDataService.newQuotation = new Quote
+            {
+                CustomerId = quote.CustomerId,
+                DeliveryDetailId = quote.DeliveryDetailId,
+                CreatedAt = DateTime.Now
+            };
+
+        NavigationManager.NavigateTo("/DuplicateNewQuote");
+    }
+
+    private async Task ExportSummaryToPDF()
+    {
+        string templatePath = Path.Combine(Environment.CurrentDirectory, "wwwroot", "Template", "GCBCUK_Letterhead.pdf");
+        string folderPath = Path.Combine(Environment.CurrentDirectory, "wwwroot", "securefiles");
+        Directory.CreateDirectory(folderPath);
+
+        List<string> generatedFiles = new List<string>();
+        
+        // Determine which data to use based on the current view
+        var dataToExport = SelectBarValue ? 
+            QuoteDataService.RecipeCostMatrix : // Summary view (MONTH)
+            quarterViewCost;                    // Listing view (QUARTER)
+
+        var i = 1;
+        foreach (var recipe in dataToExport)
+        {
+            string fileName = $"Quote_{quote.QuoteId}_{i}_{DateTime.Now:yyyyMMddHHmmss}.pdf";
+            string fullPath = Path.Combine(folderPath, fileName);
+
+            using (var pdfReader = new PdfReader(templatePath))
+            using (var pdfWriter = new PdfWriter(fullPath))
+            using (var pdfDoc = new PdfDocument(pdfReader, pdfWriter))
+            using (var document = new Document(pdfDoc))
+            {
+                // Adjust starting Y position depending on your letterhead layout
+                float startY = 700f;
+
+                // Format date without time
+                string formattedDate = quote.CreatedAt?.ToString("dd MMM yyyy") ?? "-";
+                
+                // Add formal introduction with customer name
+                document.ShowTextAligned($"Date: {formattedDate}", 30, startY, iText.Layout.Properties.TextAlignment.LEFT);
+                
+                // Add formal greeting with customer name
+                document.ShowTextAligned($"Dear {quote.Customer.CustName},", 30, startY - 30, iText.Layout.Properties.TextAlignment.LEFT);
+                document.ShowTextAligned("We are pleased to quote you:", 30, startY - 50, iText.Layout.Properties.TextAlignment.LEFT);
+                
+                document.ShowTextAligned($"Recipe Code: {recipe.RecipeCode}", 30, startY - 80, iText.Layout.Properties.TextAlignment.LEFT);
+
+                // Create table with 2 columns (removed quantity column)
+                var table = new Table(2, true)
+                    .SetMarginTop(190) // Adjusted margin since we removed the weight unit line
+                    .SetMarginBottom(10)
+                    .SetMarginRight(10)
+                    .SetMarginLeft(-5);
+
+                // Get the weight unit from user preferences
+                string weightUnit = UserPreferenceSetting.PrintedWeightUnit ?? (UserPreferenceSetting.WeightRatio == 1 ? "KG" : "MT");
+
+                // Set up table headers based on view type
+                if (SelectBarValue) // MONTH view
+                {
+                    table.AddHeaderCell("Time Period");
+                    table.AddHeaderCell($"Total Price ({weightUnit})");
+                }
+                else // QUARTER view
+                {
+                    table.AddHeaderCell("Quarter");
+                    table.AddHeaderCell($"Total Price ({weightUnit})");
+                }
+
+                table.GetHeader().SetBold();
+
+                // Add data rows based on view type
+                if (SelectBarValue) // MONTH view
+                {
+                    foreach (var period in recipe.PeriodCosts.Keys.OrderBy(p => DateTime.TryParse(p, out var dt) ? dt : DateTime.MaxValue))
+                    {
+                        table.AddCell(new Cell().Add(new Paragraph(period).SetFontSize(8)));
+                        table.AddCell(new Cell().Add(new Paragraph(recipe.PeriodCosts[period].ToString("C0")).SetFontSize(8)));
+                    }
+                }
+                else // QUARTER view
+                {
+                    // For quarter view, we need to access the data differently
+                    var quarterRecipe = recipe as RecipeCostMatrix;
+                    if (quarterRecipe != null)
+                    {
+                        foreach (var quarter in quarterRecipe.PeriodCosts.Keys.OrderBy(q => q))
+                        {
+                            table.AddCell(new Cell().Add(new Paragraph(quarter).SetFontSize(8)));
+                            table.AddCell(new Cell().Add(new Paragraph(quarterRecipe.PeriodCosts[quarter].ToString("C0")).SetFontSize(8)));
+                        }
+                    }
+                }
+
+                document.Add(table);
+                
+                // Add remarks if available
+                if (!string.IsNullOrEmpty(QuoteRemark) || !string.IsNullOrEmpty(CustomerRemark))
+                {
+                    
+                   
+                    
+                    // Add customer remarks if available
+                    if (!string.IsNullOrEmpty(CustomerRemark))
+                    {
+                        
+                        document.Add(new Paragraph("Customer Notes:").SetBold());
+                        document.Add(new Paragraph(CustomerRemark)
+                            .SetTextAlignment(iText.Layout.Properties.TextAlignment.LEFT));
+                    }
+                }
+                
+                // Add closing text with consistent left alignment
+                document.Add(new Paragraph(" "));
+                document.Add(new Paragraph("Thank you for your business. We look forward to serving you.")
+                    .SetTextAlignment(iText.Layout.Properties.TextAlignment.LEFT));
+                document.Add(new Paragraph(" "));
+                document.Add(new Paragraph("Best regards,")
+                    .SetTextAlignment(iText.Layout.Properties.TextAlignment.LEFT));
+                document.Add(new Paragraph("GCB Cocoa UK Ltd")
+                    .SetTextAlignment(iText.Layout.Properties.TextAlignment.LEFT));
+
+                generatedFiles.Add(fullPath);
+            }
+
+            i++;
+        }
+
+        string zipFilePath = Path.Combine(folderPath, $"Quotes_{DateTime.Now:yyyyMMddHHmmss}.zip");
+        using (var zip = ZipFile.Open(zipFilePath, ZipArchiveMode.Create))
+        {
+            foreach (var file in generatedFiles)
+            {
+                zip.CreateEntryFromFile(file, Path.GetFileName(file));
+            }
+        }
+
+        // Provide download link to the zip file
+        var downloadUrl = $"api/SecureFiles/{Path.GetFileName(zipFilePath)}";
+        await JS.InvokeVoidAsync("open", downloadUrl, "_blank");
+    }
+
+    private async Task postQuote(Quote selectedQuote){
+        await QuoteDetailService.PostQuote(selectedQuote);
+        await OnInitializedAsync();
+
+
+        await InvokeAsync(StateHasChanged);
+
+
+        NotificationService.Notify(NotificationSeverity.Success, "Quotation is updated successfully.");
+    }
+
+
+    private async Task completeQuote(Quote selectedQuote)
+    {
+        await QuoteDetailService.CompleteQuote(selectedQuote);
+        await OnInitializedAsync();
+
+
+        await InvokeAsync(StateHasChanged);
+
+
+        NotificationService.Notify(NotificationSeverity.Success, "Quotation is updated successfully.");
+    }
+
+
+    private async Task updateQuote(Quote selectedQuote)
+    {
+        QuoteDataService.OriginalRecipeTotalList = QuoteDataService.RevertToOriginalUnit(QuoteDataService.RecipeTotalCostList, UserPreferenceSetting.WeightRatio);
+
+        QuoteDataService.ClearAllRecipeData();
+
+        await QuoteDetailService.updateQuoteInDatabase(selectedQuote, QuoteDataService.OriginalRecipeTotalList.Select(r => r.QuotationRecipe1).ToList());
+
+        
+
+        await OnInitializedAsync();
+
+        await InvokeAsync(StateHasChanged);
+
+        NotificationService.Notify(NotificationSeverity.Success, "Quotation is updated successfully.");
+    }
+
+
+}

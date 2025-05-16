@@ -1,0 +1,124 @@
+﻿@using GCBQuotationSystem.Models
+
+@inject MasterDataServices MasterDataService
+@inject DialogService DialogService
+@inject NotificationService NotificationService
+
+<RadzenTemplateForm Data="@newRecord" TItem="RawMaterialPriceUpdate" Submit="@OnSubmit">
+    <ChildContent>
+        <RadzenFieldset Text="Create New Material Price">
+            <div style="margin-bottom:10px">
+                <RadzenLabel Text="Quarter:" />
+                <RadzenLabel Text="@($"{SelectedQuarter.Text}")" Style="font-weight: bold; margin-left: 5px;" />
+            </div>
+            <div style="margin-bottom:10px">
+                <RadzenLabel Text="Remark:" />
+                <RadzenTextBox @bind-Value="newRecord.Remark" Style="width:100%" />
+            </div>
+            <RadzenDataGrid Data="@newRecord.RawMaterialPriceDetails" TItem="RawMaterialPriceDetail" AllowPaging="false" AllowSorting="true" EditMode="DataGridEditMode.Single" @ref="detailsGrid">
+                <Columns>
+                    <RadzenDataGridColumn TItem="RawMaterialPriceDetail" Property="Material.MaterialName" Title="Raw Material" />
+                    <RadzenDataGridColumn TItem="RawMaterialPriceDetail" Title="Price" FormatString="{0:C}">
+                        <Template Context="detail">
+                            <!-- Always show the numeric control so the price can be directly changed -->
+                            <RadzenNumeric @bind-Value="detail.Price" Style="width:100%" Step="0.01" />
+                        </Template>
+                    </RadzenDataGridColumn>
+                </Columns>
+            </RadzenDataGrid>
+        </RadzenFieldset>
+        <div style="margin-top:20px">
+            <RadzenButton ButtonType="ButtonType.Submit" Text="Save" Style="margin-right:10px" />
+            <RadzenButton Text="Cancel" ButtonStyle="ButtonStyle.Danger" Click="@(() => Cancel())" />
+        </div>
+    </ChildContent>
+</RadzenTemplateForm>
+
+@code {
+    [Parameter] public QuarterItem SelectedQuarter { get; set; }
+
+    RawMaterialPriceUpdate newRecord = new RawMaterialPriceUpdate();
+    RadzenDataGrid<RawMaterialPriceDetail> detailsGrid;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Set the new record's month to the first month of the selected quarter
+        newRecord.PriceMonth = SelectedQuarter.StartDate;
+        newRecord.UpdateDate = DateTime.Now;
+        newRecord.Remark = $"New Price Update for {SelectedQuarter.Text}";
+
+        // Try to get the latest record as a template.
+        var latest = await MasterDataService.GetLatestPriceUpdateAsync();
+        if (latest.RawMaterialPriceDetails != null && latest.RawMaterialPriceDetails.Count > 0)
+        {
+            // Clone the details from the latest record.
+            newRecord.RawMaterialPriceDetails = latest.RawMaterialPriceDetails
+                .Select(d => new RawMaterialPriceDetail
+                {
+                    MaterialId = d.MaterialId,
+                    Price = d.Price,
+                    Material = d.Material
+                }).ToList();
+        }
+        else
+        {
+            // If no latest record exists, get all raw materials.
+            var rawMaterials = await MasterDataService.GetAllRawMaterialsAsync();
+            newRecord.RawMaterialPriceDetails = rawMaterials
+                .Select(rm => new RawMaterialPriceDetail
+                {
+                    MaterialId = rm.MaterialId,
+                    Price = 0,
+                    Material = rm
+                }).ToList();
+        }
+    }
+
+    async Task OnSubmit()
+    {
+        // First, create the record for the first month of the quarter
+        var created = await MasterDataService.CreatePriceUpdateAsync(newRecord);
+        
+        // Now, automatically apply the same prices to the other months in the quarter
+        int startMonth = SelectedQuarter.StartDate.Month;
+        int endMonth = startMonth + 2; // 3 months per quarter
+        int year = SelectedQuarter.StartDate.Year;
+        
+        // Loop through each month in the quarter (except the first one which we already created)
+        for (int m = startMonth + 1; m <= endMonth; m++)
+        {
+            // Build a DateOnly for the quarter month
+            DateOnly quarterMonth = new DateOnly(year, m, 1);
+            
+            // Create a new record for this month using the same details
+            RawMaterialPriceUpdate monthRecord = new RawMaterialPriceUpdate
+            {
+                PriceMonth = quarterMonth,
+                UpdateDate = DateTime.Now,
+                Remark = newRecord.Remark,
+                RawMaterialPriceDetails = newRecord.RawMaterialPriceDetails
+                    .Select(d => new RawMaterialPriceDetail
+                    {
+                        MaterialId = d.MaterialId,
+                        Price = d.Price,
+                        Material = d.Material
+                    }).ToList()
+            };
+            
+            await MasterDataService.CreatePriceUpdateAsync(monthRecord);
+        }
+        
+        NotificationService.Notify(new NotificationMessage { 
+            Severity = NotificationSeverity.Success, 
+            Summary = "Created", 
+            Detail = $"Prices for {SelectedQuarter.Text} created successfully" 
+        });
+        
+        DialogService.Close(created);
+    }
+
+    void Cancel()
+    {
+        DialogService.Close(null);
+    }
+}

@@ -1,0 +1,42 @@
+﻿@page "/producttypes"
+@inject MasterDataServices MasterDataServices
+@inject DialogService DialogService
+@inject NotificationService NotificationService
+
+<PageTitle>Product Types</PageTitle>
+
+<RadzenCard>
+
+    <RadzenButton ButtonType="ButtonType.Button" Text="Add Product Type" Click="AddProductType" />
+
+    <RadzenDataGrid TItem="ProductType" Data="@ProductTypes" AllowFiltering="true" AllowSorting="true" AllowPaging="true" PageSize="10" FilterMode="FilterMode.CheckBoxList">
+        <Columns>
+            <RadzenDataGridColumn TItem="ProductType" Property="TypeName" Title="Type Name" />
+        </Columns>
+    </RadzenDataGrid>
+
+</RadzenCard>
+
+@code {
+    private List<ProductType> ProductTypes = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadProductTypes();
+    }
+
+    private async void AddProductType()
+    {
+        var result = await DialogService.OpenAsync<AddProductTypeDialog>("Add Product Type");
+        if (result == true)
+        {
+            await LoadProductTypes();
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadProductTypes()
+    {
+        ProductTypes = await MasterDataServices.GetAllProductTypesAsync();
+    }
+}

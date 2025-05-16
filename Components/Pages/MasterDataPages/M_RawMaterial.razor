@@ -1,0 +1,43 @@
+﻿@page "/rawmaterials"
+@inject MasterDataServices MasterDataServices
+@inject DialogService DialogService
+@inject NotificationService NotificationService
+
+<PageTitle>Raw Materials</PageTitle>
+
+<RadzenCard>
+    <h3>Raw Material</h3>
+
+    <RadzenButton ButtonType="ButtonType.Button" Text="Add Raw Material" Click="AddRawMaterial" />
+
+    <RadzenDataGrid TItem="RawMaterial" Data="@RawMaterials" AllowFiltering="true" AllowSorting="true" AllowPaging="true" PageSize="10" FilterMode="FilterMode.CheckBoxList">
+        <Columns>
+            <RadzenDataGridColumn TItem="RawMaterial" Property="MaterialName" Title="Material Name" />
+        </Columns>
+    </RadzenDataGrid>
+
+</RadzenCard>
+
+@code {
+    private List<RawMaterial> RawMaterials = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadRawMaterials();
+    }
+
+    private async void AddRawMaterial()
+    {
+        var result = await DialogService.OpenAsync<AddRawMaterialDialog>("Add Raw Material");
+        if (result == true)
+        {
+            await LoadRawMaterials();
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadRawMaterials()
+    {
+        RawMaterials = await MasterDataServices.GetAllRawMaterialsAsync();
+    }
+}

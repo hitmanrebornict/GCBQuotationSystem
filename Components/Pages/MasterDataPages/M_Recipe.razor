@@ -1,0 +1,18 @@
+﻿@page "/Recipe"
+@inject DialogService DialogService
+
+<RadzenButton Text="Create New Recipe" Click="@CreateButtonOnClick"></RadzenButton>
+
+@code {
+
+
+    private async void CreateButtonOnClick()
+    {
+        var result = await DialogService.OpenAsync<AddRecipeDialog>("New Recipe");
+        if (result == true)
+        {
+            // await LoadCustomers();
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+}

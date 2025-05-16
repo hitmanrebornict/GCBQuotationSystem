@@ -1,0 +1,93 @@
+﻿@page "/settings"
+
+@inject UserPreferenceSettings UserPreferenceSetting
+@inject ProtectedLocalStorage localStorage
+
+@using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage
+
+@using GCBQuotationSystem.Components.Services
+
+<div class="container mt-4">
+    <div class="card shadow-sm">
+        <div class="card-header bg-primary text-white">
+            <h3 class="mb-0">User Preferences</h3>
+        </div>
+        <div class="card-body">
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <RadzenText TextStyle="TextStyle.Subtitle1" TagName="TagName.H5" class="mb-3">Select Currency</RadzenText>
+                        <RadzenDropDown 
+                            TValue="string" 
+                            Data="@UserPreferenceSetting.AvailableCurrencies" 
+                            @bind-Value="@UserPreferenceSetting.Currency" 
+                            Change="@(() => OnCurrencyChange(UserPreferenceSetting.Currency))"
+                            Class="w-100"
+                            Style="margin-bottom: 20px;" />
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <RadzenText TextStyle="TextStyle.Subtitle1" TagName="TagName.H5" class="mb-3">Select Weight Unit</RadzenText>
+                        <RadzenDropDown 
+                            TValue="string" 
+                            Data="@UserPreferenceSetting.AvailableWeightUnits" 
+                            @bind-Value="@UserPreferenceSetting.WeightUnit" 
+                            Change="@(() => OnWeightUnitChange(UserPreferenceSetting.WeightUnit))"
+                            Class="w-100" />
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+
+    // This method loads the settings from localStorage on initialization
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if(firstRender){
+            // Retrieve settings from localStorage
+
+
+            var currency =  await localStorage.GetAsync<string>("currency");
+            var weightUnit = await localStorage.GetAsync<string>("weightUnit");
+            // await localStorage.SetAsync("weightUnit", UserPreferenceSetting.WeightUnit);
+
+            // var currency = await JS.InvokeAsync<string>("localStorageHelper.getItem", "currency");
+            // var weightUnit = await JS.InvokeAsync<string>("localStorageHelper.getItem", "weightUnit");
+
+            // If settings are found in localStorage, apply them to the UserSettings object
+            if (!string.IsNullOrEmpty(currency.Value))
+            {
+                UserPreferenceSetting.Currency = currency.Value;
+            }
+            if (!string.IsNullOrEmpty(weightUnit.Value))
+            {
+                UserPreferenceSetting.WeightUnit = weightUnit.Value;
+            }
+
+            await InvokeAsync(StateHasChanged);
+        }
+
+    }
+
+    private async Task OnCurrencyChange(string value)
+    {
+        // Save the selected currency to localStorage
+        // await JS.InvokeVoidAsync("localStorageHelper.setItem", "currency", value);
+        await localStorage.SetAsync("currency", UserPreferenceSetting.Currency);
+        UserPreferenceSetting.UpdateCultureBasedOnCurrency();
+
+    }
+
+    private async Task OnWeightUnitChange(string value)
+    {
+        // Save the selected weight unit to localStorage
+        // await JS.InvokeVoidAsync("localStorageHelper.setItem", "weightUnit", value);
+        await localStorage.SetAsync("weightUnit", UserPreferenceSetting.WeightUnit);
+        UserPreferenceSetting.GetWeightRatio();
+
+	}
+}

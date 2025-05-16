@@ -1,0 +1,51 @@
+@page "/customers"
+@inject MasterDataServices MasterDataServices
+@inject DialogService DialogService
+@inject NotificationService NotificationService
+
+<PageTitle>Customer</PageTitle>
+
+<RadzenCard>
+    <h3>Raw Material Prices</h3>
+
+<RadzenButton ButtonType="ButtonType.Button" Text="Add Customer" Click="AddCustomer" />
+
+<RadzenDataGrid TItem="Customer" Data="@Customers" AllowFiltering="true" AllowSorting="true" AllowPaging="true" PageSize="10" FilterMode="FilterMode.CheckBoxList">
+    <Columns>
+        <RadzenDataGridColumn TItem="Customer" Property="CustName" Title="Customer Name" />
+        <RadzenDataGridColumn TItem="Customer" Property="InvoiceAddress1" Title="Invoice Address 1" />
+        <RadzenDataGridColumn TItem="Customer" Property="InvoiceAddress2" Title="Invoice Address 2" />
+        <RadzenDataGridColumn TItem="Customer" Property="InvoiceCity" Title="Invoice City" />
+        <RadzenDataGridColumn TItem="Customer" Property="InvoicePostcode" Title="Invoice Postcode" />
+        <RadzenDataGridColumn TItem="Customer" Property="Country.CountryName" Title="Country" />
+    </Columns>
+</RadzenDataGrid>
+
+</RadzenCard>
+
+
+@code {
+
+    private List<Customer> Customers = new List<Customer>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCustomers();
+    }   
+
+    private async void AddCustomer()
+    {
+          var result = await DialogService.OpenAsync<AddCustomerDialog>("Add Customer");
+        if (result == true)
+        {
+            await LoadCustomers();
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task LoadCustomers()
+    {
+        Customers = await MasterDataServices.GetAllCustomersAsync();
+    }
+
+}

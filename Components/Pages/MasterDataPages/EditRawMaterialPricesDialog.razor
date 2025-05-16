@@ -1,0 +1,245 @@
+@using GCBQuotationSystem.Models
+
+@inject MasterDataServices MasterDataService
+@inject DialogService DialogService
+@inject NotificationService NotificationService
+
+<RadzenCard Style="max-width: 800px; margin: 0 auto;">
+    <div class="container">
+        @* <div class="row mb-4">
+            <div class="col">
+                <h4 class="mb-0">Edit Raw Material Prices</h4>
+                <small class="text-muted">For @PriceMonth.ToString("MMMM yyyy")</small>
+            </div>
+        </div> *@
+
+        <div class="row mb-4">
+            <div class="col-md-12">
+                <RadzenDataGrid Data="@MaterialDetails" 
+                               TItem="RawMaterialPriceDetail"
+                               AllowFiltering="true"
+                               AllowSorting="true"
+                               Style="height: 400px">
+                    <Columns>
+                        <RadzenDataGridColumn TItem="RawMaterialPriceDetail" 
+                                             Property="Material.MaterialName" 
+                                             Title="Material Name" 
+                                             Width="200px" />
+                        <RadzenDataGridColumn TItem="RawMaterialPriceDetail" 
+                                             Property="Price" 
+                                             Title="Price" 
+                                             Width="150px">
+                            <Template Context="detail">
+                                <RadzenNumeric @bind-Value="detail.Price" 
+                                              Min="0" 
+                                              Step="0.01" 
+                                              Format="c2"
+                                              Style="width: 100%;" />
+                            </Template>
+                        </RadzenDataGridColumn>
+                    </Columns>
+                </RadzenDataGrid>
+            </div>
+        </div>
+
+        <div class="row mb-2">
+            <div class="col-md-12">
+                <RadzenFormField Text="Remarks" Variant="Variant.Filled">
+                    <RadzenTextArea @bind-Value="@Remarks" 
+                                   Style="width: 100%; min-height: 100px;" 
+                                   Placeholder="Enter any notes about these price changes..." />
+                </RadzenFormField>
+            </div>
+        </div>
+
+        <div class="d-flex justify-content-end mt-4">
+            <RadzenButton Click="Cancel" 
+                         ButtonStyle="ButtonStyle.Light" 
+                         Text="Cancel" 
+                         Icon="cancel"
+                         class="me-2" />
+            <RadzenButton Click="SaveChanges" 
+                         ButtonStyle="ButtonStyle.Primary" 
+                         Text="Save All Changes" 
+                         Icon="save" />
+        </div>
+    </div>
+</RadzenCard>
+
+@code {
+    [Parameter] public List<RawMaterialPriceDetail> MaterialDetails { get; set; }
+    [Parameter] public DateOnly PriceMonth { get; set; }
+    [Parameter] public RawMaterialPriceUpdate PriceUpdate { get; set; }
+    
+    private string Remarks { get; set; } = string.Empty;
+    private Dictionary<int, decimal> OriginalPrices = new Dictionary<int, decimal>();
+
+    protected override void OnInitialized()
+    {
+        // Store the original prices to detect changes
+        foreach (var detail in MaterialDetails)
+        {
+            OriginalPrices[detail.MaterialId] = detail.Price;
+        }
+    }
+
+    private void Cancel()
+    {
+        // Close the dialog without saving changes
+        DialogService.Close(null);
+    }
+
+    private async Task SaveChanges()
+    {
+        try
+        {
+            // Check if any prices have changed
+            bool pricesChanged = MaterialDetails.Any(d => d.Price != OriginalPrices[d.MaterialId]);
+            
+            if (pricesChanged || !string.IsNullOrWhiteSpace(Remarks))
+            {
+                // Update the price update record with remarks if provided
+                if (!string.IsNullOrWhiteSpace(Remarks))
+                {
+                    if (!string.IsNullOrEmpty(PriceUpdate.Remark))
+                    {
+                        PriceUpdate.Remark += $"\n{DateTime.Now:g}: {Remarks}";
+                    }
+                    else
+                    {
+                        PriceUpdate.Remark = $"{DateTime.Now:g}: {Remarks}";
+                    }
+                }
+                
+                // First, update the current month's price update record
+                await MasterDataService.UpdatePriceUpdateAsync(PriceUpdate);
+                
+                // Now, apply the same prices to all other months in the quarter
+                await ApplyPricesToQuarter();
+                
+                // Close the dialog and return success
+                DialogService.Close(true);
+            }
+            else
+            {
+                // No changes were made
+                NotificationService.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Info,
+                    Summary = "No Changes",
+                    Detail = "No changes were made to the prices.",
+                    Duration = 3000
+                });
+                DialogService.Close(null);
+            }
+        }
+        catch (Exception ex)
+        {
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Error",
+                Detail = $"Failed to save changes: {ex.Message}",
+                Duration = 5000
+            });
+        }
+    }
+
+    private async Task ApplyPricesToQuarter()
+    {
+        // Determine the quarter based on the current month
+        int currentMonth = PriceMonth.Month;
+        int quarterStartMonth = ((currentMonth - 1) / 3) * 3 + 1;
+        int quarterEndMonth = quarterStartMonth + 2;
+        int year = PriceMonth.Year;
+        
+        // Create a confirmation message
+        bool confirmed = await DialogService.Confirm(
+            $"Do you want to apply these prices to all months in Q{(quarterStartMonth-1)/3+1}/{year} (from {new DateTime(year, quarterStartMonth, 1):MMMM} to {new DateTime(year, quarterEndMonth, 1):MMMM})?",
+            "Apply to Quarter",
+            new ConfirmOptions() { OkButtonText = "Yes", CancelButtonText = "No" }) ?? false;
+        
+        if (!confirmed)
+        {
+            return;
+        }
+        
+        // Loop through each month in the quarter
+        for (int month = quarterStartMonth; month <= quarterEndMonth; month++)
+        {
+            // Skip the current month as it's already updated
+            if (month == currentMonth)
+            {
+                continue;
+            }
+            
+            DateOnly monthDate = new DateOnly(year, month, 1);
+            
+            // Get any existing record for this month
+            var existingRecord = await MasterDataService.GetPriceUpdateByMonthAsync(monthDate);
+            
+            if (existingRecord != null)
+            {
+                // Update the existing record with the new prices
+                string updateRemark = $"Updated as part of Q{(quarterStartMonth-1)/3+1}/{year} price update";
+                if (!string.IsNullOrWhiteSpace(Remarks))
+                {
+                    updateRemark += $" - {Remarks}";
+                }
+                
+                if (!string.IsNullOrEmpty(existingRecord.Remark))
+                {
+                    existingRecord.Remark += $"\n{DateTime.Now:g}: {updateRemark}";
+                }
+                else
+                {
+                    existingRecord.Remark = $"{DateTime.Now:g}: {updateRemark}";
+                }
+                
+                // Update each price detail
+                foreach (var detail in existingRecord.RawMaterialPriceDetails)
+                {
+                    var matchingDetail = MaterialDetails.FirstOrDefault(d => d.MaterialId == detail.MaterialId);
+                    if (matchingDetail != null)
+                    {
+                        detail.Price = matchingDetail.Price;
+                    }
+                }
+                
+                await MasterDataService.UpdatePriceUpdateAsync(existingRecord);
+            }
+            else
+            {
+                // Create a new record for this month
+                string createRemark = $"Created as part of Q{(quarterStartMonth-1)/3+1}/{year} price update";
+                if (!string.IsNullOrWhiteSpace(Remarks))
+                {
+                    createRemark += $" - {Remarks}";
+                }
+                
+                RawMaterialPriceUpdate newRecord = new RawMaterialPriceUpdate
+                {
+                    PriceMonth = monthDate,
+                    UpdateDate = DateTime.Now,
+                    Remark = $"{DateTime.Now:g}: {createRemark}",
+                    RawMaterialPriceDetails = MaterialDetails.Select(d => new RawMaterialPriceDetail
+                    {
+                        MaterialId = d.MaterialId,
+                        Price = d.Price,
+                        Material = d.Material
+                    }).ToList()
+                };
+                
+                await MasterDataService.CreatePriceUpdateAsync(newRecord);
+            }
+        }
+        
+        NotificationService.Notify(new NotificationMessage
+        {
+            Severity = NotificationSeverity.Success,
+            Summary = "Quarter Updated",
+            Detail = $"Prices have been applied to all months in Q{(quarterStartMonth-1)/3+1}/{year}.",
+            Duration = 5000
+        });
+    }
+} 

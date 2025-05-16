@@ -1,0 +1,62 @@
+﻿@inherits LayoutComponentBase
+
+@inject UserPreferenceSettings UserPreferenceSetting
+@inject ProtectedLocalStorage localStorage
+
+@using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage
+
+
+<RadzenComponents @rendermode="InteractiveServer" />
+
+<div class="page">
+    <div class="sidebar">
+        <NavMenu />
+    </div>
+
+    <main>
+        <div class="top-row px-4">
+            <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">Log In</a>
+        </div>
+
+        <article class="content px-4">
+            @Body
+        </article>
+    </main>
+</div>
+
+<div id="blazor-error-ui" data-nosnippet>
+    An unhandled error has occurred.
+    <a href="." class="reload">Reload</a>
+    <span class="dismiss">🗙</span>
+</div>
+
+@code{
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            var currency = await localStorage.GetAsync<string>("currency");
+            var weightUnit = await localStorage.GetAsync<string>("weightUnit");
+
+            if (!string.IsNullOrEmpty(currency.Value))
+            {
+                UserPreferenceSetting.Currency = currency.Value;
+            }
+
+            if (!string.IsNullOrEmpty(weightUnit.Value))
+            {
+                UserPreferenceSetting.WeightUnit = weightUnit.Value;
+            }
+
+            // Ensure culture is updated based on currency
+            UserPreferenceSetting.UpdateCultureBasedOnCurrency();
+            Console.WriteLine("This is weight ratio");
+            Console.WriteLine(UserPreferenceSetting.Currency);
+
+            UserPreferenceSetting.WeightRatio = UserPreferenceSetting.GetWeightRatio();
+            Console.WriteLine(UserPreferenceSetting.WeightRatio);
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+}
+

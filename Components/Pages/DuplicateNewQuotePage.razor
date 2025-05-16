@@ -1,0 +1,30 @@
+﻿@page "/DuplicateNewQuote"
+
+@inject QuoteDetailServices QuoteDetailService
+@inject QuoteDataServices QuoteDataService
+
+<QuoteDetailPage ></QuoteDetailPage>
+
+<hr/>
+
+<RadzenButton Text="Create" Click="@DuplicateButtonOnClick" Style="background-color:#3B82F6" />
+
+@code {
+    private async void DuplicateButtonOnClick()
+    {
+        Quote newQuote = new Quote();
+
+        newQuote = await QuoteDetailService.duplicateQuoteIntoDatabase(QuoteDataService.newQuotation, QuoteDataService.RecipeTotalCostList.Select(r => r.QuotationRecipe1).ToList());
+
+        NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Success,
+                Summary = "Success",
+                Detail = "Quotation has been successfully created.",
+                Duration = 4000
+            });
+
+        NavigationManager.NavigateTo($"/QuoteDetailPage/{newQuote.QuoteId}");
+        // NavigationManager.NavigateTo("/QuotationList");
+    }
+}

@@ -1,0 +1,181 @@
+﻿@inject MasterDataServices MasterDataService
+@inject DialogService DialogService
+
+
+<div class="col-md-12">
+    <div style="margin-bottom: 1rem" class="row">
+        <div class="col-md-3">
+            <RadzenLabel Text="Recipe Code" Component="RecipeCode" style="width: 100%">
+            </RadzenLabel>
+        </div>
+        <div class="col-md-9">
+            <RadzenTextBox MaxLength="100" style="width: 100%" @bind-Value="newRecipe.RecipeCode" Name="ParameterName" Placeholder="Please enter recipe code..." />
+        </div>
+    </div>
+    <div style="margin-bottom: 1rem" class="row">
+        <div class="col-md-3">
+            <RadzenLabel Text="Recipe Desc" Component="Recipe Description" style="width: 100%">
+            </RadzenLabel>
+        </div>
+        <div class="col-md-9">
+            <RadzenTextBox MaxLength="100" style="width: 100%" @bind-Value="newRecipe.RecipeDesc" Name="ParameterName" Placeholder="Please enter recipe desc..." />
+        </div>
+    </div>
+    <div style="margin-bottom: 1rem" class="row">
+        <div class="col-md-3">
+            <RadzenLabel Text="Product type" Component="Product Type" style="width: 100%">
+            </RadzenLabel>
+        </div>
+        <div class="col-md-9">
+            <RadzenDropDown Data="@ProductTypeList" @bind-Value = "@newRecipe.ProductType" TextProperty="TypeName"></RadzenDropDown>
+        </div>
+    </div>
+    <div style="margin-bottom: 1rem" class="row">
+        <div class="col-md-3">
+            <RadzenLabel Text="Packaging Material" Component="Product Type" style="width: 100%">
+            </RadzenLabel>
+        </div>
+        <div class="col-md-9">
+            <RadzenDropDown Data="@PackagingMaterialList" @bind-Value="@newRecipe.PackagingMaterial" TextProperty="Packaging"></RadzenDropDown>
+        </div>
+    </div>
+
+    @foreach(var rm in RawMaterialViewModelsList){
+        <div style="margin-bottom: 1rem" class="row">
+            <div class="col-md-3">
+                <RadzenLabel Text="@rm.RawMaterialItem.MaterialName" Component="Product Type" style="width: 100%">
+                </RadzenLabel>
+            </div>
+            <div class="col-md-9">
+                <RadzenNumeric TValue="Decimal" @bind-Value=@rm.Amount style="width: 100%" Change="@(async(value) => await TotalCostOnChange(value))"></RadzenNumeric>
+            </div>
+        </div>
+    }
+</div>
+
+<div class="row">
+    <div class="col offset-sm-3">
+        <RadzenButton ButtonType="Radzen.ButtonType.Submit" Icon="save" Text="Save" ButtonStyle="ButtonStyle.Primary" Click="@(() => buttonSubmitOnClick(newRecipe,RawMaterialViewModelsList))" />
+        <RadzenButton ButtonStyle="ButtonStyle.Light" style="margin-left: 1rem" Text="Cancel" Click="@buttonCancelOnClick" />
+    </div>
+</div>
+
+
+@code {
+    private List<ProductType> ProductTypeList = new List<ProductType>();
+    private List<PackagingMaterial> PackagingMaterialList = new List<PackagingMaterial>();
+
+    public List<RawMaterialViewModel> RawMaterialViewModelsList = new List<RawMaterialViewModel>();
+
+    [CascadingParameter]
+    private Dialog _dialog { get; set; }
+
+
+    private decimal ratio = 0;
+
+    private Recipe newRecipe = new Recipe();
+
+    public class RawMaterialViewModel(){
+        public RawMaterial RawMaterialItem { get; set; }
+        public Decimal Amount = 0;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        ProductTypeList = await MasterDataService.GetProductTypesAsync();
+        PackagingMaterialList = await MasterDataService.GetPackagingMaterial();
+
+
+        RawMaterialViewModelsList = (await MasterDataService.GetAllRawMaterialsAsync()).Select(r => new RawMaterialViewModel
+            {
+                RawMaterialItem = r
+            })
+         .ToList();
+
+        SetTitleContent();
+
+        DialogService.Refresh();
+
+    }
+
+    private async void buttonSubmitOnClick(Recipe newRecipe, List<RawMaterialViewModel> RawMaterialViewModelsList){
+        if(newRecipe.RecipeCode == null || newRecipe.RecipeDesc == null || newRecipe.ProductType == null || newRecipe.PackagingMaterial == null){
+            Console.WriteLine("null");
+            return;
+        }
+        else if (RawMaterialViewModelsList.Sum(x => x.Amount) != 100)
+        {
+                NotificationService.Notify(new NotificationMessage
+                    {
+                        Severity = NotificationSeverity.Error,
+                        Summary = "Error",
+                        Detail = "The ratio must be 100%.",
+                        Duration = 4000
+                    });
+            return;
+        }
+        else{
+            foreach(var rm in RawMaterialViewModelsList){
+                if(rm.Amount != 0){
+                    newRecipe.RecipeIngredients.Add(new RecipeIngredient
+                    {
+                        MaterialId = rm.RawMaterialItem.MaterialId,
+                        Amount = rm.Amount
+                    });
+                }
+            }
+
+            await MasterDataService.addNewRecipeAsync(newRecipe);
+
+                NotificationService.Notify(new NotificationMessage
+                    {
+                        Severity = NotificationSeverity.Success,
+                        Summary = "Success",
+                        Detail = "The recipe is created.",
+                        Duration = 4000
+                    });
+        }
+    }
+
+    public void buttonCancelOnClick()
+    {
+        DialogService.Close();
+    }
+
+    private async Task TotalCostOnChange(decimal value)
+    {
+        // if(value != 0){
+        //     // Subtract the previous value from the ratio
+        //     ratio -= previousAmount;
+
+        //     // Add the new value to the ratio
+        //     ratio += value;
+
+        //     // Update the previous value for the next change
+        //     previousAmount = value;
+        // }
+        // else{
+        //     ratio += value;
+        // }
+        ratio = 0;
+
+        foreach(var en in RawMaterialViewModelsList){
+            ratio += en.Amount;
+        }
+       
+
+        DialogService.Refresh();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    void SetTitleContent()
+    {
+        _dialog.Title = null; // clear default title
+        _dialog.Options.TitleContent = service =>
+    @<RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Start" Gap="10px">
+        <h5>Total ratio: <b>@ratio</b></h5>
+     
+    </RadzenStack>;
+
+    }
+}

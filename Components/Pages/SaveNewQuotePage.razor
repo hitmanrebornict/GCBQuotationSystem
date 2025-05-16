@@ -1,0 +1,29 @@
+﻿@page "/SaveNewQuote"
+
+@inject QuoteDetailServices QuoteDetailService
+@inject QuoteDataServices QuoteDataService
+
+<QuoteDetailPage 
+                   isCreateButton="true"></QuoteDetailPage>
+
+@* <RadzenButton Text="Create" Click="@CreateButtonOnClick" Style="background-color:#3B82F6" /> *@
+
+@code {
+
+    // private async void CreateButtonOnClick(){
+    //     await QuoteDetailService.addQuoteIntoDatabase(QuoteDataService.newQuotation, QuoteDataService.RecipeTotalCostList.Select(r => r.QuotationRecipe1).ToList());
+
+    //     var newQuoteId = QuoteDataService.newQuotation.QuoteId;
+
+    //     NotificationService.Notify(new NotificationMessage
+    //         {
+    //             Severity = NotificationSeverity.Success,
+    //             Summary = "Success",
+    //             Detail = "Quotation has been successfully created.",
+    //             Duration = 4000
+    //         });
+
+    //     NavigationManager.NavigateTo($"/QuoteDetailPage/{newQuoteId}");
+    //     // NavigationManager.NavigateTo("/QuotationList");
+    // }
+}
