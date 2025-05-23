@@ -25,5 +25,7 @@ public partial class PackagingMaterial
 
     public decimal? CostGbpton { get; set; }
 
+    public bool Active { get; set; }
+
     public virtual ICollection<Recipe> Recipes { get; set; } = new List<Recipe>();
 }

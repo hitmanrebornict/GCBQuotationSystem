@@ -21,7 +21,7 @@ public partial class QuotationSystemContext : DbContext
 
     public virtual DbSet<CustomerDeliveryDetail> CustomerDeliveryDetails { get; set; }
 
-    public virtual DbSet<FinancialCost> FinancialCosts { get; set; }
+    public virtual DbSet<DeliveryCost> DeliveryCosts { get; set; }
 
     public virtual DbSet<PackagingMaterial> PackagingMaterials { get; set; }
 
@@ -99,6 +99,7 @@ public partial class QuotationSystemContext : DbContext
         {
             entity.HasKey(e => e.CustNo).HasName("PK__Customer__049E631A4CB9A698");
 
+            entity.Property(e => e.Active).HasDefaultValue(true);
             entity.Property(e => e.CustName)
                 .HasMaxLength(255)
                 .IsUnicode(false);
@@ -141,20 +142,20 @@ public partial class QuotationSystemContext : DbContext
                 .HasConstraintName("FK__CustomerD__CustN__4D94879B");
         });
 
-        modelBuilder.Entity<FinancialCost>(entity =>
+        modelBuilder.Entity<DeliveryCost>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Financia__3214EC078D87F9C6");
+            entity.HasKey(e => e.DeliveryId).HasName("PK__Delivery__626D8FCE691C4BC8");
 
-            entity.Property(e => e.FinanceDays).HasColumnType("decimal(18, 2)");
-            entity.Property(e => e.FinancialCost1)
-                .HasColumnType("decimal(18, 4)")
-                .HasColumnName("FinancialCost");
+            entity.Property(e => e.Cost).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.Pallet).HasMaxLength(50);
+            entity.Property(e => e.PostCode).HasMaxLength(50);
         });
 
         modelBuilder.Entity<PackagingMaterial>(entity =>
         {
             entity.HasKey(e => e.PmId).HasName("PK__Packagin__A440734CB8F1EBED");
 
+            entity.Property(e => e.Active).HasDefaultValue(true);
             entity.Property(e => e.Cost100kgEuro).HasColumnType("decimal(10, 2)");
             entity.Property(e => e.CostGbp100kg)
                 .HasColumnType("decimal(10, 2)")
@@ -174,9 +175,13 @@ public partial class QuotationSystemContext : DbContext
         {
             entity.HasKey(e => e.Id).HasName("PK__Premiums__3214EC07FFFA0E53");
 
+            entity.Property(e => e.Active).HasDefaultValue(true);
             entity.Property(e => e.PremiumCost).HasColumnType("decimal(18, 2)");
             entity.Property(e => e.PremiumName)
                 .HasMaxLength(100)
+                .IsUnicode(false);
+            entity.Property(e => e.PremiumType)
+                .HasMaxLength(50)
                 .IsUnicode(false);
         });
 
@@ -217,7 +222,7 @@ public partial class QuotationSystemContext : DbContext
         {
             entity.HasKey(e => e.Id).HasName("PK__Quotatio__3214EC07F6DAF157");
 
-            entity.HasIndex(e => e.QuotationRecipeId, "UQ_QuotationDeliveryCosts_QuotationRecipeID").IsUnique();
+            entity.HasIndex(e => e.QuotationRecipeId, "UQ_QuotationDeliveryCosts_QuotationRecipeId").IsUnique();
 
             entity.Property(e => e.CostAmount).HasColumnType("decimal(18, 2)");
             entity.Property(e => e.DeliveryName).HasMaxLength(100);
@@ -226,20 +231,21 @@ public partial class QuotationSystemContext : DbContext
             entity.HasOne(d => d.QuotationRecipe).WithOne(p => p.QuotationDeliveryCost)
                 .HasForeignKey<QuotationDeliveryCost>(d => d.QuotationRecipeId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK_QuotationDeliveryCosts_QuotationRecipes");
+                .HasConstraintName("FK_QuotationDeliveryCosts_QuotationRecipeId");
         });
 
         modelBuilder.Entity<QuotationFinancialCost>(entity =>
         {
             entity.HasKey(e => e.Id).HasName("PK__Quotatio__3214EC07A09FB243");
 
-            entity.Property(e => e.FinanceDays).HasColumnType("decimal(18, 2)");
-            entity.Property(e => e.FinancialCostAmount).HasColumnType("decimal(18, 4)");
+            entity.HasIndex(e => e.QuotationRecipeId, "UQ_QuotationFinancialCosts_QuotationRecipeId").IsUnique();
 
-            entity.HasOne(d => d.QuotationRecipe).WithMany(p => p.QuotationFinancialCosts)
-                .HasForeignKey(d => d.QuotationRecipeId)
+            entity.Property(e => e.InterestRate).HasColumnType("decimal(18, 4)");
+
+            entity.HasOne(d => d.QuotationRecipe).WithOne(p => p.QuotationFinancialCost)
+                .HasForeignKey<QuotationFinancialCost>(d => d.QuotationRecipeId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__Quotation__Finan__3C34F16F");
+                .HasConstraintName("FK_QuotationFinancialCosts_QuotationRecipeId");
         });
 
         modelBuilder.Entity<QuotationPackagingCost>(entity =>

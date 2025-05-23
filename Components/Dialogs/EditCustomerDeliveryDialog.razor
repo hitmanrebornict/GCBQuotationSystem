@@ -1,0 +1,165 @@
+@inject MasterDataServices MDS
+@inject DialogService DialogService
+@inject NotificationService NotificationService
+
+<div class="col-md-12">
+    <div style="margin-bottom: 1rem" class="row">
+        <div class="col-md-3">
+            <RadzenLabel Text="Customer" Component="Customer" style="width: 100%">
+            </RadzenLabel>
+        </div>
+        <div class="col-md-9">
+            <RadzenDropDown Data="@customers" 
+                           @bind-Value="deliveryDetail.CustNo" 
+                           TextProperty="CustName" 
+                           ValueProperty="CustNo" 
+                           style="width: 100%" 
+                           Placeholder="Select Customer..." />
+        </div>
+    </div>
+    <div style="margin-bottom: 1rem" class="row">
+        <div class="col-md-3">
+            <RadzenLabel Text="Delivery Name" Component="DeliveryName" style="width: 100%">
+            </RadzenLabel>
+        </div>
+        <div class="col-md-9">
+            <RadzenTextBox MaxLength="100" style="width: 100%" @bind-Value="deliveryDetail.DeliveryName" Name="DeliveryName" Placeholder="Please enter delivery name..." />
+        </div>
+    </div>
+    <div style="margin-bottom: 1rem" class="row">
+        <div class="col-md-3">
+            <RadzenLabel Text="Address Line 1" Component="Address1" style="width: 100%">
+            </RadzenLabel>
+        </div>
+        <div class="col-md-9">
+            <RadzenTextBox MaxLength="100" style="width: 100%" @bind-Value="deliveryDetail.Address1" Name="Address1" Placeholder="Please enter address line 1..." />
+        </div>
+    </div>
+    <div style="margin-bottom: 1rem" class="row">
+        <div class="col-md-3">
+            <RadzenLabel Text="Address Line 2" Component="Address2" style="width: 100%">
+            </RadzenLabel>
+        </div>
+        <div class="col-md-9">
+            <RadzenTextBox MaxLength="100" style="width: 100%" @bind-Value="deliveryDetail.Address2" Name="Address2" Placeholder="Please enter address line 2..." />
+        </div>
+    </div>
+    <div style="margin-bottom: 1rem" class="row">
+        <div class="col-md-3">
+            <RadzenLabel Text="City" Component="City" style="width: 100%">
+            </RadzenLabel>
+        </div>
+        <div class="col-md-9">
+            <RadzenTextBox MaxLength="100" style="width: 100%" @bind-Value="deliveryDetail.City" Name="City" Placeholder="Please enter city..." />
+        </div>
+    </div>
+    <div style="margin-bottom: 1rem" class="row">
+        <div class="col-md-3">
+            <RadzenLabel Text="Postcode" Component="Postcode" style="width: 100%">
+            </RadzenLabel>
+        </div>
+        <div class="col-md-9">
+            <RadzenTextBox MaxLength="20" style="width: 100%" @bind-Value="deliveryDetail.Postcode" Name="Postcode" Placeholder="Please enter postcode..." />
+        </div>
+    </div>
+    <div style="margin-bottom: 1rem" class="row">
+        <div class="col-md-3">
+            <RadzenLabel Text="Country" Component="Country" style="width: 100%">
+            </RadzenLabel>
+        </div>
+        <div class="col-md-9">
+            <RadzenDropDown Data="@countries" 
+                           @bind-Value="deliveryDetail.CountryId" 
+                           TextProperty="CountryName" 
+                           ValueProperty="CountryId" 
+                           style="width: 100%" 
+                           Placeholder="Select Country..." />
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col offset-sm-3">
+        <RadzenButton ButtonType="Radzen.ButtonType.Submit" Icon="save" Text="Save" ButtonStyle="ButtonStyle.Primary" Click="@HandleSubmit" />
+        <RadzenButton ButtonStyle="ButtonStyle.Light" style="margin-left: 1rem" Text="Cancel" Click="@CancelDialog" />
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public int DeliveryId { get; set; }
+
+    [CascadingParameter]
+    private Dialog _dialog { get; set; }
+
+    private CustomerDeliveryDetail deliveryDetail = new CustomerDeliveryDetail();
+    private List<Customer> customers = new List<Customer>();
+    private List<Country> countries = new List<Country>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        deliveryDetail = await MDS.GetCustomerDeliveryDetailByIdAsync(DeliveryId);
+        customers = await MDS.GetAllCustomersAsync();
+        countries = await MDS.GetAllCountriesAsync();
+        
+        SetTitleContent();
+        DialogService.Refresh();
+    }
+
+    private async Task HandleSubmit()
+    {
+        try
+        {
+            if (deliveryDetail.CustNo == 0 || 
+                string.IsNullOrEmpty(deliveryDetail.DeliveryName) || 
+                string.IsNullOrEmpty(deliveryDetail.Address1) ||
+                deliveryDetail.CountryId == 0)
+            {
+                NotificationService.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Error,
+                    Summary = "Error",
+                    Detail = "Please fill in all required fields.",
+                    Duration = 4000
+                });
+                return;
+            }
+            
+            await MDS.UpdateCustomerDeliveryDetailAsync(deliveryDetail);
+            
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Success,
+                Summary = "Success",
+                Detail = "Delivery address updated successfully",
+                Duration = 4000
+            });
+            
+            DialogService.Close(true);
+        }
+        catch (Exception ex)
+        {
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Error",
+                Detail = $"Failed to update delivery address: {ex.Message}",
+                Duration = 4000
+            });
+        }
+    }
+
+    private void CancelDialog()
+    {
+        DialogService.Close(false);
+    }
+    
+    void SetTitleContent()
+    {
+        _dialog.Title = null; // clear default title
+        _dialog.Options.TitleContent = service =>
+        @<RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Start" Gap="10px">
+            <h5>Edit Delivery Address</h5>
+        </RadzenStack>;
+    }
+} 

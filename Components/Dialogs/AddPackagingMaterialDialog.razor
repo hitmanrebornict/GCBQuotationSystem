@@ -1,0 +1,188 @@
+@inject MasterDataServices MDS
+@inject DialogService DialogService
+@inject NotificationService NotificationService
+
+<div class="col-md-12">
+    <div style="margin-bottom: 1rem" class="row">
+        <div class="col-md-3">
+            <RadzenLabel Text="Type" Component="Type" style="width: 100%">
+            </RadzenLabel>
+        </div>
+        <div class="col-md-9">
+            <RadzenTextBox MaxLength="100" style="width: 100%" @bind-Value="packagingMaterial.Type" Name="Type" Placeholder="Please enter type..." />
+        </div>
+    </div>
+    <div style="margin-bottom: 1rem" class="row">
+        <div class="col-md-3">
+            <RadzenLabel Text="Packaging" Component="Packaging" style="width: 100%">
+            </RadzenLabel>
+        </div>
+        <div class="col-md-9">
+            <RadzenTextBox MaxLength="100" style="width: 100%" @bind-Value="packagingMaterial.Packaging" Name="Packaging" Placeholder="Please enter packaging..." />
+        </div>
+    </div>
+    <div style="margin-bottom: 1rem" class="row">
+        <div class="col-md-3">
+            <RadzenLabel Text="Product" Component="Product" style="width: 100%">
+            </RadzenLabel>
+        </div>
+        <div class="col-md-9">
+            <RadzenTextBox MaxLength="100" style="width: 100%" @bind-Value="packagingMaterial.Product" Name="Product" Placeholder="Please enter product..." />
+        </div>
+    </div>
+    <div style="margin-bottom: 1rem" class="row">
+        <div class="col-md-3">
+            <RadzenLabel Text="Weight" Component="Weight" style="width: 100%">
+            </RadzenLabel>
+        </div>
+        <div class="col-md-9">
+            <RadzenTextBox MaxLength="50" style="width: 100%" @bind-Value="packagingMaterial.Weight" Name="Weight" Placeholder="Please enter weight..." />
+        </div>
+    </div>
+    <div style="margin-bottom: 1rem" class="row">
+        <div class="col-md-3">
+            <RadzenLabel Text="Cost (€/100kg)" Component="Cost100kgEuro" style="width: 100%">
+            </RadzenLabel>
+        </div>
+        <div class="col-md-9">
+            <RadzenNumeric TValue="decimal?" style="width: 100%" @bind-Value="packagingMaterial.Cost100kgEuro" Format="c2" />
+        </div>
+    </div>
+    <div style="margin-bottom: 1rem" class="row">
+        <div class="col-md-3">
+            <RadzenLabel Text="Cost (€/ton)" Component="CostPerTon" style="width: 100%">
+            </RadzenLabel>
+        </div>
+        <div class="col-md-9">
+            <RadzenNumeric TValue="decimal?" style="width: 100%" @bind-Value="packagingMaterial.CostPerTon" Format="c2" />
+        </div>
+    </div>
+    <div style="margin-bottom: 1rem" class="row">
+        <div class="col-md-3">
+            <RadzenLabel Text="Exchange Rate" Component="ExchangeRate" style="width: 100%">
+            </RadzenLabel>
+        </div>
+        <div class="col-md-9">
+            <RadzenNumeric TValue="decimal?" style="width: 100%" @bind-Value="packagingMaterial.ExchangeRate" Format="F4" Change="@CalculateGbpValues" />
+        </div>
+    </div>
+    <div style="margin-bottom: 1rem" class="row">
+        <div class="col-md-3">
+            <RadzenLabel Text="Cost (£/100kg)" Component="CostGbp100kg" style="width: 100%">
+            </RadzenLabel>
+        </div>
+        <div class="col-md-9">
+            <RadzenNumeric TValue="decimal?" style="width: 100%" @bind-Value="packagingMaterial.CostGbp100kg" Format="c2" Disabled="true" />
+        </div>
+    </div>
+    <div style="margin-bottom: 1rem" class="row">
+        <div class="col-md-3">
+            <RadzenLabel Text="Cost (£/ton)" Component="CostGbpton" style="width: 100%">
+            </RadzenLabel>
+        </div>
+        <div class="col-md-9">
+            <RadzenNumeric TValue="decimal?" style="width: 100%" @bind-Value="packagingMaterial.CostGbpton" Format="c2" Disabled="true" />
+        </div>
+    </div>
+    <div style="margin-bottom: 1rem" class="row">
+        <div class="col-md-3">
+            <RadzenLabel Text="Active" Component="Active" style="width: 100%">
+            </RadzenLabel>
+        </div>
+        <div class="col-md-9">
+            <RadzenSwitch @bind-Value="packagingMaterial.Active" Name="Active" />
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col offset-sm-3">
+        <RadzenButton ButtonType="Radzen.ButtonType.Submit" Icon="save" Text="Save" ButtonStyle="ButtonStyle.Primary" Click="@HandleSubmit" />
+        <RadzenButton ButtonStyle="ButtonStyle.Light" style="margin-left: 1rem" Text="Cancel" Click="@CancelDialog" />
+    </div>
+</div>
+
+@code {
+    [CascadingParameter]
+    private Dialog _dialog { get; set; }
+
+    private PackagingMaterial packagingMaterial = new PackagingMaterial { Active = true };
+
+    protected override async Task OnInitializedAsync()
+    {
+        SetTitleContent();
+        DialogService.Refresh();
+    }
+
+    private void CalculateGbpValues()
+    {
+        if (packagingMaterial.Cost100kgEuro.HasValue && packagingMaterial.ExchangeRate.HasValue)
+        {
+            packagingMaterial.CostGbp100kg = packagingMaterial.Cost100kgEuro * packagingMaterial.ExchangeRate;
+        }
+        
+        if (packagingMaterial.CostPerTon.HasValue && packagingMaterial.ExchangeRate.HasValue)
+        {
+            packagingMaterial.CostGbpton = packagingMaterial.CostPerTon * packagingMaterial.ExchangeRate;
+        }
+    }
+
+    private async Task HandleSubmit()
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(packagingMaterial.Type) || 
+                string.IsNullOrEmpty(packagingMaterial.Packaging) || 
+                string.IsNullOrEmpty(packagingMaterial.Product))
+            {
+                NotificationService.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Error,
+                    Summary = "Error",
+                    Detail = "Please fill in all required fields.",
+                    Duration = 4000
+                });
+                return;
+            }
+
+            // Calculate GBP values before saving
+            CalculateGbpValues();
+            
+            await MDS.AddPackagingMaterialAsync(packagingMaterial);
+            
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Success,
+                Summary = "Success",
+                Detail = "Packaging material added successfully",
+                Duration = 4000
+            });
+            
+            DialogService.Close(true);
+        }
+        catch (Exception ex)
+        {
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Error",
+                Detail = $"Failed to add packaging material: {ex.Message}",
+                Duration = 4000
+            });
+        }
+    }
+
+    private void CancelDialog()
+    {
+        DialogService.Close(false);
+    }
+    
+    void SetTitleContent()
+    {
+        _dialog.Title = null; // clear default title
+        _dialog.Options.TitleContent = service =>
+        @<RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Start" Gap="10px">
+            <h5>Add Packaging Material</h5>
+        </RadzenStack>;
+    }
+} 

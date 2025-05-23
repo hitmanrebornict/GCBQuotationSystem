@@ -9,9 +9,9 @@ public partial class QuotationFinancialCost
 
     public int QuotationRecipeId { get; set; }
 
-    public decimal FinancialCostAmount { get; set; }
+    public decimal InterestRate { get; set; }
 
-    public decimal FinanceDays { get; set; }
+    public int FinanceDays { get; set; }
 
     public virtual QuotationRecipe QuotationRecipe { get; set; } = null!;
 }

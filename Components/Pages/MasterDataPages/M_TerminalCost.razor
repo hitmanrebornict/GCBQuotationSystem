@@ -1,0 +1,104 @@
+@page "/TerminalCost"
+@inject DialogService DialogService
+@inject MasterDataServices MDS
+
+<RadzenCard>
+    <h3>Terminal Cost</h3>
+
+    <div class="d-flex justify-content-between mb-4">
+        <RadzenButton Text="Create New Terminal Cost"
+                      Icon="add_circle_outline"
+                      ButtonStyle="ButtonStyle.Primary"
+                      Click="@CreateButtonOnClick" />
+    </div>
+    <hr/>
+
+    <RadzenDataGrid Data="@terminalCosts"
+                    TItem="TerminalCost"
+                    AllowFiltering="true"
+                    AllowSorting="true"
+                    AllowPaging="true"
+                    PageSize="10"
+                    FilterMode="FilterMode.CheckBoxList"
+                    FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                    EmptyText="No terminal costs found">
+        <Columns>
+            <RadzenDataGridColumn Property="PeriodName" Title="Period Name" Width="150px" />
+            <RadzenDataGridColumn Property="TerminalPeriod" Title="Terminal Period" FormatString="{0:yyyy-MM-dd}" Width="150px" />
+            <RadzenDataGridColumn Property="LifeGbp" Title="Life GBP" FormatString="{0:C2}" Width="120px" />
+            <RadzenDataGridColumn Property="Liquor" Title="Liquor" FormatString="{0:C2}" Width="120px" />
+            <RadzenDataGridColumn Property="Butter" Title="Butter" FormatString="{0:C2}" Width="120px" />
+            <RadzenDataGridColumn Property="Powder" Title="Powder" FormatString="{0:C2}" Width="120px" />
+            <RadzenDataGridColumn TItem="TerminalCost" Title="Actions" TextAlign="TextAlign.Center" Width="120px">
+                <Template Context="terminalCost">
+                    <RadzenButton Icon="edit"
+                                  ButtonStyle="ButtonStyle.Info"
+                                  Size="ButtonSize.Medium"
+                                  Variant="Variant.Flat"
+                                  Class="m-1"
+                                  Click="@(() => EditTerminalCost(terminalCost))"
+                                  ToolTip="Edit Terminal Cost" />
+                </Template>
+            </RadzenDataGridColumn>
+        </Columns>
+    </RadzenDataGrid>
+</RadzenCard>
+
+<style>
+    .terminal-cost-data-grid {
+        height: calc(100vh - 250px);
+        min-height: 400px;
+    }
+</style>
+
+@code {
+    private List<TerminalCost> terminalCosts = new List<TerminalCost>();
+    
+    private async Task CreateButtonOnClick()
+    {
+        var options = new DialogOptions() 
+        { 
+            Width = "90vw",
+            Height = "90vh",
+            CloseDialogOnOverlayClick = false,
+            Resizable = true,
+            Draggable = true
+        };
+        
+        var result = await DialogService.OpenAsync<AddTerminalCostDialog>("New Terminal Cost", 
+            options: options);
+            
+        if (result == true)
+        {
+            terminalCosts = await MDS.GetTerminalCostAsync();
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task EditTerminalCost(TerminalCost terminalCost)
+    {
+        var options = new DialogOptions() 
+        { 
+            Width = "90vw",
+            Height = "90vh",
+            CloseDialogOnOverlayClick = false,
+            Resizable = true,
+            Draggable = true
+        };
+        
+        var result = await DialogService.OpenAsync<EditTerminalCostDialog>("Edit Terminal Cost", 
+            new Dictionary<string, object>() { { "TerminalCostId", terminalCost.TerminalCostId } },
+            options);
+            
+        if (result == true)
+        {
+            terminalCosts = await MDS.GetTerminalCostAsync();
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        terminalCosts = await MDS.GetTerminalCostAsync();
+    }
+} 

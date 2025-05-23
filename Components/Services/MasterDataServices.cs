@@ -101,7 +101,7 @@ namespace GCBQuotationSystem.Components.Services
 		//Customer Master Data
 		public async Task<List<Customer>> GetCustomersAsync()
 		{
-			return await _dbContext.Customers.ToListAsync();
+			return await _dbContext.Customers.Where(c => c.Active == true).ToListAsync();
 		}
 
 		public async Task<Customer> AddCustomerAsync(Customer customer)
@@ -134,6 +134,158 @@ namespace GCBQuotationSystem.Components.Services
 		public async Task addNewRecipeAsync(Recipe newRecipe)
 		{
 			await _dbContext.Recipes.AddAsync(newRecipe);
+			await _dbContext.SaveChangesAsync();
+		}
+
+		public async Task<List<PackagingMaterial>> GetAllPackagingMaterialsAsync()
+		{
+			return await _dbContext.PackagingMaterials
+							.Where(p => p.Active == true)
+							.ToListAsync();
+		}
+
+		public async Task<List<DeliveryCost>> GetDeliveryCostAsync()
+		{
+			return await _dbContext.DeliveryCosts.ToListAsync();
+		}
+
+		public async Task<Recipe> GetRecipeByIdAsync(int recipeId)
+		{
+			return await _dbContext.Recipes
+				.Include(r => r.RecipeIngredients)
+					.ThenInclude(ri => ri.Material)
+				.FirstOrDefaultAsync(r => r.RecipeId == recipeId);
+		}
+
+		public async Task UpdateRecipeAsync(Recipe recipe)
+		{
+			_dbContext.Recipes.Update(recipe);
+			await _dbContext.SaveChangesAsync();
+		}
+
+		public async Task<List<TerminalCost>> GetTerminalCostAsync()
+		{
+			return await _dbContext.TerminalCosts.ToListAsync();
+		}
+
+		public async Task<TerminalCost> GetTerminalCostByIdAsync(int terminalCostId)
+		{
+			return await _dbContext.TerminalCosts.FindAsync(terminalCostId);
+		}
+
+		public async Task UpdateTerminalCostAsync(TerminalCost terminalCost)
+		{
+			_dbContext.TerminalCosts.Update(terminalCost);
+			await _dbContext.SaveChangesAsync();
+		}
+
+		public async Task<TerminalCost> AddTerminalCostAsync(TerminalCost terminalCost)
+		{
+			await _dbContext.TerminalCosts.AddAsync(terminalCost);
+			await _dbContext.SaveChangesAsync();
+			return terminalCost;
+		}
+
+		public async Task<List<DateOnly>> GetExistingTerminalPeriodsAsync()
+		{
+			try
+			{
+				// Fetch all existing terminal costs from the database
+				var terminalCosts = await _dbContext.TerminalCosts.ToListAsync();
+				
+				// Extract and return just the terminal period dates
+				return terminalCosts.Select(tc => tc.TerminalPeriod).Distinct().ToList();
+			}
+			catch (Exception ex)
+			{
+				// Log the exception
+				Console.WriteLine($"Error fetching existing terminal periods: {ex.Message}");
+				throw;
+			}
+		}
+
+		public async Task<List<Premium>> GetPremiumsAsync()
+		{
+			return await _dbContext.Premiums.ToListAsync();
+		}
+
+		public async Task<Premium> GetPremiumByIdAsync(int id)
+		{
+			return await _dbContext.Premiums.FindAsync(id);
+		
+		}
+
+		public async Task AddPremiumAsync(Premium premium)
+		{
+			_dbContext.Premiums.Add(premium);
+			await _dbContext.SaveChangesAsync();
+		}
+
+		public async Task UpdatePremiumAsync(Premium premium)
+		{
+			_dbContext.Premiums.Update(premium);
+			await _dbContext.SaveChangesAsync();
+		}
+
+		public async Task<PackagingMaterial> GetPackagingMaterialByIdAsync(int pmId)
+		{
+			return await _dbContext.PackagingMaterials.FindAsync(pmId);
+		}
+
+		public async Task AddPackagingMaterialAsync(PackagingMaterial packagingMaterial)
+		{
+			_dbContext.PackagingMaterials.Add(packagingMaterial);
+			await _dbContext.SaveChangesAsync();
+		}
+
+		public async Task UpdatePackagingMaterialAsync(PackagingMaterial packagingMaterial)
+		{
+			_dbContext.PackagingMaterials.Update(packagingMaterial);
+			await _dbContext.SaveChangesAsync();
+		}
+
+		public async Task<DeliveryCost> GetDeliveryCostByIdAsync(int deliveryId)
+		{
+			return await _dbContext.DeliveryCosts.FindAsync(deliveryId);
+		}
+
+		public async Task AddDeliveryCostAsync(DeliveryCost deliveryCost)
+		{
+			_dbContext.DeliveryCosts.Add(deliveryCost);
+			await _dbContext.SaveChangesAsync();
+		}
+
+		public async Task UpdateDeliveryCostAsync(DeliveryCost deliveryCost)
+		{
+			_dbContext.DeliveryCosts.Update(deliveryCost);
+			await _dbContext.SaveChangesAsync();
+		}
+
+		public async Task<List<CustomerDeliveryDetail>> GetAllCustomerDeliveryDetailsAsync()
+		{
+			return await _dbContext.CustomerDeliveryDetails
+				.Include(d => d.CustNoNavigation)
+				.Include(d => d.Country)
+				.ToListAsync();
+		}
+
+		public async Task<CustomerDeliveryDetail> GetCustomerDeliveryDetailByIdAsync(int deliveryId)
+		{
+			return await _dbContext.CustomerDeliveryDetails
+				.Include(d => d.CustNoNavigation)
+				.Include(d => d.Country)
+				.FirstOrDefaultAsync(d => d.DeliveryId == deliveryId);
+		}
+
+		public async Task AddCustomerDeliveryDetailAsync(CustomerDeliveryDetail deliveryDetail)
+		{
+			_dbContext.CustomerDeliveryDetails.Add(deliveryDetail);
+			await _dbContext.SaveChangesAsync();
+		}
+
+		public async Task UpdateCustomerDeliveryDetailAsync(CustomerDeliveryDetail deliveryDetail)
+		{
+			_dbContext.CustomerDeliveryDetails.Update(deliveryDetail);
 			await _dbContext.SaveChangesAsync();
 		}
 	}

@@ -44,6 +44,8 @@ namespace GCBQuotationSystem.Components.Services
 				if (recipe.QuotationDeliveryCost != null)
 					_dbContext.Attach(recipe.QuotationDeliveryCost);
 
+				if (recipe.QuotationFinancialCost != null)
+					_dbContext.Attach(recipe.QuotationFinancialCost);
 
 				// Ensure raw material and premium costs are added as new (if they are new entries)
 				foreach (var rawMaterialCost in recipe.QuotationRawMaterialCosts)
@@ -212,12 +214,12 @@ namespace GCBQuotationSystem.Components.Services
 							_dbContext.Set<QuotationPackagingCost>().Add(recipe.QuotationPackagingCost);
 						}
 					}
-					
+
 					if (recipe.QuotationDeliveryCost != null)
 					{
 						var existingDeliveryCost = await _dbContext.Set<QuotationDeliveryCost>()
 							.FindAsync(recipe.QuotationDeliveryCost.QuotationRecipeId);
-							
+
 						if (existingDeliveryCost != null)
 						{
 							_dbContext.Entry(existingDeliveryCost).CurrentValues.SetValues(recipe.QuotationDeliveryCost);
@@ -228,7 +230,7 @@ namespace GCBQuotationSystem.Components.Services
 							_dbContext.Set<QuotationDeliveryCost>().Add(recipe.QuotationDeliveryCost);
 						}
 					}
-					
+
 					if (recipe.QuotationTerminalCost != null)
 					{
 						var existingTerminalCost = await _dbContext.Set<QuotationTerminalCost>()
@@ -279,12 +281,12 @@ namespace GCBQuotationSystem.Components.Services
 					{
 						recipe.QuotationPackagingCost.QuotationRecipeId = 0;
 					}
-					
+
 					if (recipe.QuotationDeliveryCost != null)
 					{
 						recipe.QuotationDeliveryCost.QuotationRecipeId = 0;
 					}
-					
+
 					if (recipe.QuotationTerminalCost != null)
 					{
 						recipe.QuotationTerminalCost.QuotationRecipeId = 0;
@@ -534,6 +536,9 @@ namespace GCBQuotationSystem.Components.Services
 
 				.Include(q => q.QuotationRecipes)
 					.ThenInclude(qr => qr.QuotationAdditionalCosts)
+
+				.Include(q => q.QuotationRecipes)
+					.ThenInclude(qr => qr.QuotationFinancialCost)
 
 				.Include(q => q.QuotationRecipes)
 					.ThenInclude(qr => qr.Recipe)

@@ -19,7 +19,7 @@ public partial class QuotationRecipe
 
     public virtual QuotationDeliveryCost? QuotationDeliveryCost { get; set; }
 
-    public virtual ICollection<QuotationFinancialCost> QuotationFinancialCosts { get; set; } = new List<QuotationFinancialCost>();
+    public virtual QuotationFinancialCost? QuotationFinancialCost { get; set; }
 
     public virtual QuotationPackagingCost? QuotationPackagingCost { get; set; }
 

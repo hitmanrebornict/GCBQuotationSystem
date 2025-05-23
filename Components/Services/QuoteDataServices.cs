@@ -20,13 +20,13 @@ namespace GCBQuotationSystem.Components.Services
 		public decimal CalculateMassTotal(Decimal liquor, Decimal LifeGBP)
 		{
 
-			return LifeGBP * liquor ;
+			return LifeGBP * liquor;
 		}
 
 		public decimal CalculateButterTotal(Decimal butter, Decimal LifeGBP)
 		{
-		
-			return LifeGBP * butter ;
+
+			return LifeGBP * butter;
 		}
 
 		public async Task<List<RecipeCostMatrix>> PrepareCostMatrix(List<RecipeTotalCost> recipeTotalCostList)
@@ -94,6 +94,123 @@ namespace GCBQuotationSystem.Components.Services
 			return recipeCostMatrix;
 		}
 
+		public async Task<List<RecipeCostMatrix>> PrepareTerminalCostMatrix(List<RecipeTotalCost> recipeTotalCostList)
+		{
+			List<RecipeCostMatrix> recipeCostMatrix = new List<RecipeCostMatrix>();
+
+			// Reshape data: Group by RecipeCode and Terminal
+			var groupedByRecipe = recipeTotalCostList
+				.GroupBy(x => x.QuotationRecipe1.Recipe.RecipeCode)
+				.ToList();
+
+			// For each RecipeCode, get its Terminals and Highest Cost in that Terminal
+			foreach (var recipeGroup in groupedByRecipe)
+			{
+				var recipeCostRow = new RecipeCostMatrix
+				{
+					RecipeCode = recipeGroup.Key,
+					PeriodCosts = recipeGroup
+						.GroupBy(x => x.QuotationRecipe1.QuotationTerminalCost.TerminalName)
+						.ToDictionary(
+							g => g.Key,
+							g => g.Max(x => x.TotalCost) // Get the highest cost in the terminal
+						),
+				};
+
+				recipeCostMatrix.Add(recipeCostRow);
+			}
+
+			return recipeCostMatrix;
+		}
+
+		public async Task<List<RecipeCostMatrix>> PrepareAverageCostMatrix(List<RecipeTotalCost> recipeTotalCostList)
+		{
+			List<RecipeCostMatrix> recipeCostMatrix = new List<RecipeCostMatrix>();
+
+			// Reshape data: Group by RecipeCode and Period
+			var groupedByRecipe = recipeTotalCostList
+				.GroupBy(x => x.QuotationRecipe1.Recipe.RecipeCode)
+				.ToList();
+
+			// For each RecipeCode, get its Periods and Average Cost in that Period
+			foreach (var recipeGroup in groupedByRecipe)
+			{
+				var recipeCostRow = new RecipeCostMatrix
+				{
+					RecipeCode = recipeGroup.Key,
+					PeriodCosts = recipeGroup
+						.GroupBy(x => x.QuotationRecipe1.PeriodMonth.ToString("MMMM yyyy"))
+						.ToDictionary(
+							g => g.Key,
+							g => g.Average(x => x.TotalCost) // Get the average cost in the period
+						),
+				};
+
+				recipeCostMatrix.Add(recipeCostRow);
+			}
+
+			return recipeCostMatrix;
+		}
+
+		public async Task<List<RecipeCostMatrix>> PrepareAverageQuarterCostMatrix(List<RecipeTotalCost> recipeTotalCostList)
+		{
+			List<RecipeCostMatrix> recipeCostMatrix = new List<RecipeCostMatrix>();
+
+			// Reshape data: Group by RecipeCode and Quarter
+			var groupedByRecipe = recipeTotalCostList
+				.GroupBy(x => x.QuotationRecipe1.Recipe.RecipeCode)
+				.ToList();
+
+			// For each RecipeCode, get its Quarters and Average Cost in that Quarter
+			foreach (var recipeGroup in groupedByRecipe)
+			{
+				var recipeCostRow = new RecipeCostMatrix
+				{
+					RecipeCode = recipeGroup.Key,
+					PeriodCosts = recipeGroup
+						.GroupBy(x => x.Quarter) // Group by quarter
+						.ToDictionary(
+							g => g.Key,
+							g => g.Average(x => x.TotalCost) // Get the average cost in the quarter
+						),
+				};
+
+				recipeCostMatrix.Add(recipeCostRow);
+			}
+
+			return recipeCostMatrix;
+		}
+
+		public async Task<List<RecipeCostMatrix>> PrepareAverageTerminalCostMatrix(List<RecipeTotalCost> recipeTotalCostList)
+		{
+			List<RecipeCostMatrix> recipeCostMatrix = new List<RecipeCostMatrix>();
+
+			// Reshape data: Group by RecipeCode and Terminal
+			var groupedByRecipe = recipeTotalCostList
+				.GroupBy(x => x.QuotationRecipe1.Recipe.RecipeCode)
+				.ToList();
+
+			// For each RecipeCode, get its Terminals and Average Cost in that Terminal
+			foreach (var recipeGroup in groupedByRecipe)
+			{
+				var recipeCostRow = new RecipeCostMatrix
+				{
+					RecipeCode = recipeGroup.Key,
+					PeriodCosts = recipeGroup
+						.GroupBy(x => x.QuotationRecipe1.QuotationTerminalCost.TerminalName)
+						.ToDictionary(
+							g => g.Key,
+							g => g.Average(x => x.TotalCost) // Get the average cost in the terminal
+						),
+				};
+
+				recipeCostMatrix.Add(recipeCostRow);
+			}
+
+			return recipeCostMatrix;
+		}
+
+
 		public List<RecipeTotalCost> ConvertRecipeCostListToPreferredUnit(List<RecipeTotalCost> originalList, decimal weightRatio)
 		{
 			Console.WriteLine("Testing");
@@ -108,7 +225,7 @@ namespace GCBQuotationSystem.Components.Services
 					PeriodMonth = originalRecipe.PeriodMonth,
 					Quantity = originalRecipe.Quantity,
 					QuoteId = originalRecipe.QuoteId,
-			
+
 
 					QuotationTerminalCost = originalRecipe.QuotationTerminalCost != null
 						? new QuotationTerminalCost
@@ -119,7 +236,7 @@ namespace GCBQuotationSystem.Components.Services
 							Liquor = originalRecipe.QuotationTerminalCost.Liquor,
 							Butter = originalRecipe.QuotationTerminalCost.Butter,
 							Powder = originalRecipe.QuotationTerminalCost.Powder,
-							
+
 						}
 						: null,
 
@@ -152,12 +269,18 @@ namespace GCBQuotationSystem.Components.Services
 						? new QuotationDeliveryCost
 						{
 							DeliveryName = originalRecipe.QuotationDeliveryCost.DeliveryName,
-							// Cost = originalRecipe.QuotationDeliveryCost.Cost,
-							CostAmount = originalRecipe.QuotationDeliveryCost.CostAmount 
+							//Cost = originalRecipe.QuotationDeliveryCost.Cost,
+							CostAmount = originalRecipe.QuotationDeliveryCost.CostAmount
 						}
 						: null,
-					
-					// Not converted
+
+					QuotationFinancialCost = originalRecipe.QuotationFinancialCost != null
+						? new QuotationFinancialCost
+						{
+							InterestRate = originalRecipe.QuotationFinancialCost.InterestRate,
+							FinanceDays = originalRecipe.QuotationFinancialCost.FinanceDays
+						}
+						: null,
 
 					QuotationAdditionalCosts = originalRecipe.QuotationAdditionalCosts?
 						.Select(a => new QuotationAdditionalCost
@@ -168,11 +291,9 @@ namespace GCBQuotationSystem.Components.Services
 						}).ToList() ?? new List<QuotationAdditionalCost>()
 				};
 
-				var totalCost = (convertedRecipe.QuotationPremiumCosts?.Sum(x => x.CostAmount) ?? 0)
-					+ (convertedRecipe.QuotationRawMaterialCosts?.Sum(x => x.CostAmount) ?? 0)
-					+ (convertedRecipe.QuotationPackagingCost?.CostAmount ?? 0)
-					+ (convertedRecipe.QuotationDeliveryCost?.CostAmount ?? 0)
-					+ (convertedRecipe.QuotationAdditionalCosts?.Sum(x => x.CostAmount) ?? 0);
+
+				var totalCost = CalculateTotalCost(convertedRecipe);
+
 
 				Console.WriteLine("Total Cost: " + totalCost);
 
@@ -314,15 +435,31 @@ namespace GCBQuotationSystem.Components.Services
 		/// This includes RecipeTotalCostList, RecipeCostMatrix, and any other related data.
 		/// </summary>
 		public void ClearAllRecipeData()
-	{
-		// Clear the main recipe cost list
-		RecipeTotalCostList = new List<RecipeTotalCost>();
-		
-		// Clear the cost matrix
-		RecipeCostMatrix = new List<RecipeCostMatrix>();
-		
-	
+		{
+			// Clear the main recipe cost list
+			RecipeTotalCostList = new List<RecipeTotalCost>();
 
-	}
+			// Clear the cost matrix
+			RecipeCostMatrix = new List<RecipeCostMatrix>();
+
+
+
+		}
+
+		public decimal CalculateTotalCost(QuotationRecipe quotationRecipe) {
+
+			var localTotalCost = quotationRecipe.QuotationPremiumCosts.Sum(x => x.CostAmount) +
+			quotationRecipe.QuotationRawMaterialCosts.Sum(x => x.CostAmount) +
+			quotationRecipe.QuotationPackagingCost.CostAmount +
+			quotationRecipe.QuotationDeliveryCost.CostAmount +
+			quotationRecipe.QuotationAdditionalCosts.Sum(x => x.CostAmount)
+			;
+
+			if(quotationRecipe.QuotationFinancialCost != null){
+				decimal financialCost = localTotalCost * quotationRecipe.QuotationFinancialCost.InterestRate / 100 * quotationRecipe.QuotationFinancialCost.FinanceDays / 365;
+				localTotalCost += financialCost;
+			}
+			return localTotalCost;
+		}
 	}
 }

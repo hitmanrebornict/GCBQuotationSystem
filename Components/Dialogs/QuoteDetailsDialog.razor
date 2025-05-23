@@ -1,5 +1,4 @@
-﻿
-@inject DialogService DialogServices
+﻿@inject DialogService DialogServices
 
 @inject QuoteDataServices QuoteDataService
 
@@ -51,6 +50,9 @@
                 </RadzenDataGridColumn>
             </Columns>
         </RadzenDataGrid>
+        <div class="d-flex justify-content-end mt-2">
+            <h6>Total: <b>@rawMaterialTotal.ToString("C")</b></h6>
+        </div>
     </div>
 
     <div class="card p-3 shadow-sm rounded mb-3">
@@ -97,6 +99,7 @@
                 Step="0.01" />
             </li>
         </ul>
+
     </div>
 
     <div class="card p-3 shadow-sm rounded mb-3">
@@ -112,7 +115,7 @@
                         Change="@(async (value) => await OnPremiumCostChanged(data))"
                         TValue="decimal"
                         Style="width: 100%;"
-                                       Format="£0.00 per tonne"
+                        Format="£0.00 per tonne"
                         Step="0.01" />
                     </Template>
                 </RadzenDataGridColumn>
@@ -123,6 +126,9 @@
                 </RadzenDataGridColumn>
             </Columns>
         </RadzenDataGrid>
+        <div class="d-flex justify-content-end mt-2">
+            <h6>Total: <b>@premiumTotal.ToString("C")</b></h6>
+        </div>
     </div>
 
     <div class="card p-3 shadow-sm rounded mb-3">
@@ -130,6 +136,7 @@
         <RadzenDataGrid Data="packagingCosts" TItem="QuotationPackagingCost"
         Style="width: 100%;" ShowPaging="false">
             <Columns>
+                <RadzenDataGridColumn TItem="QuotationPackagingCost" Property="Type" Title="Packaging Type" />
                 <RadzenDataGridColumn TItem="QuotationPackagingCost" Property="PackagingName" Title="Packaging Name" />
                 <RadzenDataGridColumn TItem="QuotationPackagingCost" Property="Cost" Title="Cost">
                     <Template Context="data">
@@ -138,7 +145,7 @@
                         Change="@(async (value) => await OnPackagingCostChanged(data))"
                         TValue="decimal"
                         Style="width: 100%;"
-                                       Format="£0.00 per tonne"
+                        Format="£0.00 per tonne"
                         Step="0.01" />
                     </Template>
                 </RadzenDataGridColumn>
@@ -149,6 +156,9 @@
                 </RadzenDataGridColumn>
             </Columns>
         </RadzenDataGrid>
+        <div class="d-flex justify-content-end mt-2">
+            <h6>Total: <b>@packagingTotal.ToString("C")</b></h6>
+        </div>
     </div>
 
     <div class="card p-3 shadow-sm rounded mb-3">
@@ -171,7 +181,12 @@
 
             </Columns>
         </RadzenDataGrid>
+        <div class="d-flex justify-content-end mt-2">
+            <h6>Total: <b>@deliveryTotal.ToString("C")</b></h6>
+        </div>
     </div>
+
+
 
     <div class="card p-3 shadow-sm rounded mb-3">
         <h6 class="mb-2">Additional Costs</h6>
@@ -197,8 +212,48 @@
                 </RadzenDataGridColumn>
             </Columns>
         </RadzenDataGrid>
+        <div class="d-flex justify-content-end mt-2">
+            <h6>Total: <b>@additionalTotal.ToString("C")</b></h6>
+        </div>
     </div>
 
+    <div class="card p-3 shadow-sm rounded mb-3">
+        <h6 class="mb-2">Financial Costs</h6>
+        <ul class="list-group">
+            <li class="list-group-item d-flex justify-content-between">
+                <span>Interest Rate (%)</span>
+                <RadzenNumeric @bind-Value="@recipeDetailModified.QuotationRecipe1.QuotationFinancialCost.InterestRate"
+                Change="@(async() => await OnFinancialCostChanged())"
+                TValue="decimal"
+                Style="width: 50%;"
+                Format="0.00"
+                Step="0.01" />
+            </li>
+            <li class="list-group-item d-flex justify-content-between">
+                <span>Finance Days</span>
+                <RadzenNumeric @bind-Value="@recipeDetailModified.QuotationRecipe1.QuotationFinancialCost.FinanceDays"
+                Change="@(async() => await OnFinancialCostChanged())"
+                TValue="int"
+                Style="width: 50%;"
+                ShowUpDown="true"
+                Min="0" />
+            </li>
+            <li class="list-group-item d-flex justify-content-between">
+                <span>Financial Cost Amount</span>
+                <span><b>@financialCostAmount.ToString("C")</b></span>
+            </li>
+        </ul>
+        <div class="d-flex justify-content-end mt-2">
+            <h6>Total: <b>@financialCostAmount.ToString("C")</b></h6>
+        </div>
+    </div>
+
+    <div class="card p-3 shadow-sm rounded mb-3">
+        <div class="d-flex justify-content-between">
+            <h5>Grand Total:</h5>
+            <h5><b>@recipeDetailModified.TotalCost.ToString("C")</b></h5>
+        </div>
+    </div>
 }
 else
 {
@@ -223,32 +278,44 @@ else
 
     List<QuotationDeliveryCost> deliveryCosts = new List<QuotationDeliveryCost>();
     List<QuotationPackagingCost> packagingCosts = new List<QuotationPackagingCost>();
+    List<QuotationFinancialCost> financialCosts = new List<QuotationFinancialCost>();
+
+    // Properties to store section totals
+    private decimal rawMaterialTotal => recipeDetailModified?.QuotationRecipe1.QuotationRawMaterialCosts.Sum(x => x.CostAmount) ?? 0;
+    private decimal premiumTotal => recipeDetailModified?.QuotationRecipe1.QuotationPremiumCosts.Sum(x => x.CostAmount) ?? 0;
+    private decimal packagingTotal => packagingCosts.Sum(x => x.CostAmount);
+    private decimal deliveryTotal => deliveryCosts.Sum(x => x.CostAmount);
+    private decimal additionalTotal => recipeDetailModified?.QuotationRecipe1.QuotationAdditionalCosts.Sum(x => x.CostAmount) ?? 0;
+    private decimal financialCostAmount => CalculateFinancialCostAmount();
 
     protected override async Task OnInitializedAsync()
     {
-        
+
         // recipeDetailModified = QuoteDetailServices.DeepClone(recipeDetailOriginal);
         recipeQuantity = recipeDetailModified.QuotationRecipe1.Quantity;
         ingredientDict = recipeDetailModified.QuotationRecipe1.Recipe.RecipeIngredients.ToDictionary(x => x.Material.MaterialName, x => x.Amount);
         packagingCosts.Add(recipeDetailModified.QuotationRecipe1.QuotationPackagingCost);
         deliveryCosts.Add(recipeDetailModified.QuotationRecipe1.QuotationDeliveryCost);
+
+
+        // Initialize financial cost if it doesn't exist
+        if (recipeDetailModified.QuotationRecipe1.QuotationFinancialCost == null)
+        {
+            recipeDetailModified.QuotationRecipe1.QuotationFinancialCost = new QuotationFinancialCost
+            {
+                InterestRate = 0,
+                FinanceDays = 0
+            };
+        }
+
         SetTitleContent();
         _dialog.Options.CloseDialogOnOverlayClick = false;
         _dialog.Options.ShowClose = !_dialog.Options.ShowClose;
         DialogServices.Refresh();
     }
 
-    // private void OnCostChanged()
-    // {
-    //     recipeDetailModified.TotalCost =
-    //         recipeDetailModified.QuotationRecipe1.QuotationRawMaterialCosts.Sum(x => x.CostAmount) +
-    //         recipeDetailModified.QuotationRecipe1.QuotationPremiumCosts.Sum(x => x.CostAmount) +
-    //         (recipeDetailModified.QuotationRecipe1.QuotationPackagingCost?.CostAmount ?? 0) +
-    //         (recipeDetailModified.QuotationRecipe1.QuotationDeliveryCost?.CostAmount ?? 0) +
 
-    //         recipeDetailModified.QuotationRecipe1.QuotationAdditionalCosts.Sum(x => x.CostAmount);
 
-    // }
 
     private void OnSaveAndClose()
     {
@@ -259,7 +326,7 @@ else
 
     private void OnCancel(){
         DialogServices.Close(null);
-    
+
     }
 
     private async Task OnRawMaterialCostChanged(QuotationRawMaterialCost data){
@@ -267,8 +334,9 @@ else
         recipeDetailModified.TotalCost -= data.CostAmount;
 
         data.CostAmount = data.Cost * ingredientDict[data.MaterialName] / 100 * weightRatio;
-        recipeDetailModified.TotalCost += data.CostAmount;
-   
+        // recipeDetailModified.TotalCost += data.CostAmount;
+        recipeDetailModified.TotalCost = QuoteDataService.CalculateTotalCost(recipeDetailModified.QuotationRecipe1);
+
         DialogServices.Refresh();
         await InvokeAsync(StateHasChanged);
     }
@@ -299,7 +367,8 @@ else
         var ingredientDict = recipeIngredient.ToDictionary(x => x.Material.MaterialName, x => x.Amount);
 
         data.CostAmount = data.Cost * ingredientDict[data.MaterialName] / 100 * weightRatio;
-        recipeDetailModified.TotalCost += data.CostAmount;
+        // recipeDetailModified.TotalCost += data.CostAmount;
+        recipeDetailModified.TotalCost = QuoteDataService.CalculateTotalCost(recipeDetailModified.QuotationRecipe1);
         DialogServices.Refresh();
         await InvokeAsync(StateHasChanged);
     }
@@ -313,7 +382,8 @@ else
         var ingredientDict = recipeIngredient.ToDictionary(x => x.Material.MaterialName, x => x.Amount);
 
         data.CostAmount = data.Cost * ingredientDict[data.MaterialName] / 100 * weightRatio;
-        recipeDetailModified.TotalCost += data.CostAmount;
+        // recipeDetailModified.TotalCost += data.CostAmount;
+        recipeDetailModified.TotalCost = QuoteDataService.CalculateTotalCost(recipeDetailModified.QuotationRecipe1);
         DialogServices.Refresh();
         await InvokeAsync(StateHasChanged);
     }
@@ -326,7 +396,8 @@ else
         recipeDetailModified.TotalCost -= data.CostAmount;
 
         data.CostAmount = data.Cost / 2 * weightRatio;
-        recipeDetailModified.TotalCost += data.CostAmount;
+        // recipeDetailModified.TotalCost += data.CostAmount;
+        recipeDetailModified.TotalCost = QuoteDataService.CalculateTotalCost(recipeDetailModified.QuotationRecipe1);
         DialogServices.Refresh();
         await InvokeAsync(StateHasChanged);
     }
@@ -338,22 +409,28 @@ else
             recipeDetailModified.TotalCost -= data.CostAmount;
 
             data.CostAmount = -(recipeDetailModified.TotalCost * data.Cost / 100);
-            recipeDetailModified.TotalCost += data.CostAmount;
+            // recipeDetailModified.TotalCost += data.CostAmount;
         }
         else if(data.CostName == "ORD Rebate"){
             recipeDetailModified.TotalCost -= data.CostAmount;
 
             data.CostAmount = -(recipeDetailModified.TotalCost * data.Cost / 100);
-            recipeDetailModified.TotalCost += data.CostAmount;
+            // recipeDetailModified.TotalCost += data.CostAmount;
+        }
+        else if(data.CostName == "Yield"){
+            recipeDetailModified.TotalCost -= data.CostAmount;
+
+            data.CostAmount = data.Cost * recipeDetailModified.QuotationRecipe1.QuotationRawMaterialCosts.Sum(x => x.CostAmount) / 100;
+            // recipeDetailModified.TotalCost += data.CostAmount;
         }
         else{
             recipeDetailModified.TotalCost -= data.CostAmount;
 
             data.CostAmount = data.Cost * weightRatio;
-            recipeDetailModified.TotalCost += data.CostAmount;
+            // recipeDetailModified.TotalCost += data.CostAmount;
         }
 
-       
+        recipeDetailModified.TotalCost = QuoteDataService.CalculateTotalCost(recipeDetailModified.QuotationRecipe1);
         DialogServices.Refresh();
         await InvokeAsync(StateHasChanged);
     }
@@ -364,7 +441,8 @@ else
         recipeDetailModified.TotalCost -= data.CostAmount;
 
         data.CostAmount = data.Cost * weightRatio;
-        recipeDetailModified.TotalCost += data.CostAmount;
+        // recipeDetailModified.TotalCost += data.CostAmount;
+        recipeDetailModified.TotalCost = QuoteDataService.CalculateTotalCost(recipeDetailModified.QuotationRecipe1);
         DialogServices.Refresh();
         await InvokeAsync(StateHasChanged);
     }
@@ -372,22 +450,60 @@ else
     private async Task OnDeliveryCostChanged(QuotationDeliveryCost data)
     {
 
-        recipeDetailModified.TotalCost =
-            recipeDetailModified.QuotationRecipe1.QuotationRawMaterialCosts.Sum(x => x.CostAmount) +
-            recipeDetailModified.QuotationRecipe1.QuotationPremiumCosts.Sum(x => x.CostAmount) +
-            (recipeDetailModified.QuotationRecipe1.QuotationPackagingCost?.CostAmount ?? 0) +
-            (recipeDetailModified.QuotationRecipe1.QuotationDeliveryCost?.CostAmount ?? 0) +
+        // recipeDetailModified.TotalCost =
+        //     recipeDetailModified.QuotationRecipe1.QuotationRawMaterialCosts.Sum(x => x.CostAmount) +
+        //     recipeDetailModified.QuotationRecipe1.QuotationPremiumCosts.Sum(x => x.CostAmount) +
+        //     (recipeDetailModified.QuotationRecipe1.QuotationPackagingCost?.CostAmount ?? 0) +
+        //     (recipeDetailModified.QuotationRecipe1.QuotationDeliveryCost?.CostAmount ?? 0) +
 
-            data.CostAmount;
+        //     data.CostAmount;
 
-        Console.WriteLine(recipeDetailModified.TotalCost);
-        Console.WriteLine(recipeDetailModified.TotalCost);
+        recipeDetailModified.TotalCost = QuoteDataService.CalculateTotalCost(recipeDetailModified.QuotationRecipe1);
+
         DialogServices.Refresh();
        
         await InvokeAsync(StateHasChanged);
     }
 
-    
+    private async Task OnFinancialCostChanged()
+    {
+        // Recalculate total cost with updated financial cost
+        var baseCost = 
+            rawMaterialTotal + 
+            premiumTotal + 
+            packagingTotal + 
+            deliveryTotal + 
+            additionalTotal;
+            
+        // Update total cost (base cost + financial cost)
+        recipeDetailModified.TotalCost = baseCost + financialCostAmount;
+
+       
+        DialogServices.Refresh();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    // Calculate financial cost amount based on interest rate and days
+    private decimal CalculateFinancialCostAmount()
+    {
+        if (recipeDetailModified?.QuotationRecipe1?.QuotationFinancialCost == null)
+            return 0;
+            
+        var interestRate = recipeDetailModified.QuotationRecipe1.QuotationFinancialCost.InterestRate;
+        var days = recipeDetailModified.QuotationRecipe1.QuotationFinancialCost.FinanceDays;
+        
+        // Calculate base cost without financial cost
+        var baseCost = 
+            rawMaterialTotal + 
+            premiumTotal + 
+            packagingTotal + 
+            deliveryTotal + 
+            additionalTotal;
+            
+        // Calculate financial cost: (base cost * interest rate * days / 365)
+        return baseCost * (interestRate / 100) * days / 365;
+    }
+
     void SetTitleContent()
     {
         _dialog.Title = null; // clear default title
@@ -400,9 +516,9 @@ else
                               Click="@OnSaveAndClose"
                               Style="background-color:#3B82F6"
                                />
-                <RadzenButton Text="Cancel"
-                              ButtonStyle="ButtonStyle.Light"
-                              Click="@OnCancel" />
+                // <RadzenButton Text="Cancel"
+                //               ButtonStyle="ButtonStyle.Light"
+                //               Click="@OnCancel" />
             </RadzenRow>
         </RadzenStack>;
     

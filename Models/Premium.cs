@@ -14,4 +14,8 @@ public partial class Premium
     public DateOnly DateFrom { get; set; }
 
     public DateOnly DateTo { get; set; }
+
+    public bool Active { get; set; }
+
+    public string? PremiumType { get; set; }
 }

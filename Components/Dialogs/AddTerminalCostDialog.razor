@@ -1,0 +1,150 @@
+@inject MasterDataServices MDS
+@inject DialogService DialogService
+@inject NotificationService NotificationService
+
+<RadzenTemplateForm TItem="TerminalCost" Data="@terminalCost" Submit="@HandleSubmit">
+    <div class="container">
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <RadzenFormField Text="Period Name" Variant="Variant.Outlined">
+                    <RadzenTextBox @bind-Value="@terminalCost.PeriodName" Name="PeriodName" />
+                    <RadzenRequiredValidator Component="PeriodName" Text="Period Name is required" />
+                </RadzenFormField>
+            </div>
+            <div class="col-md-6">
+                <RadzenFormField Text="Terminal Period" Variant="Variant.Outlined">
+                    <RadzenDropDown @bind-Value="@terminalCost.TerminalPeriod" 
+                                   Data="@availableTerminalPeriods" 
+                                   TextProperty="Text" 
+                                   ValueProperty="Date"
+                                   Name="TerminalPeriod" />
+                    <RadzenRequiredValidator Component="TerminalPeriod" Text="Terminal Period is required" />
+                </RadzenFormField>
+            </div>
+        </div>
+        
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <RadzenFormField Text="Life GBP" Variant="Variant.Outlined">
+                    <RadzenNumeric @bind-Value="@terminalCost.LifeGbp" Name="LifeGbp" />
+                    <RadzenRequiredValidator Component="LifeGbp" Text="Life GBP is required" />
+                </RadzenFormField>
+            </div>
+            <div class="col-md-6">
+                <RadzenFormField Text="Liquor" Variant="Variant.Outlined">
+                    <RadzenNumeric @bind-Value="@terminalCost.Liquor" Name="Liquor" />
+                    <RadzenRequiredValidator Component="Liquor" Text="Liquor is required" />
+                </RadzenFormField>
+            </div>
+        </div>
+        
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <RadzenFormField Text="Butter" Variant="Variant.Outlined">
+                    <RadzenNumeric @bind-Value="@terminalCost.Butter" Name="Butter" />
+                    <RadzenRequiredValidator Component="Butter" Text="Butter is required" />
+                </RadzenFormField>
+            </div>
+            <div class="col-md-6">
+                <RadzenFormField Text="Powder" Variant="Variant.Outlined">
+                    <RadzenNumeric @bind-Value="@terminalCost.Powder" Name="Powder" />
+                    <RadzenRequiredValidator Component="Powder" Text="Powder is required" />
+                </RadzenFormField>
+            </div>
+        </div>
+        
+        <div class="row mt-4">
+            <div class="col d-flex justify-content-end">
+                <RadzenButton ButtonType="ButtonType.Button" 
+                              ButtonStyle="ButtonStyle.Light" 
+                              Text="Cancel" 
+                              Click="@Cancel" 
+                              Class="me-2" />
+                <RadzenButton ButtonType="ButtonType.Submit" 
+                              ButtonStyle="ButtonStyle.Primary" 
+                              Text="Save" />
+            </div>
+        </div>
+    </div>
+</RadzenTemplateForm>
+
+@code {
+    private TerminalCost terminalCost = new TerminalCost();
+    private List<TerminalPeriodOption> availableTerminalPeriods = new List<TerminalPeriodOption>();
+    private List<DateOnly> existingTerminalPeriods = new List<DateOnly>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Fetch existing terminal periods from the database
+        existingTerminalPeriods = await MDS.GetExistingTerminalPeriodsAsync();
+        
+        // Generate available terminal periods excluding existing ones
+        GenerateTerminalPeriods();
+    }
+
+    private void GenerateTerminalPeriods()
+    {
+        // Get current year
+        int currentYear = DateTime.Now.Year;
+        
+        // Generate terminal periods for the next 10 years
+        for (int year = currentYear; year < currentYear + 10; year++)
+        {
+            // Add first day of March
+            AddTerminalPeriodIfNotExists(year, 3, 1, $"Mar 1, {year}");
+            
+            // Add first day of May
+            AddTerminalPeriodIfNotExists(year, 5, 1, $"May 1, {year}");
+            
+            // Add first day of July
+            AddTerminalPeriodIfNotExists(year, 7, 1, $"Jul 1, {year}");
+            
+            // Add first day of September
+            AddTerminalPeriodIfNotExists(year, 9, 1, $"Sep 1, {year}");
+            
+            // Add first day of December
+            AddTerminalPeriodIfNotExists(year, 12, 1, $"Dec 1, {year}");
+        }
+    }
+
+    private void AddTerminalPeriodIfNotExists(int year, int month, int day, string text)
+    {
+        var dateOnly = new DateOnly(year, month, day);
+        
+        // Only add if this date doesn't already exist in the database
+        if (!existingTerminalPeriods.Contains(dateOnly))
+        {
+            availableTerminalPeriods.Add(new TerminalPeriodOption
+            {
+                Date = dateOnly,
+                Text = text
+            });
+        }
+    }
+
+    private async Task HandleSubmit()
+    {
+        try
+        {
+            await MDS.AddTerminalCostAsync(terminalCost);
+            NotificationService.Notify(NotificationSeverity.Success, "Success", "Terminal Cost created successfully");
+            DialogService.Close(true);
+        }
+        catch (Exception ex)
+        {
+            NotificationService.Notify(NotificationSeverity.Error, "Error", $"Failed to create Terminal Cost: {ex.Message}");
+        }
+    }
+
+    private void Cancel()
+    {
+        DialogService.Close(false);
+    }
+
+    // Helper class for dropdown options
+    private class TerminalPeriodOption
+    {
+        public DateOnly Date { get; set; }
+        public string Text { get; set; }
+    }
+} 

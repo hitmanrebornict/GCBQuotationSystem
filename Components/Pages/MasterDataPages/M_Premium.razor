@@ -1,0 +1,108 @@
+@page "/Premium"
+@inject DialogService DialogService
+@inject MasterDataServices MDS
+
+<RadzenCard>
+    <h3>Premium</h3>
+
+    <hr/>
+    <div class="d-flex justify-content-between mb-4">
+        <RadzenButton Text="Create New Premium"
+                      Icon="add_circle_outline"
+                      ButtonStyle="ButtonStyle.Primary"
+                      Click="@CreateButtonOnClick" />
+    </div>
+
+    <RadzenDataGrid Data="@premiums"
+                    TItem="Premium"
+                    AllowFiltering="true"
+                    AllowSorting="true"
+                    AllowPaging="true"
+                    PageSize="10"
+                    FilterMode="FilterMode.CheckBoxList"
+                    FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                    EmptyText="No premiums found">
+        <Columns>
+            <RadzenDataGridColumn Property="PremiumName" Title="Premium Name" Width="200px" />
+            <RadzenDataGridColumn Property="PremiumCost" Title="Cost" Width="120px" FormatString="{0:C2}" />
+            <RadzenDataGridColumn Property="PremiumType" Title="Type" Width="150px" />
+            <RadzenDataGridColumn Property="DateFrom" Title="Valid From" Width="120px" FormatString="{0:d}" />
+            <RadzenDataGridColumn Property="DateTo" Title="Valid To" Width="120px" FormatString="{0:d}" />
+            <RadzenDataGridColumn Property="Active" Title="Active" Width="80px">
+                <Template Context="premium">
+                    <RadzenCheckBox Value="@premium.Active" Disabled="true" />
+                </Template>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn TItem="Premium" Title="Actions" TextAlign="TextAlign.Center" Width="120px">
+                <Template Context="premium">
+                    <RadzenButton Icon="edit"
+                                  ButtonStyle="ButtonStyle.Info"
+                                  Size="ButtonSize.Medium"
+                                  Variant="Variant.Flat"
+                                  Class="m-1"
+                                  Click="@(() => EditPremium(premium))"
+                                  ToolTip="Edit Premium" />
+                </Template>
+            </RadzenDataGridColumn>
+        </Columns>
+    </RadzenDataGrid>
+</RadzenCard>
+
+<style>
+    .premium-data-grid {
+        height: calc(100vh - 250px);
+        min-height: 400px;
+    }
+</style>
+
+@code {
+    private List<Premium> premiums = new List<Premium>();
+    
+    private async Task CreateButtonOnClick()
+    {
+        var options = new DialogOptions() 
+        { 
+            Width = "600px",
+            Height = "600px",
+            CloseDialogOnOverlayClick = false,
+            Resizable = true,
+            Draggable = true
+        };
+        
+        var result = await DialogService.OpenAsync<AddPremiumDialog>("New Premium", 
+            options: options);
+            
+        if (result == true)
+        {
+            premiums = await MDS.GetPremiumsAsync();
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task EditPremium(Premium premium)
+    {
+        var options = new DialogOptions() 
+        { 
+            Width = "600px",
+            Height = "600px",
+            CloseDialogOnOverlayClick = false,
+            Resizable = true,
+            Draggable = true
+        };
+        
+        var result = await DialogService.OpenAsync<EditPremiumDialog>("Edit Premium", 
+            new Dictionary<string, object>() { { "PremiumId", premium.Id } },
+            options);
+            
+        if (result == true)
+        {
+            premiums = await MDS.GetPremiumsAsync();
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        premiums = await MDS.GetPremiumsAsync();
+    }
+} 

@@ -166,11 +166,7 @@
         foreach (var quotationRecipe in quote.QuotationRecipes)
         {
             // Calculate the total cost for the recipe
-            decimal localTotalCost = quotationRecipe.QuotationPremiumCosts.Sum(x => x.CostAmount) +
-                                     quotationRecipe.QuotationRawMaterialCosts.Sum(x => x.CostAmount) +
-                                     quotationRecipe.QuotationPackagingCost.CostAmount +
-                                     quotationRecipe.QuotationDeliveryCost.CostAmount +
-                                     quotationRecipe.QuotationAdditionalCosts.Sum(x => x.CostAmount);
+            var localTotalCost = QuoteDataService.CalculateTotalCost(quotationRecipe);
 
             // Create a new RecipeTotalCost object for this recipe
             var recipeTotalCost = new RecipeTotalCost
@@ -195,95 +191,95 @@
             isDataLoaded = true;
         }
 
-        // Step 1: Flatten all recipe entries by period and recipe code
-        var grouped = quote.QuotationRecipes
-        .GroupBy(r => r.Recipe.RecipeCode) // Group by RecipeCode
-        .ToDictionary(
-        g => g.Key,
-        g => g.GroupBy(r => r.PeriodMonth.ToString("MMM yyyy"))
-        .ToDictionary(
-        period => period.Key,
-        periodData => new
-        {
-        RMCost = periodData.Sum(x => x.QuotationRawMaterialCosts.Sum(c => c.CostAmount)),
-        PKCost = periodData.Sum(x => x.QuotationPackagingCost?.CostAmount ?? 0),
-        DLVCost = periodData.Sum(x => x.QuotationDeliveryCost?.CostAmount ?? 0),
-        PRMCost = periodData.Sum(x => x.QuotationPremiumCosts.Sum(c => c.CostAmount)),
-        ADDCost = periodData.Sum(x => x.QuotationAdditionalCosts.Sum(c => c.CostAmount))
-        })
-        );
+        // // Step 1: Flatten all recipe entries by period and recipe code
+        // var grouped = quote.QuotationRecipes
+        // .GroupBy(r => r.Recipe.RecipeCode) // Group by RecipeCode
+        // .ToDictionary(
+        // g => g.Key,
+        // g => g.GroupBy(r => r.PeriodMonth.ToString("MMM yyyy"))
+        // .ToDictionary(
+        // period => period.Key,
+        // periodData => new
+        // {
+        // RMCost = periodData.Sum(x => x.QuotationRawMaterialCosts.Sum(c => c.CostAmount)),
+        // PKCost = periodData.Sum(x => x.QuotationPackagingCost?.CostAmount ?? 0),
+        // // DLVCost = periodData.Sum(x => x.QuotationDeliveryCost?.CostAmount ?? 0),
+        // PRMCost = periodData.Sum(x => x.QuotationPremiumCosts.Sum(c => c.CostAmount)),
+        // ADDCost = periodData.Sum(x => x.QuotationAdditionalCosts.Sum(c => c.CostAmount))
+        // })
+        // );
 
-        // Step 2: Get all unique period columns (months)
-        periodColumns = grouped.Values
-        .SelectMany(r => r.Keys)
-        .Distinct()
-        .OrderBy(p => DateTime.ParseExact(p, "MMM yyyy", null))
-        .ToList();
+        // // Step 2: Get all unique period columns (months)
+        // periodColumns = grouped.Values
+        // .SelectMany(r => r.Keys)
+        // .Distinct()
+        // .OrderBy(p => DateTime.ParseExact(p, "MMM yyyy", null))
+        // .ToList();
 
-        // Step 3: Transform into rows by recipe code and cost type
-        costMatrix = grouped.SelectMany(recipeGroup =>
-        new List<CostSummaryRow>
-        {
-        new CostSummaryRow
-        {
-        RecipeCode = recipeGroup.Key,
-        CostType = "Raw Material",
-        PeriodCosts = recipeGroup.Value.ToDictionary(
-        p => p.Key,
-        p => p.Value.RMCost
-        )
-        },
-        new CostSummaryRow
-        {
-        RecipeCode = recipeGroup.Key,
-        CostType = "Packaging",
-        PeriodCosts = recipeGroup.Value.ToDictionary(
-        p => p.Key,
-        p => p.Value.PKCost
-        )
-        },
-        new CostSummaryRow
-        {
-        RecipeCode = recipeGroup.Key,
-        CostType = "Delivery",
-        PeriodCosts = recipeGroup.Value.ToDictionary(
-        p => p.Key,
-        p => p.Value.DLVCost
-        )
-        },
-        new CostSummaryRow
-        {
-        RecipeCode = recipeGroup.Key,
-        CostType = "Premium",
-        PeriodCosts = recipeGroup.Value.ToDictionary(
-        p => p.Key,
-        p => p.Value.PRMCost
-        )
-        },
-        new CostSummaryRow
-        {
-        RecipeCode = recipeGroup.Key,
-        CostType = "Additional",
-        PeriodCosts = recipeGroup.Value.ToDictionary(
-        p => p.Key,
-        p => p.Value.ADDCost
-        )
-        }
-        }).ToList();
+        // // Step 3: Transform into rows by recipe code and cost type
+        // costMatrix = grouped.SelectMany(recipeGroup =>
+        // new List<CostSummaryRow>
+        // {
+        // new CostSummaryRow
+        // {
+        // RecipeCode = recipeGroup.Key,
+        // CostType = "Raw Material",
+        // PeriodCosts = recipeGroup.Value.ToDictionary(
+        // p => p.Key,
+        // p => p.Value.RMCost
+        // )
+        // },
+        // new CostSummaryRow
+        // {
+        // RecipeCode = recipeGroup.Key,
+        // CostType = "Packaging",
+        // PeriodCosts = recipeGroup.Value.ToDictionary(
+        // p => p.Key,
+        // p => p.Value.PKCost
+        // )
+        // },
+        // new CostSummaryRow
+        // {
+        // RecipeCode = recipeGroup.Key,
+        // CostType = "Delivery",
+        // PeriodCosts = recipeGroup.Value.ToDictionary(
+        // p => p.Key,
+        // p => p.Value.DLVCost
+        // )
+        // },
+        // new CostSummaryRow
+        // {
+        // RecipeCode = recipeGroup.Key,
+        // CostType = "Premium",
+        // PeriodCosts = recipeGroup.Value.ToDictionary(
+        // p => p.Key,
+        // p => p.Value.PRMCost
+        // )
+        // },
+        // new CostSummaryRow
+        // {
+        // RecipeCode = recipeGroup.Key,
+        // CostType = "Additional",
+        // PeriodCosts = recipeGroup.Value.ToDictionary(
+        // p => p.Key,
+        // p => p.Value.ADDCost
+        // )
+        // }
+        // }).ToList();
 
-        // Step 4: Add a row for TotalCost (sum of all costs for each recipe across periods)
-        foreach (var recipeCode in grouped.Keys)
-        {
-        var totalCostRow = new CostSummaryRow { RecipeCode = recipeCode, CostType = "Total Cost" };
-        foreach (var period in periodColumns)
-        {
-        decimal totalCost = costMatrix
-        .Where(row => row.RecipeCode == recipeCode)
-        .Sum(row => row.PeriodCosts.TryGetValue(period, out var value) ? value : 0);
-        totalCostRow.PeriodCosts[period] = totalCost;
-        }
-        costMatrix.Add(totalCostRow);
-        }
+        // // Step 4: Add a row for TotalCost (sum of all costs for each recipe across periods)
+        // foreach (var recipeCode in grouped.Keys)
+        // {
+        // var totalCostRow = new CostSummaryRow { RecipeCode = recipeCode, CostType = "Total Cost" };
+        // foreach (var period in periodColumns)
+        // {
+        // decimal totalCost = costMatrix
+        // .Where(row => row.RecipeCode == recipeCode)
+        // .Sum(row => row.PeriodCosts.TryGetValue(period, out var value) ? value : 0);
+        // totalCostRow.PeriodCosts[period] = totalCost;
+        // }
+        // costMatrix.Add(totalCostRow);
+        // }
 
         await InvokeAsync(StateHasChanged);
     }

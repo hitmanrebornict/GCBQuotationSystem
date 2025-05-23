@@ -19,6 +19,8 @@ public partial class Customer
 
     public int? CountryId { get; set; }
 
+    public bool Active { get; set; }
+
     public virtual Country? Country { get; set; }
 
     public virtual ICollection<CustomerDeliveryDetail> CustomerDeliveryDetails { get; set; } = new List<CustomerDeliveryDetail>();

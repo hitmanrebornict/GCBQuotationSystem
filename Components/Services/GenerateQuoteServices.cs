@@ -35,12 +35,7 @@ namespace GCBQuotationSystem.Components.Services
 				.ToListAsync();
 		}
 
-		public async Task<FinancialCost> GetFinancialCostAsync()
-		{
-			return await _dbContext.FinancialCosts
-					.FirstOrDefaultAsync();
-		}
-
+	
 		public string GetQuarter(DateOnly date)
 		{
 			int quarter = (date.Month - 1) / 3 + 1;

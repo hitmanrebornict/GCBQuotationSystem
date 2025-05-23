@@ -1,0 +1,114 @@
+@page "/deliveryCost"
+@inject MasterDataServices MDS
+@inject DialogService DialogService
+
+<RadzenCard>
+    <h3>Delivery Cost</h3>
+
+    <hr/>
+    <div class="d-flex justify-content-between mb-4">
+        <RadzenButton Text="Create New Delivery Cost"
+                      Icon="add_circle_outline"
+                      ButtonStyle="ButtonStyle.Primary"
+                      Click="@CreateButtonOnClick" />
+    </div>
+
+    <RadzenDataGrid Data="@deliveryCosts"
+                    TItem="DeliveryCost"
+                    AllowFiltering="true"
+                    AllowSorting="true"
+                    AllowPaging="true"
+                    PageSize="10"
+                    FilterMode="FilterMode.CheckBoxList"
+                    FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                    EmptyText="No delivery costs found"
+                    @ref="grid">
+        <Columns>
+            <RadzenDataGridColumn Property="Zone" Title="Zone" Width="80px" />
+            <RadzenDataGridColumn Property="PostCode" Title="Post Code" Width="120px" />
+            <RadzenDataGridColumn Property="Pallet" Title="Pallet" Width="120px" />
+            <RadzenDataGridColumn Property="Cost" Title="Cost" Width="120px">
+                <Template Context="data">
+                    @(data.Cost.ToString("C2"))
+                </Template>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn Property="ServiceHours" Title="Service Hours" Width="120px" />
+            <RadzenDataGridColumn TItem="DeliveryCost" Title="Actions" TextAlign="TextAlign.Center" Width="120px">
+                <Template Context="deliveryCost">
+                    <RadzenButton Icon="edit"
+                                  ButtonStyle="ButtonStyle.Info"
+                                  Size="ButtonSize.Medium"
+                                  Variant="Variant.Flat"
+                                  Class="m-1"
+                                  Click="@(() => EditDeliveryCost(deliveryCost))"
+                                  ToolTip="Edit Delivery Cost" />
+                </Template>
+            </RadzenDataGridColumn>
+        </Columns>
+    </RadzenDataGrid>
+</RadzenCard>
+
+<style>
+    .delivery-cost-data-grid {
+        height: calc(100vh - 250px);
+        min-height: 400px;
+    }
+</style>
+
+@code {
+    private RadzenDataGrid<DeliveryCost> grid;
+    private List<DeliveryCost> deliveryCosts = new List<DeliveryCost>();
+    
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        deliveryCosts = await MDS.GetDeliveryCostAsync();
+    }
+    
+    private async Task CreateButtonOnClick()
+    {
+        var options = new DialogOptions() 
+        { 
+            Width = "90vw",
+            Height = "90vh",
+            CloseDialogOnOverlayClick = false,
+            Resizable = true,
+            Draggable = true
+        };
+        
+        var result = await DialogService.OpenAsync<AddDeliveryCostDialog>("New Delivery Cost", 
+            options: options);
+            
+        if (result == true)
+        {
+            await LoadData();
+            await grid.Reload();
+        }
+    }
+
+    private async Task EditDeliveryCost(DeliveryCost deliveryCost)
+    {
+        var options = new DialogOptions() 
+        { 
+            Width = "90vw",
+            Height = "90vh",
+            CloseDialogOnOverlayClick = false,
+            Resizable = true,
+            Draggable = true
+        };
+        
+        var result = await DialogService.OpenAsync<EditDeliveryCostDialog>("Edit Delivery Cost", 
+            new Dictionary<string, object>() { { "DeliveryId", deliveryCost.DeliveryId } },
+            options);
+            
+        if (result == true)
+        {
+            await LoadData();
+            await grid.Reload();
+        }
+    }
+} 

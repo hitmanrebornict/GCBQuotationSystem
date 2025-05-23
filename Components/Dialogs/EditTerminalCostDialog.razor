@@ -1,0 +1,108 @@
+@inject MasterDataServices MDS
+@inject NotificationService NotificationService
+@inject DialogService DialogService
+
+<RadzenTemplateForm TItem="TerminalCost" Data="@terminalCost" Submit="@HandleSubmit">
+    <div class="container">
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <RadzenFormField Text="Period Name" Variant="Variant.Outlined">
+                    <RadzenTextBox @bind-Value="@terminalCost.PeriodName" Name="PeriodName" />
+                    <RadzenRequiredValidator Component="PeriodName" Text="Period Name is required" />
+                </RadzenFormField>
+            </div>
+            <div class="col-md-6">
+                <RadzenFormField Text="Terminal Period" Variant="Variant.Outlined">
+                    <RadzenDatePicker @bind-Value="@terminalPeriodDateTime" Name="TerminalPeriod" DateFormat="yyyy-MM-dd" />
+                    <RadzenRequiredValidator Component="TerminalPeriod" Text="Terminal Period is required" />
+                </RadzenFormField>
+            </div>
+        </div>
+
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <RadzenFormField Text="Life GBP" Variant="Variant.Outlined">
+                    <RadzenNumeric @bind-Value="@terminalCost.LifeGbp" Name="LifeGbp" Format="c2" />
+                    <RadzenRequiredValidator Component="LifeGbp" Text="Life GBP is required" />
+                </RadzenFormField>
+            </div>
+            <div class="col-md-6">
+                <RadzenFormField Text="Liquor" Variant="Variant.Outlined">
+                    <RadzenNumeric @bind-Value="@terminalCost.Liquor" Name="Liquor" Format="c2" />
+                    <RadzenRequiredValidator Component="Liquor" Text="Liquor is required" />
+                </RadzenFormField>
+            </div>
+        </div>
+
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <RadzenFormField Text="Butter" Variant="Variant.Outlined">
+                    <RadzenNumeric @bind-Value="@terminalCost.Butter" Name="Butter" Format="c2" />
+                    <RadzenRequiredValidator Component="Butter" Text="Butter is required" />
+                </RadzenFormField>
+            </div>
+            <div class="col-md-6">
+                <RadzenFormField Text="Powder" Variant="Variant.Outlined">
+                    <RadzenNumeric @bind-Value="@terminalCost.Powder" Name="Powder" Format="c2" />
+                    <RadzenRequiredValidator Component="Powder" Text="Powder is required" />
+                </RadzenFormField>
+            </div>
+        </div>
+
+        <div class="row mt-4">
+            <div class="col d-flex justify-content-end">
+                <RadzenButton ButtonType="ButtonType.Submit" Text="Save" ButtonStyle="ButtonStyle.Primary" Class="me-2" />
+                <RadzenButton Text="Cancel" ButtonStyle="ButtonStyle.Light" Click="@CancelDialog" />
+            </div>
+        </div>
+    </div>
+</RadzenTemplateForm>
+
+@code {
+    [Parameter] public int TerminalCostId { get; set; }
+
+
+    private TerminalCost terminalCost = new();
+    private DateTime terminalPeriodDateTime;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            terminalCost = await MDS.GetTerminalCostByIdAsync(TerminalCostId);
+
+            // Convert DateOnly to DateTime for the DatePicker
+            terminalPeriodDateTime = new DateTime(
+                terminalCost.TerminalPeriod.Year,
+                terminalCost.TerminalPeriod.Month,
+                terminalCost.TerminalPeriod.Day);
+        }
+        catch (Exception ex)
+        {
+            NotificationService.Notify(NotificationSeverity.Error, "Error", $"Failed to load terminal cost: {ex.Message}");
+            CancelDialog();
+        }
+    }
+
+    private async Task HandleSubmit()
+    {
+        try
+        {
+            // Convert DateTime back to DateOnly
+            terminalCost.TerminalPeriod = DateOnly.FromDateTime(terminalPeriodDateTime);
+
+            await MDS.UpdateTerminalCostAsync(terminalCost);
+            DialogService.Close();
+            NotificationService.Notify(NotificationSeverity.Success, "Success", "Terminal cost updated successfully");
+        }
+        catch (Exception ex)
+        {
+            NotificationService.Notify(NotificationSeverity.Error, "Error", $"Failed to update terminal cost: {ex.Message}");
+        }
+    }
+
+    private void CancelDialog()
+    {
+        DialogService.Close();
+    }
+} 

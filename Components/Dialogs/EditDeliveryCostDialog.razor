@@ -1,0 +1,132 @@
+@inject MasterDataServices MDS
+@inject DialogService DialogService
+@inject NotificationService NotificationService
+
+<div class="col-md-12">
+    <div style="margin-bottom: 1rem" class="row">
+        <div class="col-md-3">
+            <RadzenLabel Text="Zone" Component="Zone" style="width: 100%">
+            </RadzenLabel>
+        </div>
+        <div class="col-md-9">
+            <RadzenNumeric TValue="int" style="width: 100%" @bind-Value="deliveryCost.Zone" />
+        </div>
+    </div>
+    <div style="margin-bottom: 1rem" class="row">
+        <div class="col-md-3">
+            <RadzenLabel Text="Post Code" Component="PostCode" style="width: 100%">
+            </RadzenLabel>
+        </div>
+        <div class="col-md-9">
+            <RadzenTextBox MaxLength="100" style="width: 100%" @bind-Value="deliveryCost.PostCode" Name="PostCode" Placeholder="Please enter post code..." />
+        </div>
+    </div>
+    <div style="margin-bottom: 1rem" class="row">
+        <div class="col-md-3">
+            <RadzenLabel Text="Pallet" Component="Pallet" style="width: 100%">
+            </RadzenLabel>
+        </div>
+        <div class="col-md-9">
+            <RadzenTextBox MaxLength="100" style="width: 100%" @bind-Value="deliveryCost.Pallet" Name="Pallet" Placeholder="Please enter pallet type..." />
+        </div>
+    </div>
+    <div style="margin-bottom: 1rem" class="row">
+        <div class="col-md-3">
+            <RadzenLabel Text="Cost" Component="Cost" style="width: 100%">
+            </RadzenLabel>
+        </div>
+        <div class="col-md-9">
+            <RadzenNumeric TValue="decimal" style="width: 100%" @bind-Value="deliveryCost.Cost" Format="c2" />
+        </div>
+    </div>
+    <div style="margin-bottom: 1rem" class="row">
+        <div class="col-md-3">
+            <RadzenLabel Text="Service Hours" Component="ServiceHours" style="width: 100%">
+            </RadzenLabel>
+        </div>
+        <div class="col-md-9">
+            <RadzenNumeric TValue="int" style="width: 100%" @bind-Value="deliveryCost.ServiceHours" />
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col offset-sm-3">
+        <RadzenButton ButtonType="Radzen.ButtonType.Submit" Icon="save" Text="Save" ButtonStyle="ButtonStyle.Primary" Click="@HandleSubmit" />
+        <RadzenButton ButtonStyle="ButtonStyle.Light" style="margin-left: 1rem" Text="Cancel" Click="@CancelDialog" />
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public int DeliveryId { get; set; }
+
+    [CascadingParameter]
+    private Dialog _dialog { get; set; }
+
+    private DeliveryCost deliveryCost = new DeliveryCost();
+
+    protected override async Task OnInitializedAsync()
+    {
+        deliveryCost = await MDS.GetDeliveryCostByIdAsync(DeliveryId);
+        
+        SetTitleContent();
+        DialogService.Refresh();
+    }
+
+    private async Task HandleSubmit()
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(deliveryCost.PostCode) || 
+                string.IsNullOrEmpty(deliveryCost.Pallet) || 
+                deliveryCost.Cost <= 0)
+            {
+                NotificationService.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Error,
+                    Summary = "Error",
+                    Detail = "Please fill in all required fields.",
+                    Duration = 4000
+                });
+                return;
+            }
+            
+            await MDS.UpdateDeliveryCostAsync(deliveryCost);
+            
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Success,
+                Summary = "Success",
+                Detail = "Delivery cost updated successfully",
+                Duration = 4000
+            });
+            
+            DialogService.Close(true);
+        }
+        catch (Exception ex)
+        {
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Error",
+                Detail = $"Failed to update delivery cost: {ex.Message}",
+                Duration = 4000
+            });
+        }
+    }
+
+    private void CancelDialog()
+    {
+        DialogService.Close(false);
+    }
+    
+    void SetTitleContent()
+    {
+        _dialog.Title = null; // clear default title
+        _dialog.Options.TitleContent = service =>
+        @<RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Start" Gap="10px">
+            <h5>Edit Delivery Cost</h5>
+        </RadzenStack>;
+    }
+} 

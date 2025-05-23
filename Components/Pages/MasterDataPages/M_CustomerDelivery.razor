@@ -1,0 +1,142 @@
+@page "/customerDelivery"
+@inject MasterDataServices MDS
+@inject DialogService DialogService
+
+<RadzenCard>
+    <h3>Customer Delivery Details</h3>
+
+    <hr/>
+    <div class="d-flex justify-content-between mb-4">
+        <RadzenButton Text="Create New Delivery Address"
+                      Icon="add_circle_outline"
+                      ButtonStyle="ButtonStyle.Primary"
+                      Click="@CreateButtonOnClick" />
+    </div>
+
+    <RadzenDataGrid Data="@customerDeliveries"
+                    TItem="CustomerDeliveryViewModel"
+                    AllowFiltering="true"
+                    AllowSorting="true"
+                    AllowPaging="true"
+                    PageSize="10"
+                    FilterMode="FilterMode.CheckBoxList"
+                    FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                    EmptyText="No delivery addresses found"
+                    @ref="grid">
+        <Columns>
+            <RadzenDataGridColumn Property="CustomerName" Title="Customer" Width="180px" />
+            <RadzenDataGridColumn Property="DeliveryName" Title="Delivery Name" Width="180px" />
+            <RadzenDataGridColumn Property="Address1" Title="Address Line 1" Width="180px" />
+            <RadzenDataGridColumn Property="Address2" Title="Address Line 2" Width="180px" />
+            <RadzenDataGridColumn Property="City" Title="City" Width="120px" />
+            <RadzenDataGridColumn Property="Postcode" Title="Postcode" Width="100px" />
+            <RadzenDataGridColumn Property="CountryName" Title="Country" Width="120px" />
+            <RadzenDataGridColumn TItem="CustomerDeliveryViewModel" Title="Actions" TextAlign="TextAlign.Center" Width="120px">
+                <Template Context="delivery">
+                    <RadzenButton Icon="edit"
+                                  ButtonStyle="ButtonStyle.Info"
+                                  Size="ButtonSize.Medium"
+                                  Variant="Variant.Flat"
+                                  Class="m-1"
+                                  Click="@(() => EditDelivery(delivery.DeliveryId))"
+                                  ToolTip="Edit Delivery Address" />
+                </Template>
+            </RadzenDataGridColumn>
+        </Columns>
+    </RadzenDataGrid>
+</RadzenCard>
+
+<style>
+    .customer-delivery-data-grid {
+        height: calc(100vh - 250px);
+        min-height: 400px;
+    }
+</style>
+
+@code {
+    private RadzenDataGrid<CustomerDeliveryViewModel> grid;
+    private List<CustomerDeliveryViewModel> customerDeliveries = new List<CustomerDeliveryViewModel>();
+    
+    public class CustomerDeliveryViewModel
+    {
+        public int DeliveryId { get; set; }
+        public int CustNo { get; set; }
+        public string CustomerName { get; set; }
+        public string DeliveryName { get; set; }
+        public string Address1 { get; set; }
+        public string Address2 { get; set; }
+        public string City { get; set; }
+        public string Postcode { get; set; }
+        public int CountryId { get; set; }
+        public string CountryName { get; set; }
+    }
+    
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        var deliveries = await MDS.GetAllCustomerDeliveryDetailsAsync();
+        var customers = await MDS.GetAllCustomersAsync();
+        var countries = await MDS.GetAllCountriesAsync();
+        
+        customerDeliveries = deliveries.Select(d => new CustomerDeliveryViewModel
+        {
+            DeliveryId = d.DeliveryId,
+            CustNo = d.CustNo,
+            CustomerName = customers.FirstOrDefault(c => c.CustNo == d.CustNo)?.CustName ?? "Unknown",
+            DeliveryName = d.DeliveryName,
+            Address1 = d.Address1 ?? "",
+            Address2 = d.Address2 ?? "",
+            City = d.City ?? "",
+            Postcode = d.Postcode ?? "",
+            CountryId = d.CountryId,
+            CountryName = countries.FirstOrDefault(c => c.CountryId == d.CountryId)?.CountryName ?? "Unknown"
+        }).ToList();
+    }
+    
+    private async Task CreateButtonOnClick()
+    {
+        var options = new DialogOptions() 
+        { 
+            Width = "90vw",
+            Height = "90vh",
+            CloseDialogOnOverlayClick = false,
+            Resizable = true,
+            Draggable = true
+        };
+        
+        var result = await DialogService.OpenAsync<AddCustomerDeliveryDialog>("New Delivery Address", 
+            options: options);
+            
+        if (result == true)
+        {
+            await LoadData();
+            await grid.Reload();
+        }
+    }
+
+    private async Task EditDelivery(int deliveryId)
+    {
+        var options = new DialogOptions() 
+        { 
+            Width = "90vw",
+            Height = "90vh",
+            CloseDialogOnOverlayClick = false,
+            Resizable = true,
+            Draggable = true
+        };
+        
+        var result = await DialogService.OpenAsync<EditCustomerDeliveryDialog>("Edit Delivery Address", 
+            new Dictionary<string, object>() { { "DeliveryId", deliveryId } },
+            options);
+            
+        if (result == true)
+        {
+            await LoadData();
+            await grid.Reload();
+        }
+    }
+} 
