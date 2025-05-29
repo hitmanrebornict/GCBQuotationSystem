@@ -36,11 +36,11 @@
             <RadzenDropDownDataGrid
             @bind-Value="selectedDelivery"
             Data="@deliveryAddresses"
-            Change="OnDeliveryChanged"
+            Change="@( async ()=> await OnDeliveryChanged(selectedDelivery))"
             TextProperty="DeliveryName"
             Placeholder="Select Delivery Address"
             Style="width: 100%"
-            DropDownWidth="600px">
+            >
                 <Columns>
                     <RadzenDropDownDataGridColumn Property="DeliveryName" Title="Delivery Name" Width="150px" />
                     <RadzenDropDownDataGridColumn Property="Address1" Title="Address 1" Width="150px" />
@@ -228,6 +228,8 @@
 
             if(deliveryAddresses.Count() == 1){
                 selectedDelivery = deliveryAddresses.First();
+                Console.WriteLine("in the OnCustomerCHanged");
+                await OnDeliveryChanged(selectedDelivery);
             }
             else{
                 selectedDelivery = new();
@@ -535,36 +537,27 @@
         data.PeriodTo = new DateTime(args.Year, args.Month, DateTime.DaysInMonth(args.Year, args.Month));
     }
 
-    async void OnDeliveryChanged(object value)
+    async Task OnDeliveryChanged(object value)
     {
+
         var localDeliveryCost = await MDS.GetDeliveryCostAsync();
 
-  
         string customerPostCode = selectedDelivery.Postcode;
-        
-        // Extract the first part of the postcode (e.g., "BD4" from "BD4 0SG")
-        string postCodePrefix = string.Empty;
-        if (!string.IsNullOrEmpty(customerPostCode))
-        {
-            // Split by space and take the first part, or just take the first few characters
-            postCodePrefix = customerPostCode.Contains(" ") 
-                ? customerPostCode.Split(' ')[0] 
-                : customerPostCode.Length >= 2 ? customerPostCode.Substring(0, 2) : customerPostCode;
-        }
 
-        // Find matching delivery costs where the customer's postcode prefix matches
-        // or is contained in the comma-separated list of postcodes
-        if (string.IsNullOrEmpty(customerPostCode) || string.IsNullOrEmpty(postCodePrefix))
+
+        // Find matching delivery costs where the customer's postcode is contained
+        // in the delivery cost postcodes
+        if (string.IsNullOrEmpty(customerPostCode))
         {
-            // If postcode is null or can't match, show the complete list
+            // If customer postcode is null or empty, show the complete list
             deliveryCost = localDeliveryCost.ToList();
+          
         }
         else
         {
             deliveryCost = localDeliveryCost.Where(dc => 
                 !string.IsNullOrEmpty(dc.PostCode) && 
-                (dc.PostCode.Contains(postCodePrefix) || 
-                 dc.PostCode.Split(',').Any(p => p.Trim() == postCodePrefix))
+                dc.PostCode.Contains(customerPostCode)
             ).ToList();
             
             // If no matches found, show the complete list
@@ -572,6 +565,7 @@
             {
                 deliveryCost = localDeliveryCost.ToList();
             }
+       
         }
 
         await InvokeAsync(StateHasChanged);
