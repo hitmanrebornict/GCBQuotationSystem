@@ -5,11 +5,15 @@
 @inject GenerateQuoteServices GenerateQuoteService
 @inject IJSRuntime JS
 @inject UserPreferenceSettings UserPreferenceSetting
+@inject NavigationManager NavigationManager
+@inject NotificationService NotificationService
 
 @using iText.Kernel.Pdf;
 @using iText.Layout;
 @using iText.Layout.Element;
 @using System.IO.Compression;
+
+@implements IDisposable
 
 <div class="container-fluid mb-4">
     <div class="row mb-3">
@@ -21,7 +25,16 @@
                 </Items>
             </RadzenSelectBar>
         </div>
-        <div class="col-md-6 d-flex justify-content-end">
+        <div class="col-md-6 d-flex justify-content-end align-items-center">
+            @if (hasCurrencyChanged)
+            {
+                <div class="me-3">
+                    <RadzenBadge Text="@($"Viewing in {UserPreferenceSetting.Currency}")" 
+                                BadgeStyle="BadgeStyle.Info" 
+                                class="me-2" />
+                </div>
+            }
+            
             <div class="btn-group">
                 @if (quote.StatusId != 3)
                 {
@@ -122,12 +135,13 @@
     }
 </div>
 
-
-
 @code {
     [Parameter]
     public int quoteID { get; set; }
 
+    // Add these fields to track currency changes
+    private string originalUserCurrency;
+    private bool hasCurrencyChanged = false;
 
     private Quote quote = new Quote();
     private Dictionary<string, decimal> terminalCosts = new();
@@ -139,7 +153,6 @@
 
     private string QuoteRemark, CustomerRemark;
 
-
     private List<CostSummaryRow> costMatrix;
     private List<string> periodColumns = new();
     private string status;
@@ -149,6 +162,9 @@
 
     protected override async Task OnInitializedAsync()
     {
+        // Store the original user currency preference
+        originalUserCurrency = UserPreferenceSetting.Currency;
+        
         quote = await QuoteDetailService.GetQuoteAsync(quoteID);
 
         if(quote != null){
@@ -156,7 +172,17 @@
             status = quote.Status.StatusName;
             QuoteRemark = quote.Remark;
             CustomerRemark = quote.CustomerRemark;
+            
+            // Switch to quote's currency if different from user preference
+            if (!string.IsNullOrEmpty(quote.Currency?.CurrencyCode) && 
+                quote.Currency.CurrencyCode != UserPreferenceSetting.Currency)
+            {
+                UserPreferenceSetting.Currency = quote.Currency.CurrencyCode;
+                UserPreferenceSetting.UpdateCultureBasedOnCurrency();
+                hasCurrencyChanged = true;
+            }
         }
+
         load = true;
 
         // Assuming quote has a list of recipes and their costs
@@ -191,97 +217,18 @@
             isDataLoaded = true;
         }
 
-        // // Step 1: Flatten all recipe entries by period and recipe code
-        // var grouped = quote.QuotationRecipes
-        // .GroupBy(r => r.Recipe.RecipeCode) // Group by RecipeCode
-        // .ToDictionary(
-        // g => g.Key,
-        // g => g.GroupBy(r => r.PeriodMonth.ToString("MMM yyyy"))
-        // .ToDictionary(
-        // period => period.Key,
-        // periodData => new
-        // {
-        // RMCost = periodData.Sum(x => x.QuotationRawMaterialCosts.Sum(c => c.CostAmount)),
-        // PKCost = periodData.Sum(x => x.QuotationPackagingCost?.CostAmount ?? 0),
-        // // DLVCost = periodData.Sum(x => x.QuotationDeliveryCost?.CostAmount ?? 0),
-        // PRMCost = periodData.Sum(x => x.QuotationPremiumCosts.Sum(c => c.CostAmount)),
-        // ADDCost = periodData.Sum(x => x.QuotationAdditionalCosts.Sum(c => c.CostAmount))
-        // })
-        // );
-
-        // // Step 2: Get all unique period columns (months)
-        // periodColumns = grouped.Values
-        // .SelectMany(r => r.Keys)
-        // .Distinct()
-        // .OrderBy(p => DateTime.ParseExact(p, "MMM yyyy", null))
-        // .ToList();
-
-        // // Step 3: Transform into rows by recipe code and cost type
-        // costMatrix = grouped.SelectMany(recipeGroup =>
-        // new List<CostSummaryRow>
-        // {
-        // new CostSummaryRow
-        // {
-        // RecipeCode = recipeGroup.Key,
-        // CostType = "Raw Material",
-        // PeriodCosts = recipeGroup.Value.ToDictionary(
-        // p => p.Key,
-        // p => p.Value.RMCost
-        // )
-        // },
-        // new CostSummaryRow
-        // {
-        // RecipeCode = recipeGroup.Key,
-        // CostType = "Packaging",
-        // PeriodCosts = recipeGroup.Value.ToDictionary(
-        // p => p.Key,
-        // p => p.Value.PKCost
-        // )
-        // },
-        // new CostSummaryRow
-        // {
-        // RecipeCode = recipeGroup.Key,
-        // CostType = "Delivery",
-        // PeriodCosts = recipeGroup.Value.ToDictionary(
-        // p => p.Key,
-        // p => p.Value.DLVCost
-        // )
-        // },
-        // new CostSummaryRow
-        // {
-        // RecipeCode = recipeGroup.Key,
-        // CostType = "Premium",
-        // PeriodCosts = recipeGroup.Value.ToDictionary(
-        // p => p.Key,
-        // p => p.Value.PRMCost
-        // )
-        // },
-        // new CostSummaryRow
-        // {
-        // RecipeCode = recipeGroup.Key,
-        // CostType = "Additional",
-        // PeriodCosts = recipeGroup.Value.ToDictionary(
-        // p => p.Key,
-        // p => p.Value.ADDCost
-        // )
-        // }
-        // }).ToList();
-
-        // // Step 4: Add a row for TotalCost (sum of all costs for each recipe across periods)
-        // foreach (var recipeCode in grouped.Keys)
-        // {
-        // var totalCostRow = new CostSummaryRow { RecipeCode = recipeCode, CostType = "Total Cost" };
-        // foreach (var period in periodColumns)
-        // {
-        // decimal totalCost = costMatrix
-        // .Where(row => row.RecipeCode == recipeCode)
-        // .Sum(row => row.PeriodCosts.TryGetValue(period, out var value) ? value : 0);
-        // totalCostRow.PeriodCosts[period] = totalCost;
-        // }
-        // costMatrix.Add(totalCostRow);
-        // }
-
         await InvokeAsync(StateHasChanged);
+    }
+
+    // Implement IDisposable to restore currency when leaving the page
+    public void Dispose()
+    {
+        // Restore original currency when leaving the page
+        if (hasCurrencyChanged && !string.IsNullOrEmpty(originalUserCurrency))
+        {
+            UserPreferenceSetting.Currency = originalUserCurrency;
+            UserPreferenceSetting.UpdateCultureBasedOnCurrency();
+        }
     }
 
     public class CostSummaryRow
@@ -291,7 +238,6 @@
         public Dictionary<string, decimal> PeriodCosts { get; set; } = new();
         public decimal TotalCost => PeriodCosts.Values.Sum();  // Calculate the sum of all period costs
     }
-
 
     private async Task ExportSummaryAndRedirect()
     {
@@ -484,26 +430,20 @@
         await QuoteDetailService.PostQuote(selectedQuote);
         await OnInitializedAsync();
 
-
         await InvokeAsync(StateHasChanged);
-
 
         NotificationService.Notify(NotificationSeverity.Success, "Quotation is updated successfully.");
     }
-
 
     private async Task completeQuote(Quote selectedQuote)
     {
         await QuoteDetailService.CompleteQuote(selectedQuote);
         await OnInitializedAsync();
 
-
         await InvokeAsync(StateHasChanged);
-
 
         NotificationService.Notify(NotificationSeverity.Success, "Quotation is updated successfully.");
     }
-
 
     private async Task updateQuote(Quote selectedQuote)
     {
@@ -513,14 +453,10 @@
 
         await QuoteDetailService.updateQuoteInDatabase(selectedQuote, QuoteDataService.OriginalRecipeTotalList.Select(r => r.QuotationRecipe1).ToList());
 
-        
-
         await OnInitializedAsync();
 
         await InvokeAsync(StateHasChanged);
 
         NotificationService.Notify(NotificationSeverity.Success, "Quotation is updated successfully.");
     }
-
-
 }

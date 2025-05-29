@@ -359,6 +359,8 @@ namespace GCBQuotationSystem.Components.Services
 				.Include(q => q.QuotationRecipes)
 					.ThenInclude(qr => qr.QuotationProductionCost)
 
+					.Include(q => q.Currency)
+
 				.Where(q => q.QuoteId == quoteID)
 				.AsSplitQuery()
 				.FirstOrDefaultAsync();
