@@ -1,4 +1,6 @@
-﻿@page "/SaveNewQuote"
+﻿@attribute [Authorize]
+
+@page "/SaveNewQuote"
 
 @inject QuoteDetailServices QuoteDetailService
 @inject QuoteDataServices QuoteDataService

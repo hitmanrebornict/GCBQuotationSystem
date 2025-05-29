@@ -1,15 +1,20 @@
 ﻿using GCBQuotationSystem.Models;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Radzen;
+using System.Diagnostics;
 
 namespace GCBQuotationSystem.Components.Services
 {
 	public class MasterDataServices
 	{
 		private QuotationSystemContext _dbContext;
+		private UserManager<IdentityUser> _userManager;
 
-		public MasterDataServices(QuotationSystemContext dbContext)
+		public MasterDataServices(QuotationSystemContext dbContext, UserManager<IdentityUser> userManager)
 		{
 			_dbContext = dbContext;
+			_userManager = userManager;
 		}
 
 		public async Task<RawMaterialPriceUpdate?> GetPriceUpdateByMonthAsync(DateOnly month)
@@ -328,6 +333,55 @@ namespace GCBQuotationSystem.Components.Services
 			{
 				// Log exception
 				return false;
+			}
+		}
+
+		public async Task<List<AspNetUser>> GetUserListAsync()
+		{
+			return await _dbContext.AspNetUsers
+				 .Include(r => r.Roles)
+				.ToListAsync();
+		}
+
+		public async Task insertUserDataIntoDatabase(string addedName, string selectedRole, string password, string email)
+		{
+			try
+			{
+				var user = new IdentityUser { UserName = addedName };
+				var result = await _userManager.CreateAsync(user, password);
+
+
+				if (result.Succeeded)
+				{
+					await _userManager.AddToRoleAsync(user, selectedRole);
+					var setEmailResult = await _userManager.SetEmailAsync(user, email);
+				}
+				else
+				{
+				}
+
+				foreach (var error in result.Errors)
+				{
+					throw new Exception(error.Description);
+				}
+
+
+
+				var aspnetuser = await _dbContext.AspNetUsers.FirstOrDefaultAsync(u => u.UserName == addedName);
+
+				if (aspnetuser != null)
+				{
+					aspnetuser.Active = true;
+
+					_dbContext.AspNetUsers.Update(aspnetuser);
+					await _dbContext.SaveChangesAsync();
+				}
+
+
+			}
+
+			catch (Exception ex)
+			{
 			}
 		}
 	}

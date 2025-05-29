@@ -1,4 +1,6 @@
-﻿@page "/settings"
+﻿@attribute [Authorize]
+
+@page "/settings"
 
 @inject UserPreferenceSettings UserPreferenceSetting
 @inject ProtectedLocalStorage localStorage

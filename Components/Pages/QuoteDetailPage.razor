@@ -1,4 +1,6 @@
-﻿@page "/QuoteDetailPage"
+﻿@attribute [Authorize]
+
+@page "/QuoteDetailPage"
 @inject QuoteDataServices QuoteDataService
 @inject DialogService DialogServices
 @inject QuoteDetailServices QuoteDetailService

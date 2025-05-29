@@ -1,0 +1,81 @@
+﻿@page "/user"
+@using GCBQuotationSystem.Models
+@using GCBQuotationSystem.Components
+@inject DialogService dialogService
+@inject MasterDataServices MDS
+
+<div class="d-flex justify-content-between mb-4">
+	<RadzenButton Text="Create New User"
+				  Icon="add_circle_outline"
+				  ButtonStyle="ButtonStyle.Primary"
+				  Click="@CreateButtonOnClick" />
+</div>
+
+<RadzenDataGrid ref="@userGrid" Data="@userList" TItem="AspNetUser"
+				AllowFiltering="true" AllowPaging="true" AllowSorting="true" AllowColumnResize="true"
+				PageSize="20" CellDoubleClick="onAspNetUserCellDoubleClick" Responsive="true"
+				FilterMode="FilterMode.CheckBoxList">
+	<Columns>
+
+		<RadzenDataGridColumn Property="UserName" Title="Username" />
+		<RadzenDataGridColumn Title="Roles">
+			<Template Context="user">
+				@if (user.Roles.Any())
+				{
+					@string.Join(", ", user.Roles.Select(r => r.Name))
+				}
+				else
+				{
+					<span>No Roles Assigned</span>
+				}
+			</Template>
+		</RadzenDataGridColumn>
+		<RadzenDataGridColumn Property="Active" Title="Active" />
+
+	</Columns>
+</RadzenDataGrid>
+
+@code {
+	RadzenDataGrid<AspNetUser> userGrid = new RadzenDataGrid<AspNetUser>();
+	private List<AspNetUser> userList = new List<AspNetUser>();
+
+
+	protected async override Task OnInitializedAsync()
+	{
+		userList = await MDS.GetUserListAsync();
+	
+		await base.OnInitializedAsync();
+	}
+
+	private async Task onAspNetUserCellDoubleClick(DataGridCellMouseEventArgs<AspNetUser> args)
+	{
+
+		await dialogService.OpenAsync<EditUserDialog>("Edit User Page", new Dictionary<string, object>{
+			{ "selectedUser", args.Data }
+			
+			});
+
+
+	}
+
+	private async Task CreateButtonOnClick()
+	{
+		var options = new DialogOptions()
+		{
+			Width = "90vw",
+			Height = "90vh",
+			CloseDialogOnOverlayClick = false,
+			Resizable = true,
+			Draggable = true
+		};
+
+		var result = await DialogService.OpenAsync<AddUserDialog>("New User",
+			options: options);
+
+		if (result == true)
+		{
+			userList = await MDS.GetUserListAsync();
+			await InvokeAsync(StateHasChanged);
+		}
+	}
+}

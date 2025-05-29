@@ -1,6 +1,9 @@
-﻿<div class="top-row ps-3 navbar navbar-dark" style="background-color:#121212;">
-    <div class="container-fluid">   
-        <a class="navbar-brand" href="">GCBQuoteSystem</a>
+﻿<div class="top-row navbar navbar-dark" style="background-color:#121212;">
+    <div class="container-fluid d-flex align-items-center justify-content-center">   
+        <a class="navbar-brand d-flex align-items-center text-decoration-none" href="">
+            <img src="/assets/CocoaIcon.png" alt="Logo" style="height:32px; ">
+            <span style="font-size:1.25rem; font-weight:600; color:#ffffff;">QuotationSystem</span>
+        </a>
     </div>
 </div>
 
@@ -23,7 +26,9 @@
         <!-- Master Data Dropdown -->
         <div class="nav-item px-3">
             <div class="nav-link dropdown-toggle" @onclick="ToggleMasterDataDropdown" >
-                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Master Data
+                <span class="material-symbols-outlined" style="margin-right:8px;">
+                    database
+                </span> Master Data
                 <span class="dropdown-arrow @(masterDataExpanded ? "expanded" : "")"></span>
             </div>
             <div class="dropdown-content @(masterDataExpanded ? "show" : "")">
@@ -51,12 +56,17 @@
                 <NavLink class="dropdown-link" href="premium">
                     <span class="bi bi-star" aria-hidden="true"></span> Premium
                 </NavLink>
+                <NavLink class="dropdown-link" href="user">
+                    <span class="bi bi-star" aria-hidden="true"></span> User
+                </NavLink>
             </div>
         </div>
 
         <div class="nav-item px-3">
             <NavLink class="nav-link" href="settings">
-                <span class="bi bi-gear-nav-menu" aria-hidden="true"></span> Settings
+                <span class="material-symbols-outlined" style="margin-right:8px;">
+                    settings
+                </span> Settings
             </NavLink>
         </div>
     </nav>

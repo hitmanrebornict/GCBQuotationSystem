@@ -1,4 +1,6 @@
-﻿@page "/"
+﻿@attribute [Authorize]
+
+@page "/"
 @inject MasterDataServices MDS
 @inject NotificationService NotificationService
 @inject DialogService DialogService
@@ -122,7 +124,7 @@
                     Style="width:100%"
                     AllowFiltering="true"
                     FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
-                    Placeholder="Select packaging material">
+                    >
                         <Columns>
                             <RadzenDropDownDataGridColumn Property="Type" Title="Type" Width="100px" />
                             <RadzenDropDownDataGridColumn Property="Packaging" Title="Packaging" Width="150px" />

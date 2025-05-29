@@ -1,0 +1,91 @@
+﻿@inject DialogService dialogService
+@inject MasterDataServices MDS
+
+<div class="col-md-12">
+    <div style="margin-bottom: 1rem" class="row">
+        <div class="col-md-3">
+            <RadzenLabel Text="Username" Component="UserName" style="width: 100%">
+            </RadzenLabel>
+        </div>
+        <div class="col-md-9">
+            <RadzenTextBox MaxLength="100" style="width: 100%" @bind-Value="addedName" Name="ParameterName" Placeholder="Username" />
+        </div>
+    </div>
+    <div style="margin-bottom: 1rem" class="row">
+        <div class="col-md-3">
+            <RadzenLabel Text="Password" Component="UserName" style="width: 100%">
+            </RadzenLabel>
+        </div>
+        <div class="col-md-9">
+            <RadzenPassword MaxLength="100" style="width: 100%" @bind-Value="password" Name="ParameterName" Placeholder="Password" />
+        </div>
+    </div>
+    <div style="margin-bottom: 1rem" class="row">
+        <div class="col-md-3">
+            <RadzenLabel Text="Confirm Password" Component="UserName" style="width: 100%">
+            </RadzenLabel>
+        </div>
+        <div class="col-md-9">
+            <RadzenPassword MaxLength="100" style="width: 100%" @bind-Value="confirmPassword" Name="ParameterName" Placeholder="Confirm Password" />
+        </div>
+    </div>
+    <div style="margin-bottom: 1rem" class="row">
+        <div class="col-md-3">
+            <RadzenLabel Text="Email" Component="Phase" style="width: 100%">
+            </RadzenLabel>
+        </div>
+        <div class="col-md-9">
+            <RadzenTextBox style="width: 100%" @bind-Value="email" Name="Email" Placeholder="Please enter email... (selective)" />
+        </div>
+    </div>
+    <div style="margin-bottom: 1rem" class="row">
+        <div class="col-md-3">
+            <RadzenLabel Text="Role" Component="Role" style="width: 100%">
+            </RadzenLabel>
+        </div>
+        <div class="col-md-9">
+            <RadzenDropDown TValue="string" Data=@roleList @bind-Value="selectedRole" style="width: 100%"></RadzenDropDown>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col offset-sm-3">
+        <RadzenButton ButtonType="Radzen.ButtonType.Submit" Icon="save" Text="Save" ButtonStyle="ButtonStyle.Primary" Click="@(() => buttonUserDataSubmitOnClick(addedName, selectedRole, password, confirmPassword,email))" />
+
+        <RadzenButton ButtonStyle="ButtonStyle.Light" style="margin-left: 1rem" Text="Cancel" Click="@buttonCancelOnClick" />
+    </div>
+</div>
+
+@code {
+    private string selectedRole = "Maintenance Operator", password, confirmPassword, email;
+    private string addedName;
+
+    private List<string> roleList = new List<string>()
+    {
+            "Admin", "User", "Marketing User", "Marketing Admin"
+    };
+
+    public void buttonCancelOnClick()
+    {
+        dialogService.Close();
+    }
+
+    private async Task buttonUserDataSubmitOnClick(string addedName, string selectedRole, string password, string confirmPassword,  string email)
+    {
+        if (password != confirmPassword)
+        {
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Error",
+                Detail = "The password is not the same as the confirm password.",
+                Duration = 4000
+            });
+            return;
+        }
+
+        await MDS.insertUserDataIntoDatabase(addedName, selectedRole, password, email);
+        dialogService.Close();
+    }
+}

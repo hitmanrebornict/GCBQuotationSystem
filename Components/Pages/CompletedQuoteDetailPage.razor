@@ -1,4 +1,6 @@
-﻿@page "/QuoteDetailPage/{quoteID:int}"
+﻿@attribute [Authorize]
+
+@page "/QuoteDetailPage/{quoteID:int}"
 
 @inject QuoteDetailServices QuoteDetailService
 @inject QuoteDataServices QuoteDataService

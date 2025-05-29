@@ -1,4 +1,6 @@
-﻿@page "/QuotationList"
+﻿@attribute [Authorize]
+
+@page "/QuotationList"
 @inject QuoteDetailServices QuoteDetailService
 @inject NavigationManager NavigationManager
 
