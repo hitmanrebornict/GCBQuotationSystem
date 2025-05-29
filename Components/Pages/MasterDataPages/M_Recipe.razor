@@ -3,49 +3,46 @@
 @inject MasterDataServices MDS
 
 <RadzenCard>
-    <h3>Recipe </h3>
-
-  
-    <hr/>
+    <h3>Recipe</h3>
+    <hr />
     <div class="d-flex justify-content-between mb-4">
         <RadzenButton Text="Create New Recipe"
                       Icon="add_circle_outline"
                       ButtonStyle="ButtonStyle.Primary"
                       Click="@CreateButtonOnClick" />
     </div>
-   
 
-
-        <RadzenDataGrid Data="@recipes"
-                        TItem="Recipe"
-                        AllowFiltering="true"
-                        AllowSorting="true"
-                        AllowPaging="true"
-                        PageSize="10"
-                        FilterMode="FilterMode.CheckBoxList"
-                        FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
-                        EmptyText="No recipes found"
-                        >
-            <Columns>
-                <RadzenDataGridColumn Property="RecipeCode" Title="Recipe Code" Width="150px" />
-                <RadzenDataGridColumn Property="RecipeDesc" Title="Recipe Description" />
-                <RadzenDataGridColumn TItem="Recipe" Title="Actions" TextAlign="TextAlign.Center" Width="120px">
-                    <Template Context="recipe">
-                        <RadzenButton Icon="edit"
-                                      ButtonStyle="ButtonStyle.Info"
-                                      Size="ButtonSize.Medium"
-                                      Variant="Variant.Flat"
-                                      Class="m-1"
-                                      Click="@(() => EditRecipe(recipe))"
-                                      ToolTip="Edit Recipe" />
-                    </Template>
-                </RadzenDataGridColumn>
-            </Columns>
-        </RadzenDataGrid>
-
-
+    <RadzenDataGrid Data="@recipes"
+                    TItem="Recipe"
+                    AllowFiltering="true"
+                    AllowSorting="true"
+                    AllowPaging="true"
+                    PageSize="10"
+                    FilterMode="FilterMode.CheckBoxList"
+                    FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                    EmptyText="No recipes found">
+        <Columns>
+            <RadzenDataGridColumn Property="RecipeCode" Title="Recipe Code" Width="150px" />
+            <RadzenDataGridColumn Property="RecipeDesc" Title="Recipe Description" />
+            <RadzenDataGridColumn Property="Active" Title="Active" Width="80px">
+                <Template Context="recipe">
+                    <RadzenCheckBox Value="@recipe.Active" Disabled="true" />
+                </Template>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn TItem="Recipe" Title="Actions" TextAlign="TextAlign.Center" Width="120px">
+                <Template Context="recipe">
+                    <RadzenButton Icon="edit"
+                                  ButtonStyle="ButtonStyle.Info"
+                                  Size="ButtonSize.Medium"
+                                  Variant="Variant.Flat"
+                                  Class="m-1"
+                                  Click="@(() => EditRecipe(recipe))"
+                                  ToolTip="Edit Recipe" />
+                </Template>
+            </RadzenDataGridColumn>
+        </Columns>
+    </RadzenDataGrid>
 </RadzenCard>
-    
 
 <style>
     .recipe-data-grid {
@@ -56,6 +53,11 @@
 
 @code {
     private List<Recipe> recipes = new List<Recipe>();
+    
+    protected override async Task OnInitializedAsync()
+    {
+        recipes = await MDS.GetRecipesAsync();
+    }
     
     private async Task CreateButtonOnClick()
     {
@@ -98,10 +100,5 @@
             recipes = await MDS.GetRecipesAsync();
             await InvokeAsync(StateHasChanged);
         }
-    }
-
-    protected override async Task OnInitializedAsync()
-    {
-        recipes = await MDS.GetRecipesAsync();
     }
 }

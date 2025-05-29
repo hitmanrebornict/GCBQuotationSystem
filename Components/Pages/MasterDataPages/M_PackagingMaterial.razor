@@ -4,13 +4,12 @@
 
 <RadzenCard>
     <h3>Packaging Material</h3>
-
-    <hr/>
+    <hr />
     <div class="d-flex justify-content-between mb-4">
         <RadzenButton Text="Create New Packaging Material"
                       Icon="add_circle_outline"
                       ButtonStyle="ButtonStyle.Primary"
-                      Click="@OpenAddDialog" />
+                      Click="@CreateButtonOnClick" />
     </div>
 
     <RadzenDataGrid Data="@packagingMaterials"
@@ -21,31 +20,18 @@
                     PageSize="10"
                     FilterMode="FilterMode.CheckBoxList"
                     FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
-                    EmptyText="No packaging materials found"
-                    @ref="grid">
+                    EmptyText="No packaging materials found">
         <Columns>
             <RadzenDataGridColumn Property="Type" Title="Type" Width="120px" />
             <RadzenDataGridColumn Property="Packaging" Title="Packaging" Width="150px" />
             <RadzenDataGridColumn Property="Product" Title="Product" Width="150px" />
             <RadzenDataGridColumn Property="Weight" Title="Weight" Width="100px" />
-            <RadzenDataGridColumn Property="Cost100kgEuro" Title="Cost (€/100kg)" Width="130px">
-                <Template Context="data">
-                    @(data.Cost100kgEuro?.ToString("C2"))
-                </Template>
-            </RadzenDataGridColumn>
-            <RadzenDataGridColumn Property="CostPerTon" Title="Cost (€/ton)" Width="130px">
-                <Template Context="data">
-                    @(data.CostPerTon?.ToString("C2"))
-                </Template>
-            </RadzenDataGridColumn>
-            <RadzenDataGridColumn Property="ExchangeRate" Title="Exchange Rate" Width="130px">
-                <Template Context="data">
-                    @(data.ExchangeRate?.ToString("F4"))
-                </Template>
-            </RadzenDataGridColumn>
+            <RadzenDataGridColumn Property="Cost100kgEuro" Title="Cost (€/100kg)" Width="130px" FormatString="{0:C2}" />
+            <RadzenDataGridColumn Property="CostPerTon" Title="Cost (€/ton)" Width="130px" FormatString="{0:C2}" />
+            <RadzenDataGridColumn Property="ExchangeRate" Title="Exchange Rate" Width="130px" FormatString="{0:F4}" />
             <RadzenDataGridColumn Property="Active" Title="Active" Width="80px">
                 <Template Context="data">
-                    <RadzenSwitch @bind-Value="data.Active" Disabled="true" />
+                    <RadzenCheckBox Value="@data.Active" Disabled="true" />
                 </Template>
             </RadzenDataGridColumn>
             <RadzenDataGridColumn TItem="PackagingMaterial" Title="Actions" TextAlign="TextAlign.Center" Width="120px">
@@ -55,7 +41,7 @@
                                   Size="ButtonSize.Medium"
                                   Variant="Variant.Flat"
                                   Class="m-1"
-                                  Click="@(() => OpenEditDialog(material.PmId))"
+                                  Click="@(() => EditPackagingMaterial(material))"
                                   ToolTip="Edit Packaging Material" />
                 </Template>
             </RadzenDataGridColumn>
@@ -71,20 +57,14 @@
 </style>
 
 @code {
-    private RadzenDataGrid<PackagingMaterial> grid;
     private List<PackagingMaterial> packagingMaterials = new List<PackagingMaterial>();
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadData();
-    }
-
-    private async Task LoadData()
-    {
         packagingMaterials = await MDS.GetPackagingMaterial();
     }
 
-    private async Task OpenAddDialog()
+    private async Task CreateButtonOnClick()
     {
         var options = new DialogOptions() 
         { 
@@ -100,12 +80,12 @@
             
         if (result == true)
         {
-            await LoadData();
-            await grid.Reload();
+            packagingMaterials = await MDS.GetPackagingMaterial();
+            await InvokeAsync(StateHasChanged);
         }
     }
 
-    private async Task OpenEditDialog(int pmId)
+    private async Task EditPackagingMaterial(PackagingMaterial material)
     {
         var options = new DialogOptions() 
         { 
@@ -117,13 +97,13 @@
         };
         
         var result = await DialogService.OpenAsync<EditPackagingMaterialDialog>("Edit Packaging Material", 
-            new Dictionary<string, object>() { { "PmId", pmId } },
+            new Dictionary<string, object>() { { "PmId", material.PmId } },
             options);
             
         if (result == true)
         {
-            await LoadData();
-            await grid.Reload();
+            packagingMaterials = await MDS.GetPackagingMaterial();
+            await InvokeAsync(StateHasChanged);
         }
     }
 } 

@@ -21,6 +21,8 @@ public partial class CustomerDeliveryDetail
 
     public int CountryId { get; set; }
 
+    public bool Active { get; set; }
+
     public virtual Country Country { get; set; } = null!;
 
     public virtual Customer CustNoNavigation { get; set; } = null!;

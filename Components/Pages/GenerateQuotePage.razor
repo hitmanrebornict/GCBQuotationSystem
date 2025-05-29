@@ -26,7 +26,10 @@
             ValueProperty="CustNo"
             Placeholder="Select Customer"
             Change="OnCustomerChanged"
-            Class="w-100" />
+            FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive" 
+            FilterOperator="StringFilterOperator.StartsWith" 
+            AllowFiltering="true"
+                            Style="width: 100%" />
         </div>
         <div class="col-md-4 mb-3">
             <RadzenText TextStyle="TextStyle.Subtitle2" class="mb-2">Delivery Address</RadzenText>
@@ -84,7 +87,10 @@
                     Data="@recipes"
                     TextProperty="RecipeCode"
                     Style="width:100%"
-                    Change="@(() => OnRecipeSelected(data))" />
+                    Change="@(() => OnRecipeSelected(data))"
+                                    FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                                    FilterOperator="StringFilterOperator.StartsWith"
+                                    AllowFiltering="true" />
                 </Template>
             </RadzenDataGridColumn>
 
@@ -125,6 +131,15 @@
                 </Template>
             </RadzenDataGridColumn>
 
+            <RadzenDataGridColumn TItem="RecipePeriod" Title="Production Cost">
+                <Template Context="data">
+                    <RadzenDropDown @bind-Value="data.SelectedProductionCost"
+                    Data="@productionCosts"
+                      TextProperty="ProductType"
+                    Style="width:100%" />
+                </Template>
+            </RadzenDataGridColumn>
+
             <RadzenDataGridColumn TItem="RecipePeriod" Title="Premium">
                 <Template Context="data">
                     <RadzenDropDown @bind-Value="data.SelectedPremiumList"
@@ -141,47 +156,12 @@
 </RadzenCard>
 
 
-
-
-
-
-@*  <h3>Raw Material Price (By Quarter)</h3>
-
-    @foreach (var quarterGroup in recipeTotalCostList
-       .GroupBy(r => r.Quarter)
-       .Select(group => group.First())) // Only select the first entry of each quarter group (unique quarters)
-    {
-        <h4>@quarterGroup.Quarter</h4> <!-- Display quarter like Q1/2025 -->
-
-        <RadzenDataGrid Data="@quarterGroup.QuotationRecipe1.QuotationRawMaterialCosts" TItem="QuotationRawMaterialCost" @ref="RawMaterialGrid">
-            <Columns>
-                <RadzenDataGridColumn TItem="QuotationRawMaterialCost" Property="MaterialName" Title="Material" />
-                <RadzenDataGridColumn TItem="QuotationRawMaterialCost" Property="CostAmount" Title="Cost" >
-                    <Template Context="data">
-                            @data.CostAmount
-                        </Template>
-                    <EditTemplate Context="data">
-                        <RadzenNumeric TValue="decimal" @bind-Value="data.CostAmount" />
-                    </EditTemplate>
-                </RadzenDataGridColumn>
-                <RadzenDataGridColumn Context="order" Filterable="false" Sortable="false" TextAlign="TextAlign.Right" Frozen="true" FrozenPosition="FrozenColumnPosition.Right">
-                    <Template Context="order">
-                        <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Light" Variant="Variant.Flat" Size="ButtonSize.Medium" class="rz-my-1 rz-ms-1" Click="@(args => EditRow(order))" @onclick:stopPropagation="true" />
-                    </Template>
-                    <EditTemplate Context="order">
-                        <RadzenButton Icon="close" ButtonStyle="ButtonStyle.Light" Variant="Variant.Flat" Size="ButtonSize.Medium" class="rz-my-1 rz-ms-1" aria-label="Cancel" Click="@((args) => CancelEdit(order))" />
-                    </EditTemplate>
-                </RadzenDataGridColumn>
-            </Columns>
-        </RadzenDataGrid> *@
-
-
-
 @code {
     // Lists to hold the data
     List<Customer> customers = new();
     List<CustomerDeliveryDetail> deliveryAddresses = new();
     DeliveryCost selectedDeliveryCost = new();
+    List<ProductionCost> productionCosts = new();
 
     public class RecipePeriod
     {
@@ -191,6 +171,7 @@
         public List<Premium> SelectedPremiumList { get; set; } = new();
         public Decimal SelectedQuantity { get; set; } = 1000;
         public PackagingMaterial SelectedPackagingMaterial { get; set; }
+        public ProductionCost SelectedProductionCost { get; set; }
     }
 
     private List<RecipePeriod> RecipePeriods = new();
@@ -225,9 +206,11 @@
         recipes = await MDS.GetRecipesAsync();
         var recipeGroupBy = recipes.GroupBy(r => r.ProductType.TypeName).ToList();
         premiums = await MDS.GetAllPremiumsAsync();
+        productionCosts = await MDS.GetProductionCostsAsync();
 
         packagingMaterials = await MDS.GetAllPackagingMaterialsAsync();
         deliveryCost = await MDS.GetDeliveryCostAsync();
+
 
         RecipePeriods.Add(new RecipePeriod(){
             PeriodFrom = DateTime.Now,
@@ -276,6 +259,8 @@
             NotificationService.Notify(NotificationSeverity.Error, "Validation Error", "Please select a delivery cost.");
             return;
         }
+
+
 
         // Validate recipe periods
         if (!RecipePeriods.Any(rp => rp.SelectedRecipe != null))
@@ -426,6 +411,16 @@
                         quotationRecipe.QuotationPremiumCosts = quotationPremiumList;
                     }
 
+                    //Add Production Cost into QuotationRecipe
+                    if (recipePeriod.SelectedProductionCost != null)
+                    {
+                        quotationRecipe.QuotationProductionCost = new QuotationProductionCost
+                        {
+                            ProductType = recipePeriod.SelectedProductionCost.ProductType,
+                            ProductTypeCost = recipePeriod.SelectedProductionCost.ProductTypeCost,
+                        };
+                    }
+
                     totalRawMaterialCost = quotationRawMaterialCostsList.Sum(s => s.CostAmount);
                     yieldCost = totalRawMaterialCost * 1 / 100;
 
@@ -448,6 +443,11 @@
                            CostAmount = selectedDeliveryCost.Cost,
                         };
 
+                    quotationRecipe.QuotationProductionCost = new QuotationProductionCost
+                    {
+                        ProductType =  recipePeriod.SelectedProductionCost.ProductType,
+                        ProductTypeCost = recipePeriod.SelectedProductionCost.ProductTypeCost
+                    };
 
 
                     foreach(var ac in additionalCostsList)
@@ -456,14 +456,14 @@
                             ? totalRawMaterialCost * 1 / 100 
                             : ac.DefaultAmount;
 
-                        var addtionalCost = new QuotationAdditionalCost
+                        var additionalCost = new QuotationAdditionalCost
                         {
                             CostName = ac.CostName,
                             Cost = ac.DefaultAmount,
                             CostAmount = costAmount,
                         };
 
-                        quotationRecipe.QuotationAdditionalCosts.Add(addtionalCost);
+                        quotationRecipe.QuotationAdditionalCosts.Add(additionalCost);
                     }
 
                     // Add each QuotationRecipe to the list in memory
@@ -474,9 +474,8 @@
                     quotationRecipe.QuotationRawMaterialCosts.Sum(x => x.CostAmount) +
                     quotationRecipe.QuotationPackagingCost.CostAmount +
                     quotationRecipe.QuotationDeliveryCost.CostAmount +
-                    quotationRecipe.QuotationAdditionalCosts.Sum(x => x.CostAmount)
-
-                    ;
+                    quotationRecipe.QuotationAdditionalCosts.Sum(x => x.CostAmount) + 
+                    quotationRecipe.QuotationProductionCost.ProductTypeCost;
 
                     var recipeTotalCost = new RecipeTotalCost
                         {

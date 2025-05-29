@@ -64,7 +64,10 @@ namespace GCBQuotationSystem.Components.Services
 		/// </summary>
 		public async Task<List<Customer>> GetAllCustomersAsync()
 		{
-			return await _dbContext.Customers.AsNoTracking().ToListAsync();
+			return await _dbContext.Customers
+				.Where(c => c.Active)
+				.OrderBy(c => c.CustName)
+				.AsNoTracking().ToListAsync();
 		}
 
 		/// <summary>
@@ -93,6 +96,8 @@ namespace GCBQuotationSystem.Components.Services
 									   .ThenInclude(ri => ri.Material)
 									.Include(r => r.PackagingMaterial)
 									.Include(r => r.ProductType)
+									.Where(r => r.Active)
+									.OrderBy(r => r.RecipeCode)
 									.AsNoTracking()
 								   .ToListAsync();
 		}
@@ -104,11 +109,19 @@ namespace GCBQuotationSystem.Components.Services
 			return await _dbContext.Customers.Where(c => c.Active == true).ToListAsync();
 		}
 
-		public async Task<Customer> AddCustomerAsync(Customer customer)
+		public async Task<bool> AddCustomerAsync(Customer customer)
 		{
-			_dbContext.Customers.Add(customer);
-			await _dbContext.SaveChangesAsync();
-			return customer;
+			try
+			{
+				_dbContext.Customers.Add(customer);
+				await _dbContext.SaveChangesAsync();
+				return true;
+			}
+			catch (Exception ex)
+			{
+				// Log exception
+				return false;
+			}
 		}
 
 		public async Task<List<Country>> GetAllCountriesAsync()
@@ -287,6 +300,35 @@ namespace GCBQuotationSystem.Components.Services
 		{
 			_dbContext.CustomerDeliveryDetails.Update(deliveryDetail);
 			await _dbContext.SaveChangesAsync();
+		}
+
+		public async Task<List<ProductionCost>> GetProductionCostsAsync()
+		{
+			return await _dbContext.ProductionCosts
+						.Where(p => p.Active)
+						.ToListAsync();
+		}
+
+		public async Task<Customer?> GetCustomerByIdAsync(int custNo)
+		{
+			return await _dbContext.Customers
+				.Include(c => c.Country)
+				.FirstOrDefaultAsync(c => c.CustNo == custNo);
+		}
+
+		public async Task<bool> UpdateCustomerAsync(Customer customer)
+		{
+			try
+			{
+				_dbContext.Customers.Update(customer);
+				await _dbContext.SaveChangesAsync();
+				return true;
+			}
+			catch (Exception ex)
+			{
+				// Log exception
+				return false;
+			}
 		}
 	}
 }

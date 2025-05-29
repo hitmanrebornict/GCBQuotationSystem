@@ -6,26 +6,59 @@
 <PageTitle>Customer</PageTitle>
 
 <RadzenCard>
-    <h3>Raw Material Prices</h3>
+    <h3>Customer</h3>
+    <hr />
+    <div class="d-flex justify-content-between mb-4">
+        <RadzenButton Text="Create New Customer"
+                      Icon="add_circle_outline"
+                      ButtonStyle="ButtonStyle.Primary"
+                      Click="@CreateButtonOnClick" />
+    </div>
 
-<RadzenButton ButtonType="ButtonType.Button" Text="Add Customer" Click="AddCustomer" />
-
-<RadzenDataGrid TItem="Customer" Data="@Customers" AllowFiltering="true" AllowSorting="true" AllowPaging="true" PageSize="10" FilterMode="FilterMode.CheckBoxList">
-    <Columns>
-        <RadzenDataGridColumn TItem="Customer" Property="CustName" Title="Customer Name" />
-        <RadzenDataGridColumn TItem="Customer" Property="InvoiceAddress1" Title="Invoice Address 1" />
-        <RadzenDataGridColumn TItem="Customer" Property="InvoiceAddress2" Title="Invoice Address 2" />
-        <RadzenDataGridColumn TItem="Customer" Property="InvoiceCity" Title="Invoice City" />
-        <RadzenDataGridColumn TItem="Customer" Property="InvoicePostcode" Title="Invoice Postcode" />
-        <RadzenDataGridColumn TItem="Customer" Property="Country.CountryName" Title="Country" />
-    </Columns>
-</RadzenDataGrid>
-
+    <RadzenDataGrid TItem="Customer" 
+                    Data="@Customers" 
+                    AllowFiltering="true" 
+                    AllowSorting="true" 
+                    AllowPaging="true" 
+                    PageSize="10" 
+                    FilterMode="FilterMode.CheckBoxList"
+                    FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                    EmptyText="No customers found">
+        <Columns>
+            <RadzenDataGridColumn TItem="Customer" Property="CustName" Title="Customer Name" Width="200px" />
+            <RadzenDataGridColumn TItem="Customer" Property="InvoiceAddress1" Title="Invoice Address 1" Width="180px" />
+            <RadzenDataGridColumn TItem="Customer" Property="InvoiceAddress2" Title="Invoice Address 2" Width="180px" />
+            <RadzenDataGridColumn TItem="Customer" Property="InvoiceCity" Title="Invoice City" Width="120px" />
+            <RadzenDataGridColumn TItem="Customer" Property="InvoicePostcode" Title="Invoice Postcode" Width="120px" />
+            <RadzenDataGridColumn TItem="Customer" Property="Country.CountryName" Title="Country" Width="120px" />
+            <RadzenDataGridColumn Property="Active" Title="Active" Width="80px">
+                <Template Context="customer">
+                    <RadzenCheckBox Value="@customer.Active" Disabled="true" />
+                </Template>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn TItem="Customer" Title="Actions" TextAlign="TextAlign.Center" Width="120px">
+                <Template Context="customer">
+                    <RadzenButton Icon="edit"
+                                  ButtonStyle="ButtonStyle.Info"
+                                  Size="ButtonSize.Medium"
+                                  Variant="Variant.Flat"
+                                  Class="m-1"
+                                  Click="@(() => EditCustomer(customer))"
+                                  ToolTip="Edit Customer" />
+                </Template>
+            </RadzenDataGridColumn>
+        </Columns>
+    </RadzenDataGrid>
 </RadzenCard>
 
+<style>
+    .customer-data-grid {
+        height: calc(100vh - 250px);
+        min-height: 400px;
+    }
+</style>
 
 @code {
-
     private List<Customer> Customers = new List<Customer>();
 
     protected override async Task OnInitializedAsync()
@@ -33,9 +66,42 @@
         await LoadCustomers();
     }   
 
-    private async void AddCustomer()
+    private async Task CreateButtonOnClick()
     {
-          var result = await DialogService.OpenAsync<AddCustomerDialog>("Add Customer");
+        var options = new DialogOptions() 
+        { 
+            Width = "90vw",
+            Height = "90vh",
+            CloseDialogOnOverlayClick = false,
+            Resizable = true,
+            Draggable = true
+        };
+        
+        var result = await DialogService.OpenAsync<AddCustomerDialog>("New Customer", 
+            options: options);
+            
+        if (result == true)
+        {
+            await LoadCustomers();
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task EditCustomer(Customer customer)
+    {
+        var options = new DialogOptions() 
+        { 
+            Width = "90vw",
+            Height = "90vh",
+            CloseDialogOnOverlayClick = false,
+            Resizable = true,
+            Draggable = true
+        };
+        
+        var result = await DialogService.OpenAsync<EditCustomerDialog>("Edit Customer", 
+            new Dictionary<string, object>() { { "CustNo", customer.CustNo } },
+            options);
+            
         if (result == true)
         {
             await LoadCustomers();
@@ -47,5 +113,4 @@
     {
         Customers = await MasterDataServices.GetAllCustomersAsync();
     }
-
 }

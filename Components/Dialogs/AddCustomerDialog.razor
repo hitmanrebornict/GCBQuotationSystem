@@ -2,86 +2,180 @@
 @inject DialogService DialogService
 @inject NotificationService NotificationService
 
-<RadzenTemplateForm TItem="Customer" Data="@newCustomer" Submit="@HandleSubmit">
-    <div class="row mb-3">
-        <div class="col-md-6">
-            <RadzenFormField Text="Customer Name" Variant="Variant.Filled">
-                <RadzenTextBox @bind-Value="@newCustomer.CustName" Name="CustName" />
-                <RadzenRequiredValidator Component="CustName" Text="Customer name is required" />
-            </RadzenFormField>
+<div class="col-md-12">
+    <div style="margin-bottom: 1rem" class="row">
+        <div class="col-md-3">
+            <RadzenLabel Text="Customer Name" Component="CustName" style="width: 100%">
+            </RadzenLabel>
+        </div>
+        <div class="col-md-9">
+            <RadzenTextBox MaxLength="100" style="width: 100%" @bind-Value="customer.CustName" Name="CustName" Placeholder="Please enter customer name..." />
         </div>
     </div>
+    
+    <div style="margin-bottom: 1rem" class="row">
+        <div class="col-md-3">
+            <RadzenLabel Text="Invoice Address 1" Component="InvoiceAddress1" style="width: 100%">
+            </RadzenLabel>
+        </div>
+        <div class="col-md-9">
+            <RadzenTextBox MaxLength="100" style="width: 100%" @bind-Value="customer.InvoiceAddress1" Name="InvoiceAddress1" Placeholder="Please enter invoice address line 1..." />
+        </div>
+    </div>
+    
+    <div style="margin-bottom: 1rem" class="row">
+        <div class="col-md-3">
+            <RadzenLabel Text="Invoice Address 2" Component="InvoiceAddress2" style="width: 100%">
+            </RadzenLabel>
+        </div>
+        <div class="col-md-9">
+            <RadzenTextBox MaxLength="100" style="width: 100%" @bind-Value="customer.InvoiceAddress2" Name="InvoiceAddress2" Placeholder="Please enter invoice address line 2..." />
+        </div>
+    </div>
+    
+    <div style="margin-bottom: 1rem" class="row">
+        <div class="col-md-3">
+            <RadzenLabel Text="Invoice City" Component="InvoiceCity" style="width: 100%">
+            </RadzenLabel>
+        </div>
+        <div class="col-md-9">
+            <RadzenTextBox MaxLength="100" style="width: 100%" @bind-Value="customer.InvoiceCity" Name="InvoiceCity" Placeholder="Please enter invoice city..." />
+        </div>
+    </div>
+    
+    <div style="margin-bottom: 1rem" class="row">
+        <div class="col-md-3">
+            <RadzenLabel Text="Invoice Postcode" Component="InvoicePostcode" style="width: 100%">
+            </RadzenLabel>
+        </div>
+        <div class="col-md-9">
+            <RadzenTextBox MaxLength="20" style="width: 100%" @bind-Value="customer.InvoicePostcode" Name="InvoicePostcode" Placeholder="Please enter invoice postcode..." />
+        </div>
+    </div>
+    
+    <div style="margin-bottom: 1rem" class="row">
+        <div class="col-md-3">
+            <RadzenLabel Text="Country" Component="Country" style="width: 100%">
+            </RadzenLabel>
+        </div>
+        <div class="col-md-9">
+            <RadzenDropDown Data="@countries" 
+                           @bind-Value="customer.CountryId" 
+                           TextProperty="CountryName" 
+                           ValueProperty="CountryId" 
+                           style="width: 100%" 
+                           Placeholder="Select Country..." />
+        </div>
+    </div>
+    
+    <div style="margin-bottom: 1rem" class="row">
+        <div class="col-md-3">
+            <RadzenLabel Text="Active" Component="Active" style="width: 100%">
+            </RadzenLabel>
+        </div>
+        <div class="col-md-9">
+            <RadzenCheckBox @bind-Value="customer.Active" Name="Active" />
+        </div>
+    </div>
+</div>
 
-    <div class="row mb-3">
-        <div class="col-md-6">
-            <RadzenFormField Text="Invoice Address 1" Variant="Variant.Filled">
-                <RadzenTextBox @bind-Value="@newCustomer.InvoiceAddress1" Name="InvoiceAddress1" />
-            </RadzenFormField>
-        </div>
-        <div class="col-md-6">
-            <RadzenFormField Text="Invoice Address 2" Variant="Variant.Filled">
-                <RadzenTextBox @bind-Value="@newCustomer.InvoiceAddress2" Name="InvoiceAddress2" />
-            </RadzenFormField>
-        </div>
+<div class="row">
+    <div class="col offset-sm-3">
+        <RadzenButton ButtonType="Radzen.ButtonType.Submit" Icon="save" Text="Save" ButtonStyle="ButtonStyle.Primary" Click="@HandleSubmit" IsBusy="@isSaving" />
+        <RadzenButton ButtonStyle="ButtonStyle.Light" style="margin-left: 1rem" Text="Cancel" Click="@CancelDialog" />
     </div>
-
-    <div class="row mb-3">
-        <div class="col-md-4">
-            <RadzenFormField Text="Invoice City" Variant="Variant.Filled">
-                <RadzenTextBox @bind-Value="@newCustomer.InvoiceCity" Name="InvoiceCity" />
-            </RadzenFormField>
-        </div>
-        <div class="col-md-4">
-            <RadzenFormField Text="Invoice Postcode" Variant="Variant.Filled">
-                <RadzenTextBox @bind-Value="@newCustomer.InvoicePostcode" Name="InvoicePostcode" />
-            </RadzenFormField>
-        </div>
-        <div class="col-md-4">
-            <RadzenFormField Text="Country" Variant="Variant.Filled">
-                <RadzenDropDown @bind-Value="@newCustomer.CountryId" Data="@countries" 
-                                TextProperty="CountryName" ValueProperty="CountryId" 
-                                Name="CountryId" />
-                <RadzenRequiredValidator Component="CountryId" Text="Country is required" />
-            </RadzenFormField>
-        </div>
-    </div>
-
-    <div class="row mt-4">
-        <div class="col d-flex justify-content-end">
-            <RadzenButton ButtonType="ButtonType.Button" ButtonStyle="ButtonStyle.Light" 
-                          Text="Cancel" Click="@Cancel" Class="me-2" />
-            <RadzenButton ButtonType="ButtonType.Submit" ButtonStyle="ButtonStyle.Primary" 
-                          Text="Save" />
-        </div>
-    </div>
-</RadzenTemplateForm>
+</div>
 
 @code {
-    private Customer newCustomer = new Customer();
+
+    private Dialog _dialog { get; set; }
+
+    private Customer customer = new Customer();
     private List<Country> countries = new List<Country>();
+    private bool isSaving = false;
 
     protected override async Task OnInitializedAsync()
     {
-        // Load countries for dropdown
         countries = await MasterDataServices.GetAllCountriesAsync();
+        
+        // Set default values
+        customer.Active = true;
+        customer.CountryId = countries.FirstOrDefault()?.CountryId ?? 0;
+        
+        SetTitleContent();
+        DialogService.Refresh();
     }
 
     private async Task HandleSubmit()
     {
         try
         {
-            await MasterDataServices.AddCustomerAsync(newCustomer);
-            NotificationService.Notify(NotificationSeverity.Success, "Success", "Customer added successfully");
-            DialogService.Close(true);
+            isSaving = true;
+            
+            if (string.IsNullOrEmpty(customer.CustName) || customer.CountryId == 0)
+            {
+                NotificationService.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Error,
+                    Summary = "Error",
+                    Detail = "Please fill in all required fields.",
+                    Duration = 4000
+                });
+                return;
+            }
+            
+            var result = await MasterDataServices.AddCustomerAsync(customer);
+            
+            if (result)
+            {
+                NotificationService.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Success,
+                    Summary = "Success",
+                    Detail = "Customer added successfully",
+                    Duration = 4000
+                });
+                
+                DialogService.Close(true);
+            }
+            else
+            {
+                NotificationService.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Error,
+                    Summary = "Error",
+                    Detail = "Failed to add customer",
+                    Duration = 4000
+                });
+            }
         }
         catch (Exception ex)
         {
-            NotificationService.Notify(NotificationSeverity.Error, "Error", $"Failed to add customer: {ex.Message}");
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Error",
+                Detail = $"Failed to add customer: {ex.Message}",
+                Duration = 4000
+            });
+        }
+        finally
+        {
+            isSaving = false;
         }
     }
 
-    private void Cancel()
+    private void CancelDialog()
     {
         DialogService.Close(false);
+    }
+    
+    void SetTitleContent()
+    {
+        // _dialog.Title = null; // clear default title
+        // _dialog.Options.TitleContent = service =>
+        // @<RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Start" Gap="10px">
+        //     <h5>Add Customer</h5>
+        // </RadzenStack>;
     }
 }

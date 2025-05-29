@@ -27,12 +27,13 @@
             <RadzenDataGridColumn Property="Zone" Title="Zone" Width="80px" />
             <RadzenDataGridColumn Property="PostCode" Title="Post Code" Width="120px" />
             <RadzenDataGridColumn Property="Pallet" Title="Pallet" Width="120px" />
-            <RadzenDataGridColumn Property="Cost" Title="Cost" Width="120px">
-                <Template Context="data">
-                    @(data.Cost.ToString("C2"))
+            <RadzenDataGridColumn Property="Cost" Title="Cost" Width="120px" FormatString="{0:C2}" />
+            <RadzenDataGridColumn Property="ServiceHours" Title="Service Hours" Width="120px" />
+            <RadzenDataGridColumn Property="Active" Title="Active" Width="80px">
+                <Template Context="deliveryCost">
+                    <RadzenCheckBox Value="@deliveryCost.Active" Disabled="true" />
                 </Template>
             </RadzenDataGridColumn>
-            <RadzenDataGridColumn Property="ServiceHours" Title="Service Hours" Width="120px" />
             <RadzenDataGridColumn TItem="DeliveryCost" Title="Actions" TextAlign="TextAlign.Center" Width="120px">
                 <Template Context="deliveryCost">
                     <RadzenButton Icon="edit"

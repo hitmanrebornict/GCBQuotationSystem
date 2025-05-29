@@ -213,7 +213,7 @@ namespace GCBQuotationSystem.Components.Services
 
 		public List<RecipeTotalCost> ConvertRecipeCostListToPreferredUnit(List<RecipeTotalCost> originalList, decimal weightRatio)
 		{
-			Console.WriteLine("Testing");
+		
 			return originalList.Select(original =>
 			{
 				var originalRecipe = original.QuotationRecipe1;
@@ -225,7 +225,7 @@ namespace GCBQuotationSystem.Components.Services
 					PeriodMonth = originalRecipe.PeriodMonth,
 					Quantity = originalRecipe.Quantity,
 					QuoteId = originalRecipe.QuoteId,
-
+					QuotationRecipeId = originalRecipe.QuotationRecipeId,
 
 					QuotationTerminalCost = originalRecipe.QuotationTerminalCost != null
 						? new QuotationTerminalCost
@@ -274,6 +274,14 @@ namespace GCBQuotationSystem.Components.Services
 						}
 						: null,
 
+					QuotationProductionCost = originalRecipe.QuotationProductionCost != null
+						? new QuotationProductionCost
+						{
+							ProductType = originalRecipe.QuotationProductionCost.ProductType,
+							ProductTypeCost = originalRecipe.QuotationProductionCost.ProductTypeCost
+						}
+						: null,
+
 					QuotationFinancialCost = originalRecipe.QuotationFinancialCost != null
 						? new QuotationFinancialCost
 						{
@@ -289,6 +297,8 @@ namespace GCBQuotationSystem.Components.Services
 							Cost = a.Cost,
 							CostAmount = a.CostAmount * weightRatio
 						}).ToList() ?? new List<QuotationAdditionalCost>()
+
+					
 				};
 
 
@@ -448,17 +458,39 @@ namespace GCBQuotationSystem.Components.Services
 
 		public decimal CalculateTotalCost(QuotationRecipe quotationRecipe) {
 
-			var localTotalCost = quotationRecipe.QuotationPremiumCosts.Sum(x => x.CostAmount) +
-			quotationRecipe.QuotationRawMaterialCosts.Sum(x => x.CostAmount) +
-			quotationRecipe.QuotationPackagingCost.CostAmount +
-			quotationRecipe.QuotationDeliveryCost.CostAmount +
-			quotationRecipe.QuotationAdditionalCosts.Sum(x => x.CostAmount)
-			;
+			// Calculate total raw material cost first
+			var totalRawMaterialCost = quotationRecipe.QuotationRawMaterialCosts.Sum(x => x.CostAmount);
+
+			// Find and recalculate Yield cost in QuotationAdditionalCosts
+			var yieldCost = quotationRecipe.QuotationAdditionalCosts.FirstOrDefault(x => x.CostName == "Yield");
+			if (yieldCost != null)
+			{
+				yieldCost.CostAmount = yieldCost.Cost / 100 * totalRawMaterialCost;
+			}
+
+			// Calculate total cost excluding ORD Rebate first
+			var totalCostExcludingORDRebate = quotationRecipe.QuotationPremiumCosts.Sum(x => x.CostAmount) +
+				totalRawMaterialCost +
+				quotationRecipe.QuotationPackagingCost.CostAmount +
+				quotationRecipe.QuotationDeliveryCost.CostAmount +
+				quotationRecipe.QuotationAdditionalCosts.Where(x => x.CostName != "ORD Rebate").Sum(x => x.CostAmount) +
+				quotationRecipe.QuotationProductionCost.ProductTypeCost;
+
+			// Calculate ORD Rebate based on total cost excluding itself (acts as a discount)
+			var ordRebateCost = quotationRecipe.QuotationAdditionalCosts.FirstOrDefault(x => x.CostName == "ORD Rebate");
+			if (ordRebateCost != null)
+			{	
+				ordRebateCost.CostAmount = (ordRebateCost.Cost / 100 * totalCostExcludingORDRebate);
+			}
+
+			// Calculate final total cost including ORD Rebate
+			var localTotalCost = totalCostExcludingORDRebate + (ordRebateCost?.CostAmount ?? 0);
 
 			if(quotationRecipe.QuotationFinancialCost != null){
 				decimal financialCost = localTotalCost * quotationRecipe.QuotationFinancialCost.InterestRate / 100 * quotationRecipe.QuotationFinancialCost.FinanceDays / 365;
 				localTotalCost += financialCost;
 			}
+
 			return localTotalCost;
 		}
 	}

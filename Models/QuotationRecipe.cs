@@ -25,6 +25,8 @@ public partial class QuotationRecipe
 
     public virtual ICollection<QuotationPremiumCost> QuotationPremiumCosts { get; set; } = new List<QuotationPremiumCost>();
 
+    public virtual QuotationProductionCost? QuotationProductionCost { get; set; }
+
     public virtual ICollection<QuotationRawMaterialCost> QuotationRawMaterialCosts { get; set; } = new List<QuotationRawMaterialCost>();
 
     public virtual QuotationTerminalCost? QuotationTerminalCost { get; set; }

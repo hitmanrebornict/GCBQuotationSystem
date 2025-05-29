@@ -2,68 +2,103 @@
 @inject NotificationService NotificationService
 @inject DialogService DialogService
 
-<RadzenTemplateForm TItem="TerminalCost" Data="@terminalCost" Submit="@HandleSubmit">
-    <div class="container">
-        <div class="row mb-3">
-            <div class="col-md-6">
-                <RadzenFormField Text="Period Name" Variant="Variant.Outlined">
-                    <RadzenTextBox @bind-Value="@terminalCost.PeriodName" Name="PeriodName" />
-                    <RadzenRequiredValidator Component="PeriodName" Text="Period Name is required" />
-                </RadzenFormField>
+@if (terminalCost != null)
+{
+    <div class="col-md-12">
+        <div style="margin-bottom: 1rem" class="row">
+            <div class="col-md-3">
+                <RadzenLabel Text="Period Name" Component="PeriodName" style="width: 100%">
+                </RadzenLabel>
             </div>
-            <div class="col-md-6">
-                <RadzenFormField Text="Terminal Period" Variant="Variant.Outlined">
-                    <RadzenDatePicker @bind-Value="@terminalPeriodDateTime" Name="TerminalPeriod" DateFormat="yyyy-MM-dd" />
-                    <RadzenRequiredValidator Component="TerminalPeriod" Text="Terminal Period is required" />
-                </RadzenFormField>
+            <div class="col-md-9">
+                <RadzenTextBox MaxLength="100" style="width: 100%" @bind-Value="terminalCost.PeriodName" Name="PeriodName" Placeholder="Please enter period name..." />
             </div>
         </div>
-
-        <div class="row mb-3">
-            <div class="col-md-6">
-                <RadzenFormField Text="Life GBP" Variant="Variant.Outlined">
-                    <RadzenNumeric @bind-Value="@terminalCost.LifeGbp" Name="LifeGbp" Format="c2" />
-                    <RadzenRequiredValidator Component="LifeGbp" Text="Life GBP is required" />
-                </RadzenFormField>
+        
+        <div style="margin-bottom: 1rem" class="row">
+            <div class="col-md-3">
+                <RadzenLabel Text="Terminal Period" Component="TerminalPeriod" style="width: 100%">
+                </RadzenLabel>
             </div>
-            <div class="col-md-6">
-                <RadzenFormField Text="Liquor" Variant="Variant.Outlined">
-                    <RadzenNumeric @bind-Value="@terminalCost.Liquor" Name="Liquor" Format="c2" />
-                    <RadzenRequiredValidator Component="Liquor" Text="Liquor is required" />
-                </RadzenFormField>
+            <div class="col-md-9">
+                <RadzenDatePicker @bind-Value="terminalPeriodDateTime" Name="TerminalPeriod" DateFormat="yyyy-MM-dd" style="width: 100%" />
             </div>
         </div>
-
-        <div class="row mb-3">
-            <div class="col-md-6">
-                <RadzenFormField Text="Butter" Variant="Variant.Outlined">
-                    <RadzenNumeric @bind-Value="@terminalCost.Butter" Name="Butter" Format="c2" />
-                    <RadzenRequiredValidator Component="Butter" Text="Butter is required" />
-                </RadzenFormField>
+        
+        <div style="margin-bottom: 1rem" class="row">
+            <div class="col-md-3">
+                <RadzenLabel Text="Life GBP" Component="LifeGbp" style="width: 100%">
+                </RadzenLabel>
             </div>
-            <div class="col-md-6">
-                <RadzenFormField Text="Powder" Variant="Variant.Outlined">
-                    <RadzenNumeric @bind-Value="@terminalCost.Powder" Name="Powder" Format="c2" />
-                    <RadzenRequiredValidator Component="Powder" Text="Powder is required" />
-                </RadzenFormField>
+            <div class="col-md-9">
+                <RadzenNumeric @bind-Value="terminalCost.LifeGbp" Name="LifeGbp" Format="c2" style="width: 100%" />
             </div>
         </div>
-
-        <div class="row mt-4">
-            <div class="col d-flex justify-content-end">
-                <RadzenButton ButtonType="ButtonType.Submit" Text="Save" ButtonStyle="ButtonStyle.Primary" Class="me-2" />
-                <RadzenButton Text="Cancel" ButtonStyle="ButtonStyle.Light" Click="@CancelDialog" />
+        
+        <div style="margin-bottom: 1rem" class="row">
+            <div class="col-md-3">
+                <RadzenLabel Text="Liquor" Component="Liquor" style="width: 100%">
+                </RadzenLabel>
+            </div>
+            <div class="col-md-9">
+                <RadzenNumeric @bind-Value="terminalCost.Liquor" Name="Liquor" Format="c2" style="width: 100%" />
+            </div>
+        </div>
+        
+        <div style="margin-bottom: 1rem" class="row">
+            <div class="col-md-3">
+                <RadzenLabel Text="Butter" Component="Butter" style="width: 100%">
+                </RadzenLabel>
+            </div>
+            <div class="col-md-9">
+                <RadzenNumeric @bind-Value="terminalCost.Butter" Name="Butter" Format="c2" style="width: 100%" />
+            </div>
+        </div>
+        
+        <div style="margin-bottom: 1rem" class="row">
+            <div class="col-md-3">
+                <RadzenLabel Text="Powder" Component="Powder" style="width: 100%">
+                </RadzenLabel>
+            </div>
+            <div class="col-md-9">
+                <RadzenNumeric @bind-Value="terminalCost.Powder" Name="Powder" Format="c2" style="width: 100%" />
+            </div>
+        </div>
+        
+        <div style="margin-bottom: 1rem" class="row">
+            <div class="col-md-3">
+                <RadzenLabel Text="Active" Component="Active" style="width: 100%">
+                </RadzenLabel>
+            </div>
+            <div class="col-md-9">
+                <RadzenCheckBox @bind-Value="terminalCost.Active" Name="Active" />
             </div>
         </div>
     </div>
-</RadzenTemplateForm>
+
+    <div class="row">
+        <div class="col offset-sm-3">
+            <RadzenButton ButtonType="Radzen.ButtonType.Submit" Icon="save" Text="Update" ButtonStyle="ButtonStyle.Primary" Click="@HandleSubmit" IsBusy="@isSaving" />
+            <RadzenButton ButtonStyle="ButtonStyle.Light" style="margin-left: 1rem" Text="Cancel" Click="@CancelDialog" />
+        </div>
+    </div>
+}
+else
+{
+    <div class="text-center">
+        <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" />
+        <p>Loading terminal cost data...</p>
+    </div>
+}
 
 @code {
     [Parameter] public int TerminalCostId { get; set; }
-
+    [CascadingParameter]
+    private Dialog _dialog { get; set; }
 
     private TerminalCost terminalCost = new();
     private DateTime terminalPeriodDateTime;
+    private bool isSaving = false;
 
     protected override async Task OnInitializedAsync()
     {
@@ -71,16 +106,38 @@
         {
             terminalCost = await MDS.GetTerminalCostByIdAsync(TerminalCostId);
 
+            if (terminalCost == null)
+            {
+                NotificationService.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Error,
+                    Summary = "Error",
+                    Detail = "Terminal cost not found",
+                    Duration = 4000
+                });
+                DialogService.Close(false);
+                return;
+            }
+
             // Convert DateOnly to DateTime for the DatePicker
             terminalPeriodDateTime = new DateTime(
                 terminalCost.TerminalPeriod.Year,
                 terminalCost.TerminalPeriod.Month,
                 terminalCost.TerminalPeriod.Day);
+                
+            SetTitleContent();
+            DialogService.Refresh();
         }
         catch (Exception ex)
         {
-            NotificationService.Notify(NotificationSeverity.Error, "Error", $"Failed to load terminal cost: {ex.Message}");
-            CancelDialog();
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Error",
+                Detail = $"Failed to load terminal cost: {ex.Message}",
+                Duration = 4000
+            });
+            DialogService.Close(false);
         }
     }
 
@@ -88,21 +145,63 @@
     {
         try
         {
+            isSaving = true;
+            
+            // Validate required fields
+            if (string.IsNullOrEmpty(terminalCost.PeriodName))
+            {
+                NotificationService.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Error,
+                    Summary = "Error",
+                    Detail = "Please fill in all required fields.",
+                    Duration = 4000
+                });
+                return;
+            }
+
             // Convert DateTime back to DateOnly
             terminalCost.TerminalPeriod = DateOnly.FromDateTime(terminalPeriodDateTime);
 
             await MDS.UpdateTerminalCostAsync(terminalCost);
-            DialogService.Close();
-            NotificationService.Notify(NotificationSeverity.Success, "Success", "Terminal cost updated successfully");
+            
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Success,
+                Summary = "Success",
+                Detail = "Terminal cost updated successfully",
+                Duration = 4000
+            });
+            
+            DialogService.Close(true);
         }
         catch (Exception ex)
         {
-            NotificationService.Notify(NotificationSeverity.Error, "Error", $"Failed to update terminal cost: {ex.Message}");
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Error",
+                Detail = $"Failed to update terminal cost: {ex.Message}",
+                Duration = 4000
+            });
+        }
+        finally
+        {
+            isSaving = false;
         }
     }
 
     private void CancelDialog()
     {
-        DialogService.Close();
+        DialogService.Close(false);
+    }
+    
+    void SetTitleContent()
+    {
+        // _dialog.Title = null; // clear default title
+        // _dialog.Options.TitleContent = service =>
+        // @<RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Start" Gap="10px">
+        //     <h5>Edit Terminal Cost</h5>
+        // </RadzenStack>;
     }
 } 

@@ -16,4 +16,6 @@ public partial class DeliveryCost
     public decimal Cost { get; set; }
 
     public int ServiceHours { get; set; }
+
+    public bool Active { get; set; }
 }

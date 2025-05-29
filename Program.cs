@@ -14,8 +14,14 @@ namespace GCBQuotationSystem
         {
             var builder = WebApplication.CreateBuilder(args);
 
+			//builder.Services.AddDbContext<QuotationSystemContext>(options => { }
+			//	options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")), ServiceLifetime.Transient);
+
 			builder.Services.AddDbContext<QuotationSystemContext>(options =>
-				options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")), ServiceLifetime.Transient);
+			{
+				options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"));
+				options.EnableSensitiveDataLogging(); 
+			}, ServiceLifetime.Transient);
 
 			// Add services to the container.
 			builder.Services.AddRazorComponents()

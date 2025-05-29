@@ -6,16 +6,52 @@
 <PageTitle>Product Types</PageTitle>
 
 <RadzenCard>
+    <h3>Product Type</h3>
+    <hr />
+    <div class="d-flex justify-content-between mb-4">
+        <RadzenButton Text="Create New Product Type"
+                      Icon="add_circle_outline"
+                      ButtonStyle="ButtonStyle.Primary"
+                      Click="@CreateButtonOnClick" />
+    </div>
 
-    <RadzenButton ButtonType="ButtonType.Button" Text="Add Product Type" Click="AddProductType" />
-
-    <RadzenDataGrid TItem="ProductType" Data="@ProductTypes" AllowFiltering="true" AllowSorting="true" AllowPaging="true" PageSize="10" FilterMode="FilterMode.CheckBoxList">
+    <RadzenDataGrid TItem="ProductType" 
+                    Data="@ProductTypes" 
+                    AllowFiltering="true" 
+                    AllowSorting="true" 
+                    AllowPaging="true" 
+                    PageSize="10" 
+                    FilterMode="FilterMode.CheckBoxList"
+                    FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                    EmptyText="No product types found">
         <Columns>
-            <RadzenDataGridColumn TItem="ProductType" Property="TypeName" Title="Type Name" />
+            <RadzenDataGridColumn TItem="ProductType" Property="TypeName" Title="Type Name" Width="200px" />
+            @* <RadzenDataGridColumn Property="Active" Title="Active" Width="80px">
+                <Template Context="productType">
+                    <RadzenCheckBox Value="@productType.Active" Disabled="true" />
+                </Template>
+            </RadzenDataGridColumn> *@
+            <RadzenDataGridColumn TItem="ProductType" Title="Actions" TextAlign="TextAlign.Center" Width="120px">
+                <Template Context="productType">
+                    <RadzenButton Icon="edit"
+                                  ButtonStyle="ButtonStyle.Info"
+                                  Size="ButtonSize.Medium"
+                                  Variant="Variant.Flat"
+                                  Class="m-1"
+                                  Click="@(() => EditProductType(productType))"
+                                  ToolTip="Edit Product Type" />
+                </Template>
+            </RadzenDataGridColumn>
         </Columns>
     </RadzenDataGrid>
-
 </RadzenCard>
+
+<style>
+    .product-type-data-grid {
+        height: calc(100vh - 250px);
+        min-height: 400px;
+    }
+</style>
 
 @code {
     private List<ProductType> ProductTypes = new();
@@ -25,14 +61,47 @@
         await LoadProductTypes();
     }
 
-    private async void AddProductType()
+    private async Task CreateButtonOnClick()
     {
-        var result = await DialogService.OpenAsync<AddProductTypeDialog>("Add Product Type");
+        var options = new DialogOptions() 
+        { 
+            Width = "90vw",
+            Height = "90vh",
+            CloseDialogOnOverlayClick = false,
+            Resizable = true,
+            Draggable = true
+        };
+        
+        var result = await DialogService.OpenAsync<AddProductTypeDialog>("New Product Type", 
+            options: options);
+            
         if (result == true)
         {
             await LoadProductTypes();
-            StateHasChanged();
+            await InvokeAsync(StateHasChanged);
         }
+    }
+
+    private async Task EditProductType(ProductType productType)
+    {
+        // var options = new DialogOptions() 
+        // { 
+        //     Width = "90vw",
+        //     Height = "90vh",
+        //     CloseDialogOnOverlayClick = false,
+        //     Resizable = true,
+        //     Draggable = true
+        // };
+        
+        // var result = await DialogService.OpenAsync<EditProductTypeDialog>("Edit Product Type", 
+        //     new Dictionary<string, object>() { { "ProductTypeId", productType.Id } },
+        //     options);
+            
+        // if (result == true)
+        // {
+        //     await LoadProductTypes();
+        //     await InvokeAsync(StateHasChanged);
+        // }
     }
 
     private async Task LoadProductTypes()

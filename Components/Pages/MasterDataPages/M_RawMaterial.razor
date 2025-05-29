@@ -7,16 +7,51 @@
 
 <RadzenCard>
     <h3>Raw Material</h3>
+    <hr />
+    <div class="d-flex justify-content-between mb-4">
+        <RadzenButton Text="Create New Raw Material"
+                      Icon="add_circle_outline"
+                      ButtonStyle="ButtonStyle.Primary"
+                      Click="@CreateButtonOnClick" />
+    </div>
 
-    <RadzenButton ButtonType="ButtonType.Button" Text="Add Raw Material" Click="AddRawMaterial" />
-
-    <RadzenDataGrid TItem="RawMaterial" Data="@RawMaterials" AllowFiltering="true" AllowSorting="true" AllowPaging="true" PageSize="10" FilterMode="FilterMode.CheckBoxList">
+    <RadzenDataGrid TItem="RawMaterial" 
+                    Data="@RawMaterials" 
+                    AllowFiltering="true" 
+                    AllowSorting="true" 
+                    AllowPaging="true" 
+                    PageSize="10" 
+                    FilterMode="FilterMode.CheckBoxList"
+                    FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                    EmptyText="No raw materials found">
         <Columns>
-            <RadzenDataGridColumn TItem="RawMaterial" Property="MaterialName" Title="Material Name" />
+            <RadzenDataGridColumn TItem="RawMaterial" Property="MaterialName" Title="Material Name" Width="200px" />
+            <RadzenDataGridColumn Property="Active" Title="Active" Width="80px">
+                <Template Context="rawMaterial">
+                    <RadzenCheckBox Value="@rawMaterial.Active" Disabled="true" />
+                </Template>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn TItem="RawMaterial" Title="Actions" TextAlign="TextAlign.Center" Width="120px">
+                <Template Context="rawMaterial">
+                    <RadzenButton Icon="edit"
+                                  ButtonStyle="ButtonStyle.Info"
+                                  Size="ButtonSize.Medium"
+                                  Variant="Variant.Flat"
+                                  Class="m-1"
+                                  Click="@(() => EditRawMaterial(rawMaterial))"
+                                  ToolTip="Edit Raw Material" />
+                </Template>
+            </RadzenDataGridColumn>
         </Columns>
     </RadzenDataGrid>
-
 </RadzenCard>
+
+<style>
+    .raw-material-data-grid {
+        height: calc(100vh - 250px);
+        min-height: 400px;
+    }
+</style>
 
 @code {
     private List<RawMaterial> RawMaterials = new();
@@ -26,14 +61,47 @@
         await LoadRawMaterials();
     }
 
-    private async void AddRawMaterial()
+    private async Task CreateButtonOnClick()
     {
-        var result = await DialogService.OpenAsync<AddRawMaterialDialog>("Add Raw Material");
+        var options = new DialogOptions() 
+        { 
+            Width = "90vw",
+            Height = "90vh",
+            CloseDialogOnOverlayClick = false,
+            Resizable = true,
+            Draggable = true
+        };
+        
+        var result = await DialogService.OpenAsync<AddRawMaterialDialog>("New Raw Material", 
+            options: options);
+            
         if (result == true)
         {
             await LoadRawMaterials();
-            StateHasChanged();
+            await InvokeAsync(StateHasChanged);
         }
+    }
+
+    private async Task EditRawMaterial(RawMaterial rawMaterial)
+    {
+        // var options = new DialogOptions() 
+        // { 
+        //     Width = "90vw",
+        //     Height = "90vh",
+        //     CloseDialogOnOverlayClick = false,
+        //     Resizable = true,
+        //     Draggable = true
+        // };
+        
+        // var result = await DialogService.OpenAsync<EditRawMaterialDialog>("Edit Raw Material", 
+        //     new Dictionary<string, object>() { { "MaterialId", rawMaterial.MaterialId } },
+        //     options);
+            
+        // if (result == true)
+        // {
+        //     await LoadRawMaterials();
+        //     await InvokeAsync(StateHasChanged);
+        // }
     }
 
     private async Task LoadRawMaterials()

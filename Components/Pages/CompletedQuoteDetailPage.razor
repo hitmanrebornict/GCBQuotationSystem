@@ -23,12 +23,12 @@
         </div>
         <div class="col-md-6 d-flex justify-content-end">
             <div class="btn-group">
-                @* @if (quote.StatusId != 3)
+                @if (quote.StatusId != 3)
                 {
                     <RadzenButton Text="Update" Icon="arrow_upward" ButtonType="ButtonType.Submit" 
                         Click="@(async() => await updateQuote(quote))" 
                         ButtonStyle="ButtonStyle.Primary" class="me-2" />
-                } *@
+                }
 
                 @if (quote.StatusId == 1)
                 {

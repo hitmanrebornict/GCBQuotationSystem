@@ -47,6 +47,9 @@ namespace GCBQuotationSystem.Components.Services
 				if (recipe.QuotationFinancialCost != null)
 					_dbContext.Attach(recipe.QuotationFinancialCost);
 
+				if (recipe.QuotationProductionCost != null)
+					_dbContext.Attach(recipe.QuotationProductionCost);
+
 				// Ensure raw material and premium costs are added as new (if they are new entries)
 				foreach (var rawMaterialCost in recipe.QuotationRawMaterialCosts)
 				{
@@ -101,309 +104,113 @@ namespace GCBQuotationSystem.Components.Services
 		//	await _dbContext.SaveChangesAsync();
 		//}
 
-		public async Task updateQuoteInDatabase(Quote selectedQuote, List<QuotationRecipe> selectedQuotationRecipe)
-		{
-			// Clear the change tracker to avoid conflicts with previously tracked entities
-			_dbContext.ChangeTracker.Clear();
-			
-			// First, retrieve the existing quote from the database to ensure we're updating, not inserting
-			var existingQuote = await _dbContext.Quotes.FindAsync(selectedQuote.QuoteId);
-			if (existingQuote != null)
-			{
-				// Update properties of the existing quote without changing its identity
-				_dbContext.Entry(existingQuote).CurrentValues.SetValues(selectedQuote);
-				
-				// Don't set the QuotationRecipes directly to avoid identity issues
-				// We'll handle the recipes separately
-			}
-			else
-			{
-				// Only add as new if it truly doesn't exist
-				// Remove any explicit ID values that might cause identity insert issues
-				selectedQuote.QuoteId = 0;
-				_dbContext.Quotes.Add(selectedQuote);
-			}
-			
-			// Process each quotation recipe and its related entities
-			foreach (var recipe in selectedQuotationRecipe)
-			{
-				// Check if the recipe already exists
-				var existingRecipe = await _dbContext.QuotationRecipes
-					.FindAsync(recipe.QuotationRecipeId);
-				
-				if (existingRecipe != null)
-				{
-					// Update existing recipe without changing its identity
-					_dbContext.Entry(existingRecipe).CurrentValues.SetValues(recipe);
-					
-					// Handle related collections - we need to process each item individually
-					if (recipe.QuotationRawMaterialCosts != null)
-					{
-						foreach (var materialCost in recipe.QuotationRawMaterialCosts)
-						{
-							var existingMaterialCost = await _dbContext.Set<QuotationRawMaterialCost>()
-								.FindAsync(materialCost.QuotationRecipeId);
-								
-							if (existingMaterialCost != null)
-							{
-								_dbContext.Entry(existingMaterialCost).CurrentValues.SetValues(materialCost);
-							}
-							else
-							{
-								// Ensure no explicit ID is set for new items
-								materialCost.QuotationRecipeId = 0;
-								materialCost.QuotationRecipeId = existingRecipe.QuotationRecipeId;
-								_dbContext.Set<QuotationRawMaterialCost>().Add(materialCost);
-							}
-						}
-					}
-					
-					if (recipe.QuotationPremiumCosts != null)
-					{
-						foreach (var premiumCost in recipe.QuotationPremiumCosts)
-						{
-							var existingPremiumCost = await _dbContext.Set<QuotationPremiumCost>()
-								.FindAsync(premiumCost.QuotationRecipeId);
-								
-							if (existingPremiumCost != null)
-							{
-								_dbContext.Entry(existingPremiumCost).CurrentValues.SetValues(premiumCost);
-							}
-							else
-							{
-								// Ensure no explicit ID is set for new items
-								premiumCost.QuotationRecipeId = existingRecipe.QuotationRecipeId;
-								_dbContext.Set<QuotationPremiumCost>().Add(premiumCost);
-							}
-						}
-					}
-					
-					if (recipe.QuotationAdditionalCosts != null)
-					{
-						foreach (var additionalCost in recipe.QuotationAdditionalCosts)
-						{
-							var existingAdditionalCost = await _dbContext.Set<QuotationAdditionalCost>()
-								.FindAsync(additionalCost.QuotationRecipeId);
-								
-							if (existingAdditionalCost != null)
-							{
-								_dbContext.Entry(existingAdditionalCost).CurrentValues.SetValues(additionalCost);
-							}
-							else
-							{
-								// Ensure no explicit ID is set for new items
-								additionalCost.QuotationRecipeId = existingRecipe.QuotationRecipeId;
-								_dbContext.Set<QuotationAdditionalCost>().Add(additionalCost);
-							}
-						}
-					}
-					
-					// Handle single navigation properties
-					if (recipe.QuotationPackagingCost != null)
-					{
-						var existingPackagingCost = await _dbContext.Set<QuotationPackagingCost>()
-								.FindAsync(recipe.QuotationPackagingCost.QuotationRecipeId);
-							
-						if (existingPackagingCost != null)
-						{
-							_dbContext.Entry(existingPackagingCost).CurrentValues.SetValues(recipe.QuotationPackagingCost);
-						}
-						else
-						{
-							recipe.QuotationPackagingCost.QuotationRecipeId = existingRecipe.QuotationRecipeId;
-							_dbContext.Set<QuotationPackagingCost>().Add(recipe.QuotationPackagingCost);
-						}
-					}
 
-					if (recipe.QuotationDeliveryCost != null)
-					{
-						var existingDeliveryCost = await _dbContext.Set<QuotationDeliveryCost>()
-							.FindAsync(recipe.QuotationDeliveryCost.QuotationRecipeId);
-
-						if (existingDeliveryCost != null)
-						{
-							_dbContext.Entry(existingDeliveryCost).CurrentValues.SetValues(recipe.QuotationDeliveryCost);
-						}
-						else
-						{
-							recipe.QuotationDeliveryCost.QuotationRecipeId = existingRecipe.QuotationRecipeId;
-							_dbContext.Set<QuotationDeliveryCost>().Add(recipe.QuotationDeliveryCost);
-						}
-					}
-
-					if (recipe.QuotationTerminalCost != null)
-					{
-						var existingTerminalCost = await _dbContext.Set<QuotationTerminalCost>()
-							.FindAsync(recipe.QuotationTerminalCost.QuotationRecipeId);
-							
-						if (existingTerminalCost != null)
-						{
-							_dbContext.Entry(existingTerminalCost).CurrentValues.SetValues(recipe.QuotationTerminalCost);
-						}
-						else
-						{
-							recipe.QuotationTerminalCost.QuotationRecipeId = existingRecipe.QuotationRecipeId;
-							_dbContext.Set<QuotationTerminalCost>().Add(recipe.QuotationTerminalCost);
-						}
-					}
-				}
-				else
-				{
-					// This is a new recipe, ensure no explicit IDs are set
-					recipe.QuotationRecipeId = 0;
-					
-					// Reset IDs for all related entities to avoid identity insert issues
-					if (recipe.QuotationRawMaterialCosts != null)
-					{
-						foreach (var cost in recipe.QuotationRawMaterialCosts)
-						{
-							cost.QuotationRecipeId = 0;
-						}
-					}
-					
-					if (recipe.QuotationPremiumCosts != null)
-					{
-						foreach (var cost in recipe.QuotationPremiumCosts)
-						{
-							cost.QuotationRecipeId = 0;
-						}
-					}
-					
-					if (recipe.QuotationAdditionalCosts != null)
-					{
-						foreach (var cost in recipe.QuotationAdditionalCosts)
-						{
-							cost.QuotationRecipeId = 0;
-						}
-					}
-					
-					if (recipe.QuotationPackagingCost != null)
-					{
-						recipe.QuotationPackagingCost.QuotationRecipeId = 0;
-					}
-
-					if (recipe.QuotationDeliveryCost != null)
-					{
-						recipe.QuotationDeliveryCost.QuotationRecipeId = 0;
-					}
-
-					if (recipe.QuotationTerminalCost != null)
-					{
-						recipe.QuotationTerminalCost.QuotationRecipeId = 0;
-					}
-					
-					// Set the QuoteId to link to the parent quote
-					recipe.QuoteId = selectedQuote.QuoteId;
-					_dbContext.QuotationRecipes.Add(recipe);
-				}
-			}
-			
-			// Save all changes to the database
-			await _dbContext.SaveChangesAsync();
-		}
 
 		//public async Task updateQuoteInDatabase(Quote selectedQuote, List<QuotationRecipe> selectedQuotationRecipe)
 		//{
+		//	selectedQuote.Remark = "abc";
+		//	selectedQuote.CustomerRemark = "123";
 
-		//	// Retrieve the quote with its associated quotation recipes
-		//	var quote = await _dbContext.Quotes
-		//								.Include(q => q.QuotationRecipes)
-		//								.FirstOrDefaultAsync(q => q.QuoteId == selectedQuote.QuoteId);
+		//	selectedQuote.QuotationRecipes.FirstOrDefault().QuotationPackagingCost.CostAmount = 999999;
 
-		//	if (quote == null)
-		//		throw new Exception("Quote not found");
 
-		//	// Step 1: Remove all existing QuotationRecipes from the Quote
-		//	quote.QuotationRecipes.Clear();  // This clears the existing list (doesn't delete them from DB)
-
-		//	// Step 2: Add the new list of QuotationRecipes
-		//	foreach (var newRecipe in selectedQuotationRecipe)
-		//	{
-		//		newRecipe.QuoteId = selectedQuote.QuoteId;  // Ensure the foreign key is set to the correct QuoteId
-		//		_dbContext.QuotationRecipes.Add(newRecipe);  // Add new recipe to the context
-		//	}
-
-		//	// Step 3: Mark the Quote entity as updated (this ensures EF Core tracks the changes)
-		//	_dbContext.Quotes.Update(quote);  // This ensures Quote itself is updated
-
-		//	// Step 4: Save changes to the database
+		//	_dbContext.Quotes.Update(selectedQuote);
+		//	// Save all changes to the database
 		//	await _dbContext.SaveChangesAsync();
 		//}
 
-
-		private void DetachAssociatedCosts(QuotationRecipe quotationRecipe)
+		public async Task updateQuoteInDatabase(Quote selectedQuote, List<QuotationRecipe> selectedQuotationRecipe)
 		{
-			// Detach costs that might be already tracked to avoid conflict
-			foreach (var premiumCost in quotationRecipe.QuotationPremiumCosts)
+			foreach (var updatedRecipe in selectedQuotationRecipe)
 			{
-				var premiumCostEntry = _dbContext.Entry(premiumCost);
-				if (premiumCostEntry.State != EntityState.Detached)
+				var trackedRecipe = selectedQuote.QuotationRecipes
+					.FirstOrDefault(r => r.QuotationRecipeId == updatedRecipe.QuotationRecipeId);
+
+				if (trackedRecipe != null)
 				{
-					premiumCostEntry.State = EntityState.Detached;
+					// === Basic Properties ===
+					trackedRecipe.Quantity = updatedRecipe.Quantity;
+					trackedRecipe.PeriodMonth = updatedRecipe.PeriodMonth;
+
+					// === QuotationPackagingCost ===
+					if (trackedRecipe.QuotationPackagingCost != null && updatedRecipe.QuotationPackagingCost != null)
+					{
+						trackedRecipe.QuotationPackagingCost.PackagingName = updatedRecipe.QuotationPackagingCost.PackagingName;
+						trackedRecipe.QuotationPackagingCost.Cost = updatedRecipe.QuotationPackagingCost.Cost;
+						trackedRecipe.QuotationPackagingCost.CostAmount = updatedRecipe.QuotationPackagingCost.CostAmount;
+					}
+
+					// === QuotationTerminalCost ===
+					if (trackedRecipe.QuotationTerminalCost != null && updatedRecipe.QuotationTerminalCost != null)
+					{
+						trackedRecipe.QuotationTerminalCost.TerminalName = updatedRecipe.QuotationTerminalCost.TerminalName;
+						trackedRecipe.QuotationTerminalCost.TerminalPeriod = updatedRecipe.QuotationTerminalCost.TerminalPeriod;
+						trackedRecipe.QuotationTerminalCost.LifeGbp = updatedRecipe.QuotationTerminalCost.LifeGbp;
+						trackedRecipe.QuotationTerminalCost.Liquor = updatedRecipe.QuotationTerminalCost.Liquor;
+						trackedRecipe.QuotationTerminalCost.Butter = updatedRecipe.QuotationTerminalCost.Butter;
+						trackedRecipe.QuotationTerminalCost.Powder = updatedRecipe.QuotationTerminalCost.Powder;
+					}
+
+					_dbContext.QuotationRawMaterialCosts.RemoveRange(trackedRecipe.QuotationRawMaterialCosts);
+
+					//// === QuotationRawMaterialCosts ===
+					trackedRecipe.QuotationRawMaterialCosts = updatedRecipe.QuotationRawMaterialCosts
+						.Select(r => new QuotationRawMaterialCost
+						{
+							MaterialName = r.MaterialName,
+							Cost = r.Cost,
+							CostAmount = r.CostAmount
+						}).ToList();
+
+					_dbContext.QuotationPremiumCosts.RemoveRange(trackedRecipe.QuotationPremiumCosts);
+
+					// === QuotationPremiumCosts ===
+					trackedRecipe.QuotationPremiumCosts = updatedRecipe.QuotationPremiumCosts
+						.Select(p => new QuotationPremiumCost
+						{
+							PremiumName = p.PremiumName,
+							Cost = p.Cost,
+							CostAmount = p.CostAmount
+						}).ToList();
+
+					_dbContext.QuotationAdditionalCosts.RemoveRange(trackedRecipe.QuotationAdditionalCosts);
+
+					// === QuotationAdditionalCosts ===
+					trackedRecipe.QuotationAdditionalCosts = updatedRecipe.QuotationAdditionalCosts
+						.Select(a => new QuotationAdditionalCost
+						{
+							QuotationRecipeId = a.QuotationRecipeId,
+							CostName = a.CostName,
+							Cost = a.Cost,
+							CostAmount = a.CostAmount
+						}).ToList();
+
+					// === QuotationDeliveryCost ===
+					if (trackedRecipe.QuotationDeliveryCost != null && updatedRecipe.QuotationDeliveryCost != null)
+					{
+						trackedRecipe.QuotationDeliveryCost.DeliveryName = updatedRecipe.QuotationDeliveryCost.DeliveryName;
+						trackedRecipe.QuotationDeliveryCost.CostAmount = updatedRecipe.QuotationDeliveryCost.CostAmount;
+					}
+
+					// === QuotationProductionCost ===
+					if (trackedRecipe.QuotationProductionCost != null && updatedRecipe.QuotationProductionCost != null)
+					{
+						trackedRecipe.QuotationProductionCost.ProductType = updatedRecipe.QuotationProductionCost.ProductType;
+						trackedRecipe.QuotationProductionCost.ProductTypeCost = updatedRecipe.QuotationProductionCost.ProductTypeCost;
+					}
+
+					// === QuotationFinancialCost ===
+					if (trackedRecipe.QuotationFinancialCost != null && updatedRecipe.QuotationFinancialCost != null)
+					{
+						trackedRecipe.QuotationFinancialCost.InterestRate = updatedRecipe.QuotationFinancialCost.InterestRate;
+						trackedRecipe.QuotationFinancialCost.FinanceDays = updatedRecipe.QuotationFinancialCost.FinanceDays;
+					}
 				}
 			}
-
-			foreach (var rawMaterialCost in quotationRecipe.QuotationRawMaterialCosts)
-			{
-				var rawMaterialCostEntry = _dbContext.Entry(rawMaterialCost);
-				if (rawMaterialCostEntry.State != EntityState.Detached)
-				{
-					rawMaterialCostEntry.State = EntityState.Detached;
-				}
-			}
-
-			var packagingCostEntry = _dbContext.Entry(quotationRecipe.QuotationPackagingCost);
-			if (packagingCostEntry.State != EntityState.Detached)
-			{
-				packagingCostEntry.State = EntityState.Detached;
-			}
-
-			var deliveryCostEntry = _dbContext.Entry(quotationRecipe.QuotationDeliveryCost);
-			if (deliveryCostEntry.State != EntityState.Detached)
-			{
-				deliveryCostEntry.State = EntityState.Detached;
-			}
-
-			foreach (var additionalCost in quotationRecipe.QuotationAdditionalCosts)
-			{
-				var additionalCostEntry = _dbContext.Entry(additionalCost);
-				if (additionalCostEntry.State != EntityState.Detached)
-				{
-					additionalCostEntry.State = EntityState.Detached;
-				}
-			}
+			_dbContext.Quotes.Update(selectedQuote);
+			await _dbContext.SaveChangesAsync();
 		}
 
-		private void AttachCosts(QuotationRecipe quotationRecipe)
-		{
-			// Attach the cost entities to the context if they exist
-			if (quotationRecipe.QuotationTerminalCost != null)
-				_dbContext.Attach(quotationRecipe.QuotationTerminalCost);
-
-			if (quotationRecipe.QuotationPackagingCost != null)
-				_dbContext.Attach(quotationRecipe.QuotationPackagingCost);
-
-			if (quotationRecipe.QuotationDeliveryCost != null)
-				_dbContext.Attach(quotationRecipe.QuotationDeliveryCost);
-
-			// For new or modified raw material costs, set them to modified
-			foreach (var rawMaterialCost in quotationRecipe.QuotationRawMaterialCosts)
-			{
-				_dbContext.Entry(rawMaterialCost).State = EntityState.Modified; // Update if it's modified
-			}
-
-			// For new or modified additional costs, set them to modified
-			foreach (var additionalCost in quotationRecipe.QuotationAdditionalCosts)
-			{
-				_dbContext.Entry(additionalCost).State = EntityState.Modified; // Update if it's modified
-			}
-
-			// For new or modified premium costs, set them to modified
-			foreach (var premiumCost in quotationRecipe.QuotationPremiumCosts)
-			{
-				_dbContext.Entry(premiumCost).State = EntityState.Modified; // Update if it's modified
-			}
-		}
 
 
 		public async Task<Quote> duplicateQuoteIntoDatabase(Quote selectedQuote, List<QuotationRecipe> selectedQuotationRecipe)
@@ -548,6 +355,9 @@ namespace GCBQuotationSystem.Components.Services
 				.Include(q => q.Customer)
 				
 				.Include(q => q.Status)
+
+				.Include(q => q.QuotationRecipes)
+					.ThenInclude(qr => qr.QuotationProductionCost)
 
 				.Where(q => q.QuoteId == quoteID)
 				.AsSplitQuery()

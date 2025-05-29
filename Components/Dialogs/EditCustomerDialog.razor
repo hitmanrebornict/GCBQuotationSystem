@@ -1,0 +1,216 @@
+@inject MasterDataServices MasterDataServices
+@inject DialogService DialogService
+@inject NotificationService NotificationService
+
+@if (customer != null)
+{
+    <div class="col-md-12">
+        <div style="margin-bottom: 1rem" class="row">
+            <div class="col-md-3">
+                <RadzenLabel Text="Customer Name" Component="CustName" style="width: 100%">
+                </RadzenLabel>
+            </div>
+            <div class="col-md-9">
+                <RadzenTextBox MaxLength="100" style="width: 100%" @bind-Value="customer.CustName" Name="CustName" Placeholder="Please enter customer name..." />
+            </div>
+        </div>
+        
+        <div style="margin-bottom: 1rem" class="row">
+            <div class="col-md-3">
+                <RadzenLabel Text="Invoice Address 1" Component="InvoiceAddress1" style="width: 100%">
+                </RadzenLabel>
+            </div>
+            <div class="col-md-9">
+                <RadzenTextBox MaxLength="100" style="width: 100%" @bind-Value="customer.InvoiceAddress1" Name="InvoiceAddress1" Placeholder="Please enter invoice address line 1..." />
+            </div>
+        </div>
+        
+        <div style="margin-bottom: 1rem" class="row">
+            <div class="col-md-3">
+                <RadzenLabel Text="Invoice Address 2" Component="InvoiceAddress2" style="width: 100%">
+                </RadzenLabel>
+            </div>
+            <div class="col-md-9">
+                <RadzenTextBox MaxLength="100" style="width: 100%" @bind-Value="customer.InvoiceAddress2" Name="InvoiceAddress2" Placeholder="Please enter invoice address line 2..." />
+            </div>
+        </div>
+        
+        <div style="margin-bottom: 1rem" class="row">
+            <div class="col-md-3">
+                <RadzenLabel Text="Invoice City" Component="InvoiceCity" style="width: 100%">
+                </RadzenLabel>
+            </div>
+            <div class="col-md-9">
+                <RadzenTextBox MaxLength="100" style="width: 100%" @bind-Value="customer.InvoiceCity" Name="InvoiceCity" Placeholder="Please enter invoice city..." />
+            </div>
+        </div>
+        
+        <div style="margin-bottom: 1rem" class="row">
+            <div class="col-md-3">
+                <RadzenLabel Text="Invoice Postcode" Component="InvoicePostcode" style="width: 100%">
+                </RadzenLabel>
+            </div>
+            <div class="col-md-9">
+                <RadzenTextBox MaxLength="20" style="width: 100%" @bind-Value="customer.InvoicePostcode" Name="InvoicePostcode" Placeholder="Please enter invoice postcode..." />
+            </div>
+        </div>
+        
+        <div style="margin-bottom: 1rem" class="row">
+            <div class="col-md-3">
+                <RadzenLabel Text="Country" Component="Country" style="width: 100%">
+                </RadzenLabel>
+            </div>
+            <div class="col-md-9">
+                <RadzenDropDown Data="@countries" 
+                               @bind-Value="customer.CountryId" 
+                               TextProperty="CountryName" 
+                               ValueProperty="CountryId" 
+                               style="width: 100%" 
+                               Placeholder="Select Country..." />
+            </div>
+        </div>
+        
+        <div style="margin-bottom: 1rem" class="row">
+            <div class="col-md-3">
+                <RadzenLabel Text="Active" Component="Active" style="width: 100%">
+                </RadzenLabel>
+            </div>
+            <div class="col-md-9">
+                <RadzenCheckBox @bind-Value="customer.Active" Name="Active" />
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col offset-sm-3">
+            <RadzenButton ButtonType="Radzen.ButtonType.Submit" Icon="save" Text="Update" ButtonStyle="ButtonStyle.Primary" Click="@HandleUpdate" IsBusy="@isSaving" />
+            <RadzenButton ButtonStyle="ButtonStyle.Light" style="margin-left: 1rem" Text="Cancel" Click="@CancelDialog" />
+        </div>
+    </div>
+}
+else
+{
+    <div class="text-center">
+        <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" />
+        <p>Loading customer data...</p>
+    </div>
+}
+
+@code {
+    [Parameter] public int CustNo { get; set; }
+    
+    [CascadingParameter]
+    private Dialog _dialog { get; set; }
+    
+    private Customer? customer;
+    private List<Country> countries = new List<Country>();
+    private bool isSaving = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            countries = await MasterDataServices.GetAllCountriesAsync();
+            customer = await MasterDataServices.GetCustomerByIdAsync(CustNo);
+            
+            if (customer == null)
+            {
+                NotificationService.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Error,
+                    Summary = "Error",
+                    Detail = "Customer not found",
+                    Duration = 4000
+                });
+                DialogService.Close(false);
+            }
+            
+            SetTitleContent();
+            DialogService.Refresh();
+        }
+        catch (Exception ex)
+        {
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Error",
+                Detail = $"Failed to load customer: {ex.Message}",
+                Duration = 4000
+            });
+            DialogService.Close(false);
+        }
+    }
+
+    private async Task HandleUpdate()
+    {
+        try
+        {
+            isSaving = true;
+            
+            if (string.IsNullOrEmpty(customer.CustName) || customer.CountryId == 0)
+            {
+                NotificationService.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Error,
+                    Summary = "Error",
+                    Detail = "Please fill in all required fields.",
+                    Duration = 4000
+                });
+                return;
+            }
+
+            var result = await MasterDataServices.UpdateCustomerAsync(customer);
+            
+            if (result)
+            {
+                NotificationService.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Success,
+                    Summary = "Success",
+                    Detail = "Customer updated successfully",
+                    Duration = 4000
+                });
+                
+                DialogService.Close(true);
+            }
+            else
+            {
+                NotificationService.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Error,
+                    Summary = "Error",
+                    Detail = "Failed to update customer",
+                    Duration = 4000
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Error",
+                Detail = $"An error occurred: {ex.Message}",
+                Duration = 4000
+            });
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private void CancelDialog()
+    {
+        DialogService.Close(false);
+    }
+    
+    void SetTitleContent()
+    {
+        _dialog.Title = null; // clear default title
+        _dialog.Options.TitleContent = service =>
+        @<RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Start" Gap="10px">
+            <h5>Edit Customer</h5>
+        </RadzenStack>;
+    }
+} 

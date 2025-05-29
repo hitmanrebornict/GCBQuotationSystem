@@ -27,9 +27,9 @@ public partial class QuotationSystemContext : DbContext
 
     public virtual DbSet<Premium> Premiums { get; set; }
 
-    public virtual DbSet<PremiumCost> PremiumCosts { get; set; }
-
     public virtual DbSet<ProductType> ProductTypes { get; set; }
+
+    public virtual DbSet<ProductionCost> ProductionCosts { get; set; }
 
     public virtual DbSet<QuotationAdditionalCost> QuotationAdditionalCosts { get; set; }
 
@@ -40,6 +40,8 @@ public partial class QuotationSystemContext : DbContext
     public virtual DbSet<QuotationPackagingCost> QuotationPackagingCosts { get; set; }
 
     public virtual DbSet<QuotationPremiumCost> QuotationPremiumCosts { get; set; }
+
+    public virtual DbSet<QuotationProductionCost> QuotationProductionCosts { get; set; }
 
     public virtual DbSet<QuotationRawMaterialCost> QuotationRawMaterialCosts { get; set; }
 
@@ -78,6 +80,7 @@ public partial class QuotationSystemContext : DbContext
         {
             entity.HasKey(e => e.CountryId).HasName("PK__Country__10D1609F665E00FF");
 
+            entity.Property(e => e.Active).HasDefaultValue(true);
             entity.Property(e => e.CountryName)
                 .HasMaxLength(255)
                 .IsUnicode(false);
@@ -125,6 +128,7 @@ public partial class QuotationSystemContext : DbContext
         {
             entity.HasKey(e => e.DeliveryId).HasName("PK__Customer__626D8FCE4AD3BC56");
 
+            entity.Property(e => e.Active).HasDefaultValue(true);
             entity.Property(e => e.Address1).HasMaxLength(255);
             entity.Property(e => e.Address2).HasMaxLength(255);
             entity.Property(e => e.City).HasMaxLength(255);
@@ -146,6 +150,7 @@ public partial class QuotationSystemContext : DbContext
         {
             entity.HasKey(e => e.DeliveryId).HasName("PK__Delivery__626D8FCE691C4BC8");
 
+            entity.Property(e => e.Active).HasDefaultValue(true);
             entity.Property(e => e.Cost).HasColumnType("decimal(18, 2)");
             entity.Property(e => e.Pallet).HasMaxLength(50);
             entity.Property(e => e.PostCode).HasMaxLength(50);
@@ -185,15 +190,6 @@ public partial class QuotationSystemContext : DbContext
                 .IsUnicode(false);
         });
 
-        modelBuilder.Entity<PremiumCost>(entity =>
-        {
-            entity.HasKey(e => e.PremiumCostId).HasName("PK__PremiumC__C04719D3E8BE4583");
-
-            entity.Property(e => e.PremiumCostId).HasColumnName("PremiumCostID");
-            entity.Property(e => e.Amount).HasColumnType("decimal(18, 2)");
-            entity.Property(e => e.Name).HasMaxLength(100);
-        });
-
         modelBuilder.Entity<ProductType>(entity =>
         {
             entity.HasKey(e => e.ProductTypeId).HasName("PK__ProductT__A1312F6EA539CD49");
@@ -201,6 +197,16 @@ public partial class QuotationSystemContext : DbContext
             entity.Property(e => e.TypeName)
                 .HasMaxLength(50)
                 .IsUnicode(false);
+        });
+
+        modelBuilder.Entity<ProductionCost>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PK__Producti__3214EC273FE3C8BE");
+
+            entity.Property(e => e.Id).HasColumnName("ID");
+            entity.Property(e => e.Active).HasDefaultValue(true);
+            entity.Property(e => e.ProductType).HasMaxLength(100);
+            entity.Property(e => e.ProductTypeCost).HasColumnType("decimal(18, 2)");
         });
 
         modelBuilder.Entity<QuotationAdditionalCost>(entity =>
@@ -278,6 +284,23 @@ public partial class QuotationSystemContext : DbContext
                 .HasForeignKey(d => d.QuotationRecipeId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_QuotationPremiumCosts_QuotationRecipe");
+        });
+
+        modelBuilder.Entity<QuotationProductionCost>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PK__Quotatio__3214EC2755F2E09B");
+
+            entity.HasIndex(e => e.QuotationRecipeId, "UQ__Quotatio__A9D97D19D454CB4F").IsUnique();
+
+            entity.Property(e => e.Id).HasColumnName("ID");
+            entity.Property(e => e.ProductType).HasMaxLength(100);
+            entity.Property(e => e.ProductTypeCost).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.QuotationRecipeId).HasColumnName("QuotationRecipeID");
+
+            entity.HasOne(d => d.QuotationRecipe).WithOne(p => p.QuotationProductionCost)
+                .HasForeignKey<QuotationProductionCost>(d => d.QuotationRecipeId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_QuotationProductionCosts_QuotationRecipes");
         });
 
         modelBuilder.Entity<QuotationRawMaterialCost>(entity =>
@@ -393,6 +416,7 @@ public partial class QuotationSystemContext : DbContext
             entity.HasKey(e => e.MaterialId).HasName("PK__RawMater__C506131781D23765");
 
             entity.Property(e => e.MaterialId).HasColumnName("MaterialID");
+            entity.Property(e => e.Active).HasDefaultValue(true);
             entity.Property(e => e.MaterialName)
                 .HasMaxLength(100)
                 .IsUnicode(false);
@@ -433,6 +457,7 @@ public partial class QuotationSystemContext : DbContext
         {
             entity.HasKey(e => e.RecipeId).HasName("PK__Recipes__FDD988B01569D400");
 
+            entity.Property(e => e.Active).HasDefaultValue(true);
             entity.Property(e => e.RecipeCode).HasMaxLength(255);
             entity.Property(e => e.RecipeDesc).HasMaxLength(255);
 
@@ -469,6 +494,7 @@ public partial class QuotationSystemContext : DbContext
             entity.HasKey(e => e.TerminalCostId).HasName("PK__Terminal__12257C3F438D3701");
 
             entity.Property(e => e.TerminalCostId).HasColumnName("TerminalCostID");
+            entity.Property(e => e.Active).HasDefaultValue(true);
             entity.Property(e => e.Butter).HasColumnType("decimal(18, 2)");
             entity.Property(e => e.LifeGbp)
                 .HasColumnType("decimal(18, 2)")

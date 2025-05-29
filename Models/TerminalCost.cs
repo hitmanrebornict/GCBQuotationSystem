@@ -18,4 +18,6 @@ public partial class TerminalCost
     public decimal Butter { get; set; }
 
     public decimal Powder { get; set; }
+
+    public bool Active { get; set; }
 }

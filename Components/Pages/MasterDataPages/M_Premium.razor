@@ -58,6 +58,11 @@
 @code {
     private List<Premium> premiums = new List<Premium>();
     
+    protected override async Task OnInitializedAsync()
+    {
+        premiums = await MDS.GetPremiumsAsync();
+    }
+    
     private async Task CreateButtonOnClick()
     {
         var options = new DialogOptions() 
@@ -99,10 +104,5 @@
             premiums = await MDS.GetPremiumsAsync();
             await InvokeAsync(StateHasChanged);
         }
-    }
-
-    protected override async Task OnInitializedAsync()
-    {
-        premiums = await MDS.GetPremiumsAsync();
     }
 } 

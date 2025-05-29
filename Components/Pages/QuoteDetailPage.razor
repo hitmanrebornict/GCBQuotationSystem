@@ -188,7 +188,7 @@
                             <RadzenText Text="Additional Costs" TextStyle="TextStyle.Subtitle1" class="mb-0" />
                         </div>
                         <ul class="list-group list-group-flush">
-                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                            @* <li class="list-group-item d-flex justify-content-between align-items-center">
                                 <span>Production Cost</span>
                                 <RadzenNumeric @bind-Value="@addtionalCostList.FirstOrDefault(a => a.CostName == "ProductionCost").Cost"
                                 Change="@(value => onProductionCostChange(value,"ProductionCost"))"
@@ -197,7 +197,8 @@
                                 ShowUpDown="false"
                                 Format="c"
                                 Min="0" />
-                            </li>
+                            </li> *@
+
                             <li class="list-group-item d-flex justify-content-between align-items-center">
                                 <span>Margin</span>
                                 <RadzenNumeric @bind-Value="@addtionalCostList.FirstOrDefault(a => a.CostName == "Margin").Cost"
@@ -343,39 +344,6 @@
         financialDays = QuoteDataService.RecipeTotalCostList
         .FirstOrDefault()?.QuotationRecipe1?.QuotationFinancialCost?.FinanceDays ?? 0;  
 
-        // Log all values in the RecipeTotalCostList for debugging
-        foreach (var recipeCost in QuoteDataService.RecipeTotalCostList)
-        {
-            Console.WriteLine($"Recipe: {recipeCost.QuotationRecipe1.Recipe.RecipeCode}, Quarter: {recipeCost.Quarter}");
-            Console.WriteLine($"Total Cost: {recipeCost.TotalCost}");
-            Console.WriteLine($"Period Month: {recipeCost.QuotationRecipe1.PeriodMonth:MMMM yyyy}");
-
-
-            Console.WriteLine("----------------------------------------");
-        }
-
-
-        // Log all values in the RecipeCostMatrix
-        foreach (var recipe in QuoteDataService.RecipeCostMatrix)
-        {
-            Console.WriteLine($"Recipe Code: {recipe.RecipeCode}");
-
-            foreach (var periodCost in recipe.PeriodCosts)
-            {
-                Console.WriteLine($"  Period: {periodCost.Key}, Cost: {periodCost.Value}");
-            }
-
-            if (recipe.PeriodQuantities != null)
-            {
-                foreach (var periodQuantity in recipe.PeriodQuantities)
-                {
-                    Console.WriteLine($"  Period: {periodQuantity.Key}, Quantity: {periodQuantity.Value}");
-                }
-            }
-
-            Console.WriteLine("-----------------------------------");
-        }
-
         await InvokeAsync(StateHasChanged);
     }
 
@@ -394,6 +362,8 @@
     private IEnumerable<QuotationAdditionalCost> addtionalCostList => QuoteDataService.RecipeTotalCostList
     .Select(r => r.QuotationRecipe1.QuotationAdditionalCosts).FirstOrDefault();
 
+    // private decimal ProductionCost => QuoteDataService.RecipeTotalCostList
+    // .Select(r => r.QuotationRecipe1.QuotationProductionCost.ProductTypeCost).FirstOrDefault();
 
     private decimal financialCostPercentage = 0;
     private int financialDays = 0;

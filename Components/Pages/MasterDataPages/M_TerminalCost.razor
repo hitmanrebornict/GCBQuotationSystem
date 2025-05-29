@@ -4,14 +4,14 @@
 
 <RadzenCard>
     <h3>Terminal Cost</h3>
-
+    <hr />
     <div class="d-flex justify-content-between mb-4">
         <RadzenButton Text="Create New Terminal Cost"
                       Icon="add_circle_outline"
                       ButtonStyle="ButtonStyle.Primary"
                       Click="@CreateButtonOnClick" />
     </div>
-    <hr/>
+   
 
     <RadzenDataGrid Data="@terminalCosts"
                     TItem="TerminalCost"

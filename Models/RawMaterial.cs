@@ -9,6 +9,8 @@ public partial class RawMaterial
 
     public string MaterialName { get; set; } = null!;
 
+    public bool Active { get; set; }
+
     public virtual ICollection<RawMaterialPriceDetail> RawMaterialPriceDetails { get; set; } = new List<RawMaterialPriceDetail>();
 
     public virtual ICollection<RecipeIngredient> RecipeIngredients { get; set; } = new List<RecipeIngredient>();
