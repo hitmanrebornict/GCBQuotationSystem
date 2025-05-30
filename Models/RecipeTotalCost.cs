@@ -11,5 +11,7 @@
 
 		public List<RawMaterialPriceDetail> RawMaterialPriceDetailList { get; set; }
 
+		public CustomerDeliveryDetail CustomerDeliveryDetail { get; set; }
+
 	}
 }

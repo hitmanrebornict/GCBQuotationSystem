@@ -136,7 +136,7 @@
         <RadzenDataGrid Data="packagingCosts" TItem="QuotationPackagingCost"
         Style="width: 100%;" ShowPaging="false">
             <Columns>
-                <RadzenDataGridColumn TItem="QuotationPackagingCost" Property="Type" Title="Packaging Type" />
+                @* <RadzenDataGridColumn TItem="QuotationPackagingCost" Property="Type" Title="Packaging Type" /> *@
                 <RadzenDataGridColumn TItem="QuotationPackagingCost" Property="PackagingName" Title="Packaging Name" />
                 <RadzenDataGridColumn TItem="QuotationPackagingCost" Property="Cost" Title="Cost">
                     <Template Context="data">
@@ -311,7 +311,7 @@ else
     // Properties to store section totals
     private decimal rawMaterialTotal => recipeDetailModified?.QuotationRecipe1.QuotationRawMaterialCosts.Sum(x => x.CostAmount) ?? 0;
     private decimal premiumTotal => recipeDetailModified?.QuotationRecipe1.QuotationPremiumCosts.Sum(x => x.CostAmount) ?? 0;
-    private decimal packagingTotal => packagingCosts.Sum(x => x.CostAmount);
+    private decimal packagingTotal => packagingCosts?.Sum(x => x.CostAmount) ?? 0;
     private decimal deliveryTotal => deliveryCosts.Sum(x => x.CostAmount);
     private decimal productionTotal => productionCosts.Sum(x => x.ProductTypeCost);
     private decimal additionalTotal => recipeDetailModified?.QuotationRecipe1.QuotationAdditionalCosts.Sum(x => x.CostAmount) ?? 0;

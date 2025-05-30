@@ -99,10 +99,12 @@
                         <div class="col-md-6">
                             <p><strong>Quote Date:</strong></p>
                             <p><strong>Customer Name:</strong></p>
+                            <p><strong>Delivery Address:</strong></p>
                         </div>
                         <div class="col-md-6">
                             <p>@quote.CreatedAt?.ToString("dd MMM yyyy hh:mm tt")</p>
                             <p>@quote.Customer.CustName</p>
+                            <p>@GetDeliveryAddress()</p>
                         </div>
                     </div>
                 </div>
@@ -138,6 +140,7 @@
 </div>
 
 @code {
+
     [Parameter]
     public int quoteID { get; set; }
 
@@ -166,7 +169,7 @@
     {
         // Store the original user currency preference
         originalUserCurrency = UserPreferenceSetting.Currency;
-        
+
         quote = await QuoteDetailService.GetQuoteAsync(quoteID);
 
         if(quote != null){
@@ -174,7 +177,7 @@
             status = quote.Status.StatusName;
             QuoteRemark = quote.Remark;
             CustomerRemark = quote.CustomerRemark;
-            
+
             // Switch to quote's currency if different from user preference
             if (!string.IsNullOrEmpty(quote.Currency?.CurrencyCode) && 
                 quote.Currency.CurrencyCode != UserPreferenceSetting.Currency)
@@ -301,7 +304,7 @@
         Directory.CreateDirectory(folderPath);
 
         List<string> generatedFiles = new List<string>();
-        
+
         // Determine which data to use based on the current view
         var dataToExport = SelectBarValue ? 
             QuoteDataService.RecipeCostMatrix : // Summary view (MONTH)
@@ -323,14 +326,14 @@
 
                 // Format date without time
                 string formattedDate = quote.CreatedAt?.ToString("dd MMM yyyy") ?? "-";
-                
+
                 // Add formal introduction with customer name
                 document.ShowTextAligned($"Date: {formattedDate}", 30, startY, iText.Layout.Properties.TextAlignment.LEFT);
-                
+
                 // Add formal greeting with customer name
                 document.ShowTextAligned($"Dear {quote.Customer.CustName},", 30, startY - 30, iText.Layout.Properties.TextAlignment.LEFT);
                 document.ShowTextAligned("We are pleased to quote you:", 30, startY - 50, iText.Layout.Properties.TextAlignment.LEFT);
-                
+
                 document.ShowTextAligned($"Recipe Code: {recipe.RecipeCode}", 30, startY - 80, iText.Layout.Properties.TextAlignment.LEFT);
 
                 // Create table with 2 columns (removed quantity column)
@@ -381,23 +384,23 @@
                 }
 
                 document.Add(table);
-                
+
                 // Add remarks if available
                 if (!string.IsNullOrEmpty(QuoteRemark) || !string.IsNullOrEmpty(CustomerRemark))
                 {
-                    
-                   
-                    
+
+
+
                     // Add customer remarks if available
                     if (!string.IsNullOrEmpty(CustomerRemark))
                     {
-                        
+
                         document.Add(new Paragraph("Customer Notes:").SetBold());
                         document.Add(new Paragraph(CustomerRemark)
                             .SetTextAlignment(iText.Layout.Properties.TextAlignment.LEFT));
                     }
                 }
-                
+
                 // Add closing text with consistent left alignment
                 document.Add(new Paragraph(" "));
                 document.Add(new Paragraph("Thank you for your business. We look forward to serving you.")
@@ -460,5 +463,38 @@
         await InvokeAsync(StateHasChanged);
 
         NotificationService.Notify(NotificationSeverity.Success, "Quotation is updated successfully.");
+    }
+
+    private string GetDeliveryAddress()
+    {
+        if (quote?.DeliveryDetailId != null && quote.Customer?.CustomerDeliveryDetails != null)
+        {
+
+            var deliveryDetail = quote.Customer.CustomerDeliveryDetails.First();
+
+            
+            if (deliveryDetail != null)
+            {
+                // Combine address components, filtering out null/empty values
+                var addressParts = new List<string>();
+                
+                if (!string.IsNullOrWhiteSpace(deliveryDetail.Address1))
+                    addressParts.Add(deliveryDetail.Address1);
+                
+                if (!string.IsNullOrWhiteSpace(deliveryDetail.Address2))
+                    addressParts.Add(deliveryDetail.Address2);
+                
+                if (!string.IsNullOrWhiteSpace(deliveryDetail.City))
+                    addressParts.Add(deliveryDetail.City);
+                
+                if (!string.IsNullOrWhiteSpace(deliveryDetail.Postcode))
+                    addressParts.Add(deliveryDetail.Postcode);
+                
+           
+                return addressParts.Count > 0 ? string.Join(", ", addressParts) : "No delivery address specified";
+            }
+        }
+        
+        return "No delivery address specified";
     }
 }

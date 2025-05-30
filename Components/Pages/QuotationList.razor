@@ -13,7 +13,8 @@
                             Data="@allRecipeCodes"
                             Change="@ApplyFilters"
                             Placeholder="Select Recipe Codes"
-                            Style="width: 100%;" />
+                            Style="width: 100%;"
+                            AllowFiltering = "true"/>
         </div>
         <div class="col-md-4 mb-3">
             <RadzenText TextStyle="TextStyle.Subtitle2">From Date</RadzenText>
@@ -41,10 +42,10 @@
     <RadzenDataGrid TItem="Quote" Data="@filteredQuotesList" AllowColumnResize="true"
                    AllowPaging="true" RowSelect="@OnQuoteSelected"
                    AllowSorting="true" SelectionMode="DataGridSelectionMode.Single" 
-                   class="radzen-datagrid-header" Responsive="true">
+                   class="radzen-datagrid-header" Responsive="true" AllowFiltering="true" FilterMode="FilterMode.CheckBoxList">
         <Columns>
             <RadzenDataGridColumn TItem="Quote" Property="QuoteId" Title="ID" Frozen="true" TextAlign="TextAlign.Center" />
-            <RadzenDataGridColumn TItem="Quote" Property="Customer.CustName" Title="Customer Name" Resizable="true" Context="request" />
+            <RadzenDataGridColumn  TItem="Quote" Property="Customer.CustName" Title="Customer Name" Resizable="true" Context="request" />
             <RadzenDataGridColumn TItem="Quote" Property="CreatedAt" Title="Quote Time">
                 <Template Context="data">
                     @(data.CreatedAt.Value.ToString("dd/MM/yyyy hh:mm tt") ?? "-")
@@ -52,7 +53,7 @@
             </RadzenDataGridColumn>
             
             <!-- Updated Recipe Code Column -->
-            <RadzenDataGridColumn TItem="Quote" Title="Recipe Codes">
+            <RadzenDataGridColumn TItem="Quote" Title="Recipe Codes" Filterable="false">
                 <Template Context="quote">
                     <div class="d-flex flex-wrap gap-1">
                         @{

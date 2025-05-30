@@ -81,14 +81,15 @@
     GridLines="DataGridGridLines.Horizontal"
     AllowFiltering="false"
     AllowColumnResize="true"
-    AllowAlternatingRows="true">
+    AllowAlternatingRows="true"
+    Style="min-width: 1200px; overflow-x: auto;">
         <Columns>
-            <RadzenDataGridColumn TItem="RecipePeriod" Title="Recipe" Width="200px">
+            <RadzenDataGridColumn TItem="RecipePeriod" Title="Recipe" MinWidth="200px">
                 <Template Context="data">
                     <RadzenDropDown @bind-Value="data.SelectedRecipe"
                     Data="@recipes"
                     TextProperty="RecipeCode"
-                    Style="width:100%"
+                    Style="width:100%; "
                     Change="@(() => OnRecipeSelected(data))"
                                     FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
                                     FilterOperator="StringFilterOperator.StartsWith"
@@ -96,32 +97,32 @@
                 </Template>
             </RadzenDataGridColumn>
 
-            <RadzenDataGridColumn TItem="RecipePeriod" Title="Period From" Width="180px">
+            <RadzenDataGridColumn TItem="RecipePeriod" Title="Period From" MinWidth="150px">
                 <Template Context="data">
                     <RadzenDatePicker @bind-Value="data.PeriodFrom"
                     DateFormat="MM/yyyy"
                     ShowDays=false
                     CurrentDateChanged="@(date => OnFromDateChanged(date, data))"
-                    Style="width:100%" />
+                    Style="width:100%;" />
                 </Template>
             </RadzenDataGridColumn>
 
-            <RadzenDataGridColumn TItem="RecipePeriod" Title="Period To" Width="180px">
+            <RadzenDataGridColumn TItem="RecipePeriod" Title="Period To" MinWidth="150px">
                 <Template Context="data">
                     <RadzenDatePicker @bind-Value="data.PeriodTo"
                     DateFormat="MM/yyyy"
                     ShowDays=false
                     CurrentDateChanged="@(date => OnToDateChanged(date, data))"
-                    Style="width:100%" />
+                    Style="width:100%; " />
                 </Template>
             </RadzenDataGridColumn>
 
-            <RadzenDataGridColumn TItem="RecipePeriod" Title="Packaging Material" Width="180px">
+            <RadzenDataGridColumn TItem="RecipePeriod" Title="Packaging Material" MinWidth="200px">
                 <Template Context="data">
                     <RadzenDropDownDataGrid @bind-Value="data.SelectedPackagingMaterial"
                     Data="@packagingMaterials"
                     TextProperty="Packaging"
-                    Style="width:100%"
+                    Style="width:100%;"
                     AllowFiltering="true"
                     FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
                     >
@@ -133,22 +134,22 @@
                 </Template>
             </RadzenDataGridColumn>
 
-            <RadzenDataGridColumn TItem="RecipePeriod" Title="Production Cost">
+            <RadzenDataGridColumn TItem="RecipePeriod" Title="Production Cost" MinWidth="200px">
                 <Template Context="data">
                     <RadzenDropDown @bind-Value="data.SelectedProductionCost"
                     Data="@productionCosts"
                       TextProperty="ProductType"
-                    Style="width:100%" />
+                    Style="width:100%; " />
                 </Template>
             </RadzenDataGridColumn>
 
-            <RadzenDataGridColumn TItem="RecipePeriod" Title="Premium">
+            <RadzenDataGridColumn TItem="RecipePeriod" Title="Premium" MinWidth="250px">
                 <Template Context="data">
                     <RadzenDropDown @bind-Value="data.SelectedPremiumList"
                     Data="@premiums"
                     TextProperty="PremiumName"
                     Multiple="true"
-                    Style="width:100%" />
+                    Style="width:100%; " />
                 </Template>
             </RadzenDataGridColumn>
 
@@ -282,12 +283,12 @@
                 return;
             }
 
-            if (period.SelectedPackagingMaterial == null)
-            {
-                NotificationService.Notify(NotificationSeverity.Error, "Validation Error", 
-                    $"Please select packaging material for recipe {period.SelectedRecipe.RecipeCode}.");
-                return;
-            }
+            // if (period.SelectedPackagingMaterial == null)
+            // {
+            //     NotificationService.Notify(NotificationSeverity.Error, "Validation Error", 
+            //         $"Please select packaging material for recipe {period.SelectedRecipe.RecipeCode}.");
+            //     return;
+            // }
         }
 
         var WeightRatio = UserPreferenceSetting.WeightRatio;
@@ -416,7 +417,7 @@
                     }
 
                     //Add Production Cost into QuotationRecipe
-                    if (recipePeriod.SelectedProductionCost != null)
+                    if (recipePeriod.SelectedProductionCost != null )
                     {
                         quotationRecipe.QuotationProductionCost = new QuotationProductionCost
                         {
@@ -433,13 +434,26 @@
 
 
                     //Calculate Packaging Cost
-
-                    quotationRecipe.QuotationPackagingCost = new QuotationPackagingCost
-						{
-							PackagingName = recipePeriod.SelectedRecipe.PackagingMaterial.Packaging,
+                    if(recipePeriod.SelectedRecipe.PackagingMaterial != null && recipePeriod.SelectedPackagingMaterial != null && recipePeriod.SelectedPackagingMaterial.CostGbpton.HasValue)
+                    {
+                        quotationRecipe.QuotationPackagingCost = new QuotationPackagingCost
+                        {
+                            PackagingName = recipePeriod.SelectedRecipe.PackagingMaterial.Packaging,
                             Cost = recipePeriod.SelectedPackagingMaterial.CostGbpton.Value,
                             CostAmount = recipePeriod.SelectedPackagingMaterial.CostGbpton.Value
-						};
+                        };
+                    }
+                    else
+                    {
+                        quotationRecipe.QuotationPackagingCost = new QuotationPackagingCost
+                        {
+                            PackagingName = "-",
+                            Cost = 0,
+                            CostAmount = 0,
+                        };
+                    }
+
+                  
 
                     quotationRecipe.QuotationDeliveryCost = new QuotationDeliveryCost
                         {
@@ -474,19 +488,20 @@
                     quotationRecipes.Add(quotationRecipe);
 
 
-                    localTotalCost = quotationRecipe.QuotationPremiumCosts.Sum(x => x.CostAmount) +
-                    quotationRecipe.QuotationRawMaterialCosts.Sum(x => x.CostAmount) +
-                    quotationRecipe.QuotationPackagingCost.CostAmount +
-                    quotationRecipe.QuotationDeliveryCost.CostAmount +
-                    quotationRecipe.QuotationAdditionalCosts.Sum(x => x.CostAmount) + 
-                    quotationRecipe.QuotationProductionCost.ProductTypeCost;
+                    localTotalCost = (quotationRecipe.QuotationPremiumCosts?.Sum(x => x.CostAmount) ?? 0) +
+                    (quotationRecipe.QuotationRawMaterialCosts?.Sum(x => x.CostAmount) ?? 0) +
+                    (quotationRecipe.QuotationPackagingCost?.CostAmount ?? 0) +
+                    (quotationRecipe.QuotationDeliveryCost?.CostAmount ?? 0) +
+                    (quotationRecipe.QuotationAdditionalCosts?.Sum(x => x.CostAmount) ?? 0) + 
+                    (quotationRecipe.QuotationProductionCost?.ProductTypeCost ?? 0);
 
                     var recipeTotalCost = new RecipeTotalCost
                         {
                             QuotationRecipe1 = quotationRecipe,
                             TotalCost = localTotalCost,
                             Quarter = quarter,
-                            RawMaterialPriceDetailList = rawMaterialPrice
+                            RawMaterialPriceDetailList = rawMaterialPrice,
+                            CustomerDeliveryDetail = selectedDelivery,
                         };
 
                     recipeTotalCostList.Add(recipeTotalCost);

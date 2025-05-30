@@ -469,12 +469,12 @@ namespace GCBQuotationSystem.Components.Services
 			}
 
 			// Calculate total cost excluding ORD Rebate first
-			var totalCostExcludingORDRebate = quotationRecipe.QuotationPremiumCosts.Sum(x => x.CostAmount) +
+			var totalCostExcludingORDRebate = (quotationRecipe.QuotationPremiumCosts?.Sum(x => x.CostAmount) ?? 0) +
 				totalRawMaterialCost +
-				quotationRecipe.QuotationPackagingCost.CostAmount +
-				quotationRecipe.QuotationDeliveryCost.CostAmount +
-				quotationRecipe.QuotationAdditionalCosts.Where(x => x.CostName != "ORD Rebate").Sum(x => x.CostAmount) +
-				quotationRecipe.QuotationProductionCost.ProductTypeCost;
+				(quotationRecipe.QuotationPackagingCost?.CostAmount ?? 0) +
+				(quotationRecipe.QuotationDeliveryCost?.CostAmount ?? 0) +
+				(quotationRecipe.QuotationAdditionalCosts?.Where(x => x.CostName != "ORD Rebate").Sum(x => x.CostAmount) ?? 0) +
+				(quotationRecipe.QuotationProductionCost?.ProductTypeCost ?? 0);
 
 			// Calculate ORD Rebate based on total cost excluding itself (acts as a discount)
 			var ordRebateCost = quotationRecipe.QuotationAdditionalCosts.FirstOrDefault(x => x.CostName == "ORD Rebate");

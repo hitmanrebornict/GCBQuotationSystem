@@ -54,6 +54,7 @@
             </div>
         </div>
 
+      
         <hr />
 
         @if (QuoteDataService.RecipeCostMatrix.Any())
@@ -287,6 +288,27 @@
                         </li>
                     </ul>
                 </div>
+
+                <!-- Add new Delivery Cost box -->
+                <div class="card shadow-sm rounded" style="width: 350px;">
+                    <div class="card-header bg-light">
+                        <RadzenText Text="Delivery Costs" TextStyle="TextStyle.Subtitle1" class="mb-0" />
+                    </div>
+                    <ul class="list-group list-group-flush">
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <span>Delivery Cost</span>
+                            <RadzenNumeric 
+                            @bind-Value="deliveryCostAmount"
+                            Change="@(async (value) => await onDeliveryCostChanged(value))"
+                            Style="width: 120px;"
+                            TValue="decimal"
+                            ShowUpDown="false"
+                            Format="c"
+                            Min="0" />
+                        </li>
+                     
+                    </ul>
+                </div>
             </div>
             <hr/>
         }
@@ -331,6 +353,10 @@
     private string costCalculationMethod = "Highest";
     private List<string> costCalculationMethods = new List<string> { "Highest", "Average" };
 
+    // Add delivery cost variables
+    private decimal deliveryCostAmount = 0;
+    private string selectedDeliveryMethod = "Fixed Amount";
+    private List<string> deliveryMethods = new List<string> { "Fixed Amount", "Per Unit", "Percentage" };
 
     protected override async Task OnInitializedAsync()
     {
@@ -344,7 +370,11 @@
         financialCostPercentage = QuoteDataService.RecipeTotalCostList
         .FirstOrDefault()?.QuotationRecipe1?.QuotationFinancialCost?.InterestRate ?? 0;
         financialDays = QuoteDataService.RecipeTotalCostList
-        .FirstOrDefault()?.QuotationRecipe1?.QuotationFinancialCost?.FinanceDays ?? 0;  
+        .FirstOrDefault()?.QuotationRecipe1?.QuotationFinancialCost?.FinanceDays ?? 0;
+
+        // Initialize delivery cost from existing data
+        deliveryCostAmount = QuoteDataService.RecipeTotalCostList
+        .FirstOrDefault()?.QuotationRecipe1?.QuotationDeliveryCost?.CostAmount ?? 0;
 
         await InvokeAsync(StateHasChanged);
     }
@@ -1099,16 +1129,28 @@
         }
     }
 
-        public async Task onYieldCostChange(decimal value, string costName){
+    public async Task onYieldCostChange(decimal value, string costName){
 
-            foreach(var qr in QuoteDataService.RecipeTotalCostList){
-                qr.QuotationRecipe1.QuotationAdditionalCosts.FirstOrDefault(x => x.CostName == costName).Cost = value;
-                qr.QuotationRecipe1.QuotationAdditionalCosts.FirstOrDefault(x => x.CostName == costName).CostAmount = value / 100 * qr.QuotationRecipe1.QuotationRawMaterialCosts.Sum(x => x.CostAmount);
-                qr.TotalCost += qr.QuotationRecipe1.QuotationAdditionalCosts.FirstOrDefault(x => x.CostName == costName).CostAmount;
+        foreach(var qr in QuoteDataService.RecipeTotalCostList){
+            qr.QuotationRecipe1.QuotationAdditionalCosts.FirstOrDefault(x => x.CostName == costName).Cost = value;
+            qr.QuotationRecipe1.QuotationAdditionalCosts.FirstOrDefault(x => x.CostName == costName).CostAmount = value / 100 * qr.QuotationRecipe1.QuotationRawMaterialCosts.Sum(x => x.CostAmount);
+            qr.TotalCost += qr.QuotationRecipe1.QuotationAdditionalCosts.FirstOrDefault(x => x.CostName == costName).CostAmount;
+        }
+
+        QuoteDataService.RecipeCostMatrix = await QuoteDataService.PrepareCostMatrix(QuoteDataService.RecipeTotalCostList);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task onDeliveryCostChanged(decimal value)
+    {
+        foreach(var qr in QuoteDataService.RecipeTotalCostList){
+            qr.TotalCost -= qr.QuotationRecipe1.QuotationDeliveryCost.CostAmount;
+            qr.QuotationRecipe1.QuotationDeliveryCost.CostAmount = value;
+                qr.TotalCost += qr.QuotationRecipe1.QuotationDeliveryCost.CostAmount;
             }
 
             QuoteDataService.RecipeCostMatrix = await QuoteDataService.PrepareCostMatrix(QuoteDataService.RecipeTotalCostList);
             await InvokeAsync(StateHasChanged);
-        }
-      
     }
+
+}

@@ -353,6 +353,7 @@ namespace GCBQuotationSystem.Components.Services
 							.ThenInclude(ri => ri.Material)
 
 				.Include(q => q.Customer)
+					.ThenInclude(q => q.CustomerDeliveryDetails)
 				
 				.Include(q => q.Status)
 
