@@ -1,5 +1,7 @@
 @page "/masterdata"
 @using GCBQuotationSystem.Models
+@using System.IO
+@using ClosedXML.Excel
 
 @inject MasterDataServices MasterDataService
 @inject DialogService DialogService
@@ -11,6 +13,11 @@
             <h3 class="m-0">Raw Material Prices</h3>
             
             <div class="d-flex align-items-center">
+                <RadzenButton Text="Upload Excel"
+                              Icon="upload_file"
+                              ButtonStyle="ButtonStyle.Info"
+                              Click="@(() => showUpload = true)"
+                              Class="me-3" />
                 <span class="me-2">Select Quarter:</span>
                 <RadzenDropDown 
                     TValue="QuarterItem"
@@ -21,6 +28,20 @@
                     Style="width:150px" />
             </div>
         </div>
+
+        @if (showUpload)
+        {
+            <div class="mb-4">
+                <RadzenUpload Accept=".xlsx"
+                              Auto="true"
+                              Multiple="false"
+                              Progress="@((args) => OnProgress(args))"
+                              Data=@uploadData
+                              Change=@(args => OnChange(args))
+                              ChooseText="Choose Excel File"
+                              Class="w-100" />
+            </div>
+        }
 
         @if (rawMaterialPriceDetails != null && rawMaterialPriceDetails.Any())
         {
@@ -97,6 +118,9 @@
     RawMaterialPriceUpdate? currentPriceUpdate;
 
     RadzenDataGrid<RawMaterialPriceDetail> detailsGrid;
+
+    bool showUpload = false;
+    byte[] uploadData = Array.Empty<byte>();
 
     protected override async Task OnInitializedAsync()
     {
@@ -327,5 +351,228 @@
             });
         }
     }
+
+    void OnProgress(UploadProgressArgs args)
+    {
+        // Handle progress updates
+    }
+
+    async Task OnChange(UploadChangeEventArgs args)
+    {
+        try
+        {
+            var file = args.Files.FirstOrDefault();
+            if (file != null)
+            {
+                using (var stream = file.OpenReadStream())
+                {
+                    using (var memoryStream = new MemoryStream())
+                    {
+                        await stream.CopyToAsync(memoryStream);
+                        memoryStream.Position = 0;
+
+                        using (var workbook = new XLWorkbook(memoryStream))
+                        {
+                            var worksheet = workbook.Worksheet(1); // Get first worksheet
+                            var rows = worksheet.RowsUsed().Skip(1); // Skip header row
+
+                            // Dictionary to store quarter prices
+                            var quarterPrices = new Dictionary<string, Dictionary<string, decimal>>();
+                            var avgPrices = new Dictionary<string, decimal>();
+                            var avgYearPrices = new Dictionary<int, Dictionary<string, decimal>>();
+
+                            foreach (var row in rows)
+                            {
+                                var quarterText = row.Cell("A").GetString().Trim();
+                                
+                                // Skip empty rows
+                                if (string.IsNullOrEmpty(quarterText))
+                                    continue;
+
+                                Console.WriteLine($"Processing quarter: {quarterText}");
+
+                                try
+                                {
+                                    var prices = new Dictionary<string, decimal>
+                                    {
+                                        ["Sugar"] = row.Cell("B").GetValue<decimal>(),
+                                        ["Soya Lecithin"] = row.Cell("C").GetValue<decimal>(),
+                                        ["Vanilla"] = row.Cell("F").GetValue<decimal>() * 1000, // Convert kg to g
+                                        ["Full Cream Milk Powder"] = row.Cell("H").GetValue<decimal>(),
+                                        ["Skimmed Milk Powder"] = row.Cell("I").GetValue<decimal>(),
+                                        ["Whey Powder"] = row.Cell("J").GetValue<decimal>(),
+                                        ["Lactose"] = row.Cell("K").GetValue<decimal>(),
+                                        ["Anhydrous Milk Fat"] = row.Cell("L").GetValue<decimal>(),
+                                        ["CBE"] = row.Cell("M").GetValue<decimal>()
+                                    };
+
+                                    Console.WriteLine($"  Sugar: {prices["Sugar"]:C2}");
+                                    Console.WriteLine($"  Lecethin: {prices["Soya Lecithin"]:C2}");
+                                    Console.WriteLine($"  Vanilla: {prices["Vanilla"]:C2} (converted from kg)");
+                                    Console.WriteLine($"  Full Cream Milk Powder: {prices["Full Cream Milk Powder"]:C2}");
+                                    Console.WriteLine($"  Skimmed Milk Powder: {prices["Skimmed Milk Powder"]:C2}");
+                                    Console.WriteLine($"  Whey Powder: {prices["Whey Powder"]:C2}");
+                                    Console.WriteLine($"  Lactose: {prices["Lactose"]:C2}");
+                                    Console.WriteLine($"  Anhydrous Milk Fat: {prices["Anhydrous Milk Fat"]:C2}");
+                                    Console.WriteLine($"  CBE: {prices["CBE"]:C2}");
+
+                                    // Only process if we have at least one non-zero price
+                                    if (prices.Values.Any(p => p > 0))
+                                    {
+                                        if (quarterText.ToLower() == "avg")
+                                        {
+                                            avgPrices = prices;
+                                            Console.WriteLine("  → Stored as AVG prices");
+                                        }
+                                        else if (quarterText.ToLower().StartsWith("avg "))
+                                        {
+                                            // Handle AVG YEAR format (e.g., "AVG 2026")
+                                            var yearPart = quarterText.Substring(4).Trim();
+                                            if (int.TryParse(yearPart, out int year))
+                                            {
+                                                avgYearPrices[year] = prices;
+                                                Console.WriteLine($"  → Stored as AVG prices for year {year}");
+                                            }
+                                        }
+                                        else
+                                        {
+                                            // Convert quarter format (e.g., "2025/1" -> "Q1/2025")
+                                            var quarter = ConvertQuarterFormat(quarterText);
+                                            quarterPrices[quarter] = prices;
+                                            Console.WriteLine($"  → Stored for quarter: {quarter}");
+                                        }
+                                    }
+                                    else
+                                    {
+                                        Console.WriteLine("  → Skipped (no prices > 0)");
+                                    }
+                                }
+                                catch (Exception ex)
+                                {
+                                    Console.WriteLine($"  → Error processing row: {ex.Message}");
+                                    // Continue with next row instead of failing completely
+                                }
+                                Console.WriteLine(); // Empty line for readability
+                            }
+
+                            // Process each quarter
+                            foreach (var quarter in quarters)
+                            {
+                                var quarterKey = quarter.Text;
+                                var quarterYear = quarter.StartDate.Year;
+                                
+                                // Priority: 1. Specific quarter data, 2. AVG YEAR data, 3. General AVG data
+                                Dictionary<string, decimal> prices = null;
+                                
+                                if (quarterPrices.ContainsKey(quarterKey))
+                                {
+                                    prices = quarterPrices[quarterKey];
+                                    Console.WriteLine($"Using specific quarter data for {quarterKey}");
+                                }
+                                else if (avgYearPrices.ContainsKey(quarterYear))
+                                {
+                                    prices = avgYearPrices[quarterYear];
+                                    Console.WriteLine($"Using AVG {quarterYear} data for {quarterKey}");
+                                }
+                                else if (avgPrices.Any())
+                                {
+                                    prices = avgPrices;
+                                    Console.WriteLine($"Using general AVG data for {quarterKey}");
+                                }
+
+                                if (prices != null && prices.Any())
+                                {
+                                    await UpdateQuarterPrices(quarter, prices);
+                                }
+                            }
+
+                            // Refresh the current view
+                            await LoadData();
+                            
+                            NotificationService.Notify(new NotificationMessage 
+                            { 
+                                Severity = NotificationSeverity.Success, 
+                                Summary = "Success", 
+                                Detail = "Raw material prices updated successfully" 
+                            });
+                        }
+                    }
+                }
+                showUpload = false;
+            }
+        }
+        catch (Exception ex)
+        {
+            NotificationService.Notify(new NotificationMessage 
+            { 
+                Severity = NotificationSeverity.Error, 
+                Summary = "Error", 
+                Detail = $"Failed to process file: {ex.Message}" 
+            });
+        }
+    }
+
+    private string ConvertQuarterFormat(string quarterText)
+    {
+        // Convert "2025/1" to "Q1/2025"
+        var parts = quarterText.Split('/');
+        if (parts.Length == 2 && int.TryParse(parts[0], out int year) && int.TryParse(parts[1], out int quarter))
+        {
+            return $"Q{quarter}/{year}";
+        }
+        return quarterText;
+    }
+
+    private async Task UpdateQuarterPrices(QuarterItem quarter, Dictionary<string, decimal> prices)
+    {
+        // Get or create price update for the quarter start month
+        var priceUpdate = await MasterDataService.GetPriceUpdateByMonthAsync(quarter.StartDate);
+        
+        if (priceUpdate == null)
+        {
+            priceUpdate = new RawMaterialPriceUpdate
+            {
+                PriceMonth = quarter.StartDate,
+                UpdateDate = DateTime.Now,
+                Remark = $"Updated from Excel upload - {quarter.Text}",
+                RawMaterialPriceDetails = new List<RawMaterialPriceDetail>()
+            };
+        }
+
+        // Update or create price details
+        foreach (var price in prices)
+        {
+            var material = await MasterDataService.GetMaterialByNameAsync(price.Key);
+            if (material != null)
+            {
+                var existingDetail = priceUpdate.RawMaterialPriceDetails.FirstOrDefault(d => d.MaterialId == material.MaterialId);
+                
+                if (existingDetail != null)
+                {
+                    existingDetail.Price = price.Value;
+                }
+                else
+                {
+                    priceUpdate.RawMaterialPriceDetails.Add(new RawMaterialPriceDetail
+                    {
+                        MaterialId = material.MaterialId,
+                        Material = material,
+                        Price = price.Value
+                    });
+                }
+            }
+        }
+
+        // Save the price update
+        if (priceUpdate.PriceUpdateId == 0)
+        {
+            await MasterDataService.CreatePriceUpdateAsync(priceUpdate);
+        }
+        else
+        {
+            await MasterDataService.UpdatePriceUpdateAsync(priceUpdate);
+        }
+    }
 }
     
+

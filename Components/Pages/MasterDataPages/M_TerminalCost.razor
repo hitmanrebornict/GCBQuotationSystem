@@ -1,17 +1,43 @@
 @page "/TerminalCost"
+@using Radzen
+@using Radzen.Blazor
+@using System.IO
+@using ClosedXML.Excel
+@using Microsoft.AspNetCore.Components.Forms
 @inject DialogService DialogService
 @inject MasterDataServices MDS
+@inject NotificationService NotificationService
 
 <RadzenCard>
     <h3>Terminal Cost</h3>
     <hr />
     <div class="d-flex justify-content-between mb-4">
-        <RadzenButton Text="Create New Terminal Cost"
-                      Icon="add_circle_outline"
-                      ButtonStyle="ButtonStyle.Primary"
-                      Click="@CreateButtonOnClick" />
+        <div>
+            <RadzenButton Text="Create New Terminal Cost"
+                          Icon="add_circle_outline"
+                          ButtonStyle="ButtonStyle.Primary"
+                          Click="@CreateButtonOnClick" />
+            <RadzenButton Text="Upload Excel"
+                          Icon="upload_file"
+                          ButtonStyle="ButtonStyle.Secondary"
+                          Click="@(() => showUpload = true)"
+                          Class="ms-2" />
+        </div>
     </div>
-   
+
+    @if (showUpload)
+    {
+        <div class="mb-4">
+            <RadzenUpload Accept=".xlsx"
+                          Auto="true"
+                          Multiple="false"
+                          Progress="@((args) => OnProgress(args))"
+                          Data=@uploadData
+                          Change=@(args => OnChange(args))
+                          ChooseText="Choose Excel File"
+                          Class="w-100" />
+        </div>
+    }
 
     <RadzenDataGrid Data="@terminalCosts"
                     TItem="TerminalCost"
@@ -53,7 +79,92 @@
 
 @code {
     private List<TerminalCost> terminalCosts = new List<TerminalCost>();
+    private bool showUpload = false;
+    private byte[] uploadData;
     
+    private void OnProgress(UploadProgressArgs args)
+    {
+        // Handle upload progress if needed
+    }
+
+    private async Task OnChange(UploadChangeEventArgs args)
+    {
+        try
+        {
+            var file = args.Files.FirstOrDefault();
+            if (file != null)
+            {
+                using (var stream = file.OpenReadStream())
+                {
+                    using (var memoryStream = new MemoryStream())
+                    {
+                        await stream.CopyToAsync(memoryStream);
+                        memoryStream.Position = 0;
+
+                        using (var workbook = new XLWorkbook(memoryStream))
+                        {
+                            var worksheet = workbook.Worksheet(1); // Get first worksheet
+                            var rows = worksheet.RowsUsed().Skip(1); // Skip header row
+
+                            foreach (var row in rows)
+                            {
+                                var periodCode = row.Cell("A").GetString().Trim();
+                                var lifeGbp = row.Cell("B").GetValue<decimal>();
+                                var liquor = row.Cell("C").GetValue<decimal>();
+                                var butter = row.Cell("D").GetValue<decimal>();
+                                var powder = row.Cell("E").GetValue<decimal>();
+
+                                // Convert period code to match database format (e.g., "K25" -> "K 2025")
+                                var periodName = ConvertPeriodCode(periodCode);
+
+                                // Find matching terminal cost record
+                                var terminalCost = terminalCosts.FirstOrDefault(tc => tc.PeriodName == periodName);
+                                if (terminalCost != null)
+                                {
+                                    terminalCost.LifeGbp = lifeGbp;
+                                    terminalCost.Liquor = liquor;
+                                    terminalCost.Butter = butter;
+                                    terminalCost.Powder = powder;
+
+                                    // Update in database
+                                    await MDS.UpdateTerminalCostAsync(terminalCost);
+                                }
+                            }
+
+                            // Refresh the grid
+                            terminalCosts = await MDS.GetTerminalCostAsync();
+                            await InvokeAsync(StateHasChanged);
+                            
+                            NotificationService.Notify(NotificationSeverity.Success, "Success", "Terminal costs updated successfully");
+                        }
+                    }
+                }
+                showUpload = false;
+            }
+        }
+        catch (Exception ex)
+        {
+            NotificationService.Notify(NotificationSeverity.Error, "Error", $"Failed to process file: {ex.Message}");
+        }
+    }
+
+    private string ConvertPeriodCode(string periodCode)
+    {
+        if (string.IsNullOrEmpty(periodCode) || periodCode.Length < 2)
+            return periodCode;
+
+        var letter = periodCode[0].ToString();
+        var year = periodCode.Substring(1);
+        
+        // If year is 2 digits, assume it's 20xx
+        if (year.Length == 2)
+        {
+            year = "20" + year;
+        }
+
+        return $"{letter} {year}";
+    }
+
     private async Task CreateButtonOnClick()
     {
         var options = new DialogOptions() 

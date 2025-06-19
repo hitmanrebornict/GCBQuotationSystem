@@ -59,7 +59,8 @@
             @bind-Value="selectedDeliveryCost"
             Data="@deliveryCost"
             TextProperty="PostCode"
-            Placeholder="Select Delivery Cost">
+            Placeholder="Select Delivery Cost"
+            AllowVirtualization = "true">
 
                 <Columns>
                     <RadzenDropDownDataGridColumn Property="Zone" Title="Zone" Width="100px" />
@@ -117,15 +118,16 @@
                 </Template>
             </RadzenDataGridColumn>
 
-            <RadzenDataGridColumn TItem="RecipePeriod" Title="Packaging Material" MinWidth="200px">
+            <RadzenDataGridColumn TItem="RecipePeriod" Title="Packaging Material" MinWidth="200px" >
                 <Template Context="data">
                     <RadzenDropDownDataGrid @bind-Value="data.SelectedPackagingMaterial"
                     Data="@packagingMaterials"
                     TextProperty="Packaging"
                     Style="width:100%;"
                     AllowFiltering="true"
+                    AllowVirtualization = "true"
                     FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
-                    >
+                   >
                         <Columns>
                             <RadzenDropDownDataGridColumn Property="Type" Title="Type" Width="100px" />
                             <RadzenDropDownDataGridColumn Property="Packaging" Title="Packaging" Width="150px" />
@@ -136,10 +138,19 @@
 
             <RadzenDataGridColumn TItem="RecipePeriod" Title="Production Cost" MinWidth="200px">
                 <Template Context="data">
-                    <RadzenDropDown @bind-Value="data.SelectedProductionCost"
+                    <RadzenDropDownDataGrid @bind-Value="data.SelectedProductionCost"
                     Data="@productionCosts"
-                      TextProperty="ProductType"
-                    Style="width:100%; " />
+                    TextProperty="ProductType"
+                    Style="width:100%;"
+                    AllowFiltering="true"
+                                            AllowVirtualization="true"
+                    FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                    >
+                        <Columns>
+                            <RadzenDropDownDataGridColumn Property="ProductType" Title="Product Type" Width="150px" />
+                            <RadzenDropDownDataGridColumn Property="ProductTypeCost" Title="Cost" Width="100px" />
+                        </Columns>
+                    </RadzenDropDownDataGrid>
                 </Template>
             </RadzenDataGridColumn>
 
@@ -258,14 +269,6 @@
             NotificationService.Notify(NotificationSeverity.Error, "Validation Error", "Please select a delivery address.");
             return;
         }
-
-        if (selectedDeliveryCost == null || string.IsNullOrEmpty(selectedDeliveryCost.PostCode))
-        {
-            NotificationService.Notify(NotificationSeverity.Error, "Validation Error", "Please select a delivery cost.");
-            return;
-        }
-
-
 
         // Validate recipe periods
         if (!RecipePeriods.Any(rp => rp.SelectedRecipe != null))
@@ -453,13 +456,24 @@
                         };
                     }
 
-                  
-
-                    quotationRecipe.QuotationDeliveryCost = new QuotationDeliveryCost
+                    if(selectedDeliveryCost != null && !string.IsNullOrEmpty(selectedDeliveryCost.PostCode) && selectedDeliveryCost.Cost > 0)
+                    {
+                         quotationRecipe.QuotationDeliveryCost = new QuotationDeliveryCost
                         {
                            DeliveryName = selectedDelivery.DeliveryName,
                            CostAmount = selectedDeliveryCost.Cost,
                         };
+                    }
+                    else
+                    {
+                        quotationRecipe.QuotationDeliveryCost = new QuotationDeliveryCost
+                        {
+                            DeliveryName = "-",
+                            CostAmount = 0,
+                        };
+                    }
+
+                   
 
                     quotationRecipe.QuotationProductionCost = new QuotationProductionCost
                     {

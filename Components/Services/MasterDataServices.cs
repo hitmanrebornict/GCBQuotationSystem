@@ -10,11 +10,13 @@ namespace GCBQuotationSystem.Components.Services
 	{
 		private QuotationSystemContext _dbContext;
 		private UserManager<IdentityUser> _userManager;
+		private NotificationService NotificationService;
 
-		public MasterDataServices(QuotationSystemContext dbContext, UserManager<IdentityUser> userManager)
+		public MasterDataServices(QuotationSystemContext dbContext, UserManager<IdentityUser> userManager, NotificationService notificationService)
 		{
 			_dbContext = dbContext;
 			_userManager = userManager;
+			NotificationService = notificationService;
 		}
 
 		public async Task<RawMaterialPriceUpdate?> GetPriceUpdateByMonthAsync(DateOnly month)
@@ -54,6 +56,13 @@ namespace GCBQuotationSystem.Components.Services
 		public async Task<List<RawMaterial>> GetAllRawMaterialsAsync()
 		{
 			return await _dbContext.RawMaterials.ToListAsync();
+		}
+
+		public async Task<RawMaterial?> GetMaterialByNameAsync(string materialName)
+		{
+			return await _dbContext.RawMaterials
+				.Where(m => m.MaterialName.ToLower() == materialName.ToLower())
+				.FirstOrDefaultAsync();
 		}
 
 		public async Task UpdatePriceUpdateAsync(RawMaterialPriceUpdate record)
@@ -336,6 +345,51 @@ namespace GCBQuotationSystem.Components.Services
 			}
 		}
 
+		public async Task UpdateUserAsync(AspNetUser user, string newRole)
+		{
+			try
+			{
+				// Update Identity user
+				var identityUser = await _userManager.FindByNameAsync(user.UserName);
+				if (identityUser != null)
+				{
+					identityUser.UserName = user.UserName;
+					identityUser.Email = user.Email;
+					identityUser.EmailConfirmed = !string.IsNullOrWhiteSpace(user.Email);
+
+					var result = await _userManager.UpdateAsync(identityUser);
+					if (!result.Succeeded)
+					{
+						var errors = string.Join(", ", result.Errors.Select(e => e.Description));
+						throw new Exception($"Failed to update user in Identity: {errors}");
+					}
+
+					// Update role if changed
+					var currentRoles = await _userManager.GetRolesAsync(identityUser);
+					if (!currentRoles.Contains(newRole))
+					{
+						await _userManager.RemoveFromRolesAsync(identityUser, currentRoles);
+						await _userManager.AddToRoleAsync(identityUser, newRole);
+					}
+				}
+
+				// Update AspNetUser record
+				_dbContext.AspNetUsers.Update(user);
+				await _dbContext.SaveChangesAsync();
+			}
+			catch (Exception ex)
+			{
+				NotificationService.Notify(new NotificationMessage
+				{
+					Severity = NotificationSeverity.Error,
+					Summary = "Error",
+					Detail = $"Failed to update user: {ex.Message}",
+					Duration = 4000
+				});
+				throw;
+			}
+		}
+
 		public async Task<List<AspNetUser>> GetUserListAsync()
 		{
 			return await _dbContext.AspNetUsers
@@ -345,44 +399,105 @@ namespace GCBQuotationSystem.Components.Services
 
 		public async Task insertUserDataIntoDatabase(string addedName, string selectedRole, string password, string email)
 		{
-			try
+			// Validate required input parameters (email is optional)
+			if (string.IsNullOrWhiteSpace(addedName) || string.IsNullOrWhiteSpace(selectedRole) ||
+				string.IsNullOrWhiteSpace(password))
 			{
-				var user = new IdentityUser { UserName = addedName };
-				var result = await _userManager.CreateAsync(user, password);
-
-
-				if (result.Succeeded)
+				NotificationService.Notify(new NotificationMessage
 				{
-					await _userManager.AddToRoleAsync(user, selectedRole);
-					var setEmailResult = await _userManager.SetEmailAsync(user, email);
-				}
-				else
-				{
-				}
-
-				foreach (var error in result.Errors)
-				{
-					throw new Exception(error.Description);
-				}
-
-
-
-				var aspnetuser = await _dbContext.AspNetUsers.FirstOrDefaultAsync(u => u.UserName == addedName);
-
-				if (aspnetuser != null)
-				{
-					aspnetuser.Active = true;
-
-					_dbContext.AspNetUsers.Update(aspnetuser);
-					await _dbContext.SaveChangesAsync();
-				}
-
-
+					Severity = NotificationSeverity.Error,
+					Summary = "Error",
+					Detail = "All fields except email are required.",
+					Duration = 4000
+				});
+				return;
 			}
 
-			catch (Exception ex)
+			// Check if username already exists
+			var existingUser = await _userManager.FindByNameAsync(addedName);
+			if (existingUser != null)
 			{
+				NotificationService.Notify(new NotificationMessage
+				{
+					Severity = NotificationSeverity.Error,
+					Summary = "Error",
+					Detail = $"Username '{addedName}' already exists",
+					Duration = 4000
+				});
+				return;
 			}
+
+			// If email is provided, check if it already exists
+			if (!string.IsNullOrWhiteSpace(email))
+			{
+				var existingEmail = await _userManager.FindByEmailAsync(email);
+				if (existingEmail != null)
+				{
+					NotificationService.Notify(new NotificationMessage
+					{
+						Severity = NotificationSeverity.Error,
+						Summary = "Error",
+						Detail = $"Email '{email}' is already registered",
+						Duration = 4000
+					});
+					return;
+				}
+			}
+
+			// Create new user
+			var user = new IdentityUser
+			{
+				UserName = addedName,
+				Email = string.IsNullOrWhiteSpace(email) ? null : email,
+				EmailConfirmed = !string.IsNullOrWhiteSpace(email) // Confirm only if email is provided
+			};
+
+			var result = await _userManager.CreateAsync(user, password);
+
+			if (!result.Succeeded)
+			{
+				var errors = string.Join(", ", result.Errors.Select(e => e.Description));
+				NotificationService.Notify(new NotificationMessage
+				{
+					Severity = NotificationSeverity.Error,
+					Summary = "Error",
+					Detail = $"Failed to create user: {errors}",
+					Duration = 4000
+				});
+				return;
+			}
+
+			// Add user to role
+			var roleResult = await _userManager.AddToRoleAsync(user, selectedRole);
+			if (!roleResult.Succeeded)
+			{
+				var errors = string.Join(", ", roleResult.Errors.Select(e => e.Description));
+				NotificationService.Notify(new NotificationMessage
+				{
+					Severity = NotificationSeverity.Error,
+					Summary = "Error",
+					Detail = $"Failed to assign role: {errors}",
+					Duration = 4000
+				});
+				return;
+			}
+
+			// Update AspNetUser record
+			var aspnetuser = await _dbContext.AspNetUsers.FirstOrDefaultAsync(u => u.UserName == addedName);
+			if (aspnetuser != null)
+			{
+				aspnetuser.Active = true;
+				_dbContext.AspNetUsers.Update(aspnetuser);
+				await _dbContext.SaveChangesAsync();
+			}
+
+			NotificationService.Notify(new NotificationMessage
+			{
+				Severity = NotificationSeverity.Success,
+				Summary = "Success",
+				Detail = "User created successfully",
+				Duration = 4000
+			});
 		}
 	}
 }

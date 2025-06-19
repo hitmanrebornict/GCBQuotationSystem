@@ -58,7 +58,7 @@
 </div>
 
 @code {
-    private string selectedRole = "Maintenance Operator", password, confirmPassword, email;
+    private string selectedRole = "Admin", password, confirmPassword, email;
     private string addedName;
 
     private List<string> roleList = new List<string>()
@@ -71,8 +71,21 @@
         dialogService.Close();
     }
 
-    private async Task buttonUserDataSubmitOnClick(string addedName, string selectedRole, string password, string confirmPassword,  string email)
+    private async Task buttonUserDataSubmitOnClick(string addedName, string selectedRole, string password, string confirmPassword, string email)
     {
+        if (string.IsNullOrWhiteSpace(addedName) || string.IsNullOrWhiteSpace(selectedRole) || 
+            string.IsNullOrWhiteSpace(password))
+        {
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Error",
+                Detail = "All fields are required.",
+                Duration = 4000
+            });
+            return;
+        }
+
         if (password != confirmPassword)
         {
             NotificationService.Notify(new NotificationMessage
@@ -85,7 +98,57 @@
             return;
         }
 
-        await MDS.insertUserDataIntoDatabase(addedName, selectedRole, password, email);
-        dialogService.Close();
+        // Password validation
+        if (password.Length < 6)
+        {
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Error",
+                Detail = "Password must be at least 6 characters long.",
+                Duration = 4000
+            });
+            return;
+        }
+
+        if (!password.Any(char.IsUpper))
+        {
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Error",
+                Detail = "Password must contain at least one uppercase letter.",
+                Duration = 4000
+            });
+            return;
+        }
+
+        if (!password.Any(c => !char.IsLetterOrDigit(c)))
+        {
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Error",
+                Detail = "Password must contain at least one special character.",
+                Duration = 4000
+            });
+            return;
+        }
+
+        try
+        {
+            await MDS.insertUserDataIntoDatabase(addedName, selectedRole, password, email);
+            dialogService.Close();
+        }
+        catch (Exception ex)
+        {
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Error",
+                Detail = ex.Message,
+                Duration = 4000
+            });
+        }
     }
 }
