@@ -1,22 +1,21 @@
-@attribute [Authorize(Roles = "IT Admin,Admin,Trader")]
+@attribute [Authorize(Roles = "Sales Admin,Sales User,IT Admin,Admin, NPD")]
 
-@page "/Premium"
-@inject DialogService DialogService
+@page "/productionCost"
 @inject MasterDataServices MDS
+@inject DialogService DialogService
 
 <RadzenCard>
-    <h3>Premium</h3>
-
-    <hr/>
+    <h3>Production Cost</h3>
+    <hr />
     <div class="d-flex justify-content-between mb-4">
-        <RadzenButton Text="Create New Premium"
+        <RadzenButton Text="Create New Production Cost"
                       Icon="add_circle_outline"
                       ButtonStyle="ButtonStyle.Primary"
                       Click="@CreateButtonOnClick" />
     </div>
 
-    <RadzenDataGrid Data="@premiums"
-                    TItem="Premium"
+    <RadzenDataGrid Data="@productionCosts"
+                    TItem="ProductionCost"
                     AllowFiltering="true"
                     AllowSorting="true"
                     AllowPaging="true"
@@ -24,27 +23,24 @@
                     PageSize="10"
                     FilterMode="FilterMode.CheckBoxList"
                     FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
-                    EmptyText="No premiums found">
+                    EmptyText="No production costs found">
         <Columns>
-            <RadzenDataGridColumn Property="PremiumName" Title="Premium Name" Width="200px" />
-            <RadzenDataGridColumn Property="PremiumCost" Title="Cost" Width="120px" FormatString="{0:C2}" />
-            <RadzenDataGridColumn Property="PremiumType" Title="Type" Width="150px" />
-            <RadzenDataGridColumn Property="DateFrom" Title="Valid From" Width="120px" FormatString="{0:d}" />
-            <RadzenDataGridColumn Property="DateTo" Title="Valid To" Width="120px" FormatString="{0:d}" />
+            <RadzenDataGridColumn Property="ProductType" Title="Product Type" Width="150px" />
+            <RadzenDataGridColumn Property="ProductTypeCost" Title="Product Type Cost" FormatString="{0:C2}" Width="150px" />
             <RadzenDataGridColumn Property="Active" Title="Active" Width="80px">
-                <Template Context="premium">
-                    <RadzenCheckBox Value="@premium.Active" Disabled="true" />
+                <Template Context="data">
+                    <RadzenCheckBox Value="@data.Active" Disabled="true" />
                 </Template>
             </RadzenDataGridColumn>
-            <RadzenDataGridColumn TItem="Premium" Title="Actions" TextAlign="TextAlign.Center" Width="120px">
-                <Template Context="premium">
+            <RadzenDataGridColumn TItem="ProductionCost" Title="Actions" TextAlign="TextAlign.Center" Width="120px">
+                <Template Context="productionCost">
                     <RadzenButton Icon="edit"
                                   ButtonStyle="ButtonStyle.Info"
                                   Size="ButtonSize.Medium"
                                   Variant="Variant.Flat"
                                   Class="m-1"
-                                  Click="@(() => EditPremium(premium))"
-                                  ToolTip="Edit Premium" />
+                                  Click="@(() => EditProductionCost(productionCost))"
+                                  ToolTip="Edit Production Cost" />
                 </Template>
             </RadzenDataGridColumn>
         </Columns>
@@ -52,59 +48,59 @@
 </RadzenCard>
 
 <style>
-    .premium-data-grid {
+    .production-cost-data-grid {
         height: calc(100vh - 250px);
         min-height: 400px;
     }
 </style>
 
 @code {
-    private List<Premium> premiums = new List<Premium>();
-    
+    private List<ProductionCost> productionCosts = new List<ProductionCost>();
+
     protected override async Task OnInitializedAsync()
     {
-        premiums = await MDS.GetPremiumsAsync();
+        productionCosts = await MDS.GetProductionCostsAsync();
     }
-    
+
     private async Task CreateButtonOnClick()
     {
         var options = new DialogOptions() 
         { 
-            Width = "600px",
-            Height = "600px",
+            Width = "90vw",
+            Height = "90vh",
             CloseDialogOnOverlayClick = false,
             Resizable = true,
             Draggable = true
         };
         
-        var result = await DialogService.OpenAsync<AddPremiumDialog>("New Premium", 
+        var result = await DialogService.OpenAsync<AddProductionCostDialog>("New Production Cost", 
             options: options);
             
         if (result == true)
         {
-            premiums = await MDS.GetPremiumsAsync();
+            productionCosts = await MDS.GetProductionCostsAsync();
             await InvokeAsync(StateHasChanged);
         }
     }
 
-    private async Task EditPremium(Premium premium)
+    private async Task EditProductionCost(ProductionCost productionCost)
     {
         var options = new DialogOptions() 
         { 
-            Width = "600px",
-            Height = "600px",
+            Width = "90vw",
+            Height = "90vh",
             CloseDialogOnOverlayClick = false,
             Resizable = true,
             Draggable = true
         };
         
-        var result = await DialogService.OpenAsync<EditPremiumDialog>("Edit Premium", 
-            new Dictionary<string, object>() { { "PremiumId", premium.Id } },
+        var result = await DialogService.OpenAsync<EditProductionCostDialog>("Edit Production Cost", 
+            new Dictionary<string, object>() { { "ProductionCostId", productionCost.Id } },
             options);
             
         if (result == true)
         {
-            premiums = await MDS.GetPremiumsAsync();
+            productionCosts = await MDS.GetProductionCostsAsync();
             await InvokeAsync(StateHasChanged);
         }
     }

@@ -58,13 +58,19 @@
 </div>
 
 @code {
-    private string selectedRole = "Admin", password, confirmPassword, email;
+    private string selectedRole, password, confirmPassword, email;
     private string addedName;
 
-    private List<string> roleList = new List<string>()
+    private List<string> roleList = new List<string>();
+
+    protected override async Task OnInitializedAsync()
     {
-            "Admin", "User", "Marketing User", "Marketing Admin"
-    };
+        roleList = await MDS.GetAllRolesAsync();
+        if (string.IsNullOrEmpty(selectedRole) && roleList.Any())
+        {
+            selectedRole = roleList[0];
+        }
+    }
 
     public void buttonCancelOnClick()
     {

@@ -26,7 +26,6 @@ namespace GCBQuotationSystem
 			builder.Services.AddDbContext<QuotationSystemContext>(options =>
 			{
 				options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"));
-				options.EnableSensitiveDataLogging(); 
 			}, ServiceLifetime.Transient);
 
 			builder.Services.AddDefaultIdentity<IdentityUser>(options =>
@@ -56,7 +55,7 @@ namespace GCBQuotationSystem
 			builder.Services.ConfigureApplicationCookie(options =>
 			{
 				options.LoginPath = "/login";
-				options.AccessDeniedPath = "/AccessDenied";
+				options.AccessDeniedPath = "/Identity/Account/AccessDenied";
 				options.SlidingExpiration = true;
 				options.ExpireTimeSpan = TimeSpan.FromMinutes(60);
 			});

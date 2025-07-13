@@ -1,4 +1,6 @@
-﻿<div class="top-row navbar navbar-dark" style="background-color:#121212;">
+﻿
+
+<div class="top-row navbar navbar-dark" style="background-color:#121212;">
     <div class="container-fluid d-flex align-items-center justify-content-center">   
         <a class="navbar-brand d-flex align-items-center text-decoration-none" href="">
             <img src="/assets/CocoaIcon.png" alt="Logo" style="height:32px; margin-right:6px;">
@@ -11,64 +13,119 @@
 
 <div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()" style="background-color:#2F3E46">
     <nav class="nav flex-column">
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Home
-            </NavLink>
-        </div>
-
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="QuotationList">
-                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Quotation List
-            </NavLink>
-        </div>
-
-        <!-- Master Data Dropdown -->
-        <div class="nav-item px-3">
-            <div class="nav-link dropdown-toggle" @onclick="ToggleMasterDataDropdown" >
-                <span class="material-symbols-outlined" style="margin-right:8px;">
-                    database
-                </span> Master Data
-                <span class="dropdown-arrow @(masterDataExpanded ? "expanded" : "")"></span>
-            </div>
-            <div class="dropdown-content @(masterDataExpanded ? "show" : "")">
-                <NavLink class="dropdown-link" href="masterdata">
-                    <span class="bi bi-currency-dollar" aria-hidden="true"></span> Raw Material Price
-                </NavLink>
-                <NavLink class="dropdown-link" href="recipe">
-                    <span class="bi bi-book" aria-hidden="true"></span> Recipes
-                </NavLink>
-                <NavLink class="dropdown-link" href="customers">
-                    <span class="bi bi-people" aria-hidden="true"></span> Customers
-                </NavLink>
-                <NavLink class="dropdown-link" href="customerDelivery">
-                    <span class="bi bi-truck" aria-hidden="true"></span> Customer Delivery
-                </NavLink>
-                <NavLink class="dropdown-link" href="deliverycost">
-                    <span class="bi bi-cash" aria-hidden="true"></span> Delivery Cost
-                </NavLink>
-                <NavLink class="dropdown-link" href="terminalcost">
-                    <span class="bi bi-percent" aria-hidden="true"></span> Terminal Cost
-                </NavLink>
-                <NavLink class="dropdown-link" href="packagingMaterial">
-                    <span class="bi bi-box" aria-hidden="true"></span> Packaging Material
-                </NavLink>
-                <NavLink class="dropdown-link" href="premium">
-                    <span class="bi bi-star" aria-hidden="true"></span> Premium
-                </NavLink>
-                <NavLink class="dropdown-link" href="user">
-                    <span class="bi bi-star" aria-hidden="true"></span> User
-                </NavLink>
-            </div>
-        </div>
-
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="settings">
-                <span class="material-symbols-outlined" style="margin-right:8px;">
-                    settings
-                </span> Settings
-            </NavLink>
-        </div>
+        <CascadingAuthenticationState>
+         <!-- Home -->
+         <AuthorizeView>
+         <div class="nav-item px-3">
+             <NavLink class="nav-link" href="/" Match="NavLinkMatch.All">
+                 <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Home
+             </NavLink>
+         </div>
+         </AuthorizeView>
+         
+         <!-- New Quote -->
+         <AuthorizeView Roles="Sales Admin,Sales User,IT Admin,Admin">
+         <div class="nav-item px-3">
+             <NavLink class="nav-link" href="/newquote">
+                 <span class="material-symbols-outlined" style="margin-right:8px;">
+                     add
+                 </span> New Quote
+             </NavLink>
+         </div>
+         </AuthorizeView>
+  
+         <!-- Quotation List -->
+         <AuthorizeView Roles="Sales Admin,Sales User,IT Admin,Admin">
+         <div class="nav-item px-3">
+             <NavLink class="nav-link" href="QuotationList">
+                 <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Quotation List
+             </NavLink>
+         </div>
+         </AuthorizeView>
+  
+         <!-- Master Data Dropdown -->
+         <div class="nav-item px-3">
+             <div class="nav-link dropdown-toggle" @onclick="ToggleMasterDataDropdown" >
+                 <span class="material-symbols-outlined" style="margin-right:8px;">
+                     database
+                 </span> Master Data
+                 <span class="dropdown-arrow @(masterDataExpanded ? "expanded" : "")"></span>
+             </div>
+             <div class="dropdown-content @(masterDataExpanded ? "show" : "")">
+                 <!-- Raw Material Price -->
+                    <AuthorizeView Roles="IT Admin,Admin,Procurement&Logistic">
+                 <NavLink class="dropdown-link" href="masterdata">
+                     <span class="bi bi-currency-dollar" aria-hidden="true"></span> Raw Material Price
+                 </NavLink>
+                 </AuthorizeView>
+                 <!-- Recipes -->
+                 <AuthorizeView Roles="Sales Admin,Sales User,IT Admin,Admin,NPD">
+                 <NavLink class="dropdown-link" href="recipe">
+                     <span class="bi bi-book" aria-hidden="true"></span> Recipes
+                 </NavLink>
+                 </AuthorizeView>
+                 <!-- Customers -->
+                 <AuthorizeView Roles="Sales Admin,Sales User,IT Admin,Admin">
+                 <NavLink class="dropdown-link" href="customers">
+                     <span class="bi bi-people" aria-hidden="true"></span> Customers
+                 </NavLink>
+                 </AuthorizeView>
+                 <!-- Customer Delivery -->
+                 <AuthorizeView Roles="Sales Admin,Sales User,IT Admin,Admin">
+                 <NavLink class="dropdown-link" href="customerDelivery">
+                     <span class="bi bi-truck" aria-hidden="true"></span> Customer Delivery
+                 </NavLink>
+                 </AuthorizeView>
+                 <!-- Delivery Cost -->
+                 <AuthorizeView Roles="Sales Admin,Sales User,IT Admin,Admin,Procurement&Logistic">
+                 <NavLink class="dropdown-link" href="deliverycost">
+                     <span class="bi bi-cash" aria-hidden="true"></span> Delivery Cost
+                 </NavLink>
+                 </AuthorizeView>
+                 <!-- Terminal Cost -->
+                 <AuthorizeView Roles="Trader,IT Admin,Admin">
+                 <NavLink class="dropdown-link" href="terminalcost">
+                     <span class="bi bi-percent" aria-hidden="true"></span> Terminal Cost
+                 </NavLink>
+                 </AuthorizeView>
+                 <!-- Packaging Material -->
+                 <AuthorizeView Roles="Sales Admin,Sales User,IT Admin,Admin,NPD">
+                 <NavLink class="dropdown-link" href="packagingMaterial">
+                     <span class="bi bi-box" aria-hidden="true"></span> Packaging Material
+                 </NavLink>
+                 </AuthorizeView>
+                 <!-- Premium -->
+                 <AuthorizeView Roles="Trader,IT Admin,Admin">
+                 <NavLink class="dropdown-link" href="premium">
+                     <span class="bi bi-star" aria-hidden="true"></span> Premium
+                 </NavLink>
+                 </AuthorizeView>
+                 <!-- Production Cost -->
+                 <AuthorizeView Roles="Sales Admin,Sales User,IT Admin,Admin,NPD">
+                 <NavLink class="dropdown-link" href="productionCost">
+                     <span class="bi bi-calculator" aria-hidden="true"></span> Production Cost
+                 </NavLink>
+                 </AuthorizeView>
+                 <!-- User -->
+                 <AuthorizeView Roles="IT Admin,Admin">
+                 <NavLink class="dropdown-link" href="user">
+                     <span class="bi bi-star" aria-hidden="true"></span> User
+                 </NavLink>
+                 </AuthorizeView>
+             </div>
+         </div>
+  
+         <!-- Settings -->
+         <AuthorizeView>
+         <div class="nav-item px-3">
+             <NavLink class="nav-link" href="settings">
+                 <span class="material-symbols-outlined" style="margin-right:8px;">
+                     settings
+                 </span> Settings
+             </NavLink>
+         </div>
+         </AuthorizeView>
+             </CascadingAuthenticationState>
     </nav>
 </div>
 

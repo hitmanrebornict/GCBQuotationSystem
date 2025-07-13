@@ -33,7 +33,18 @@ namespace FMS.Components.Services
 		// Method to seed roles (and optionally users)
 		private static async Task SeedRolesAsync(RoleManager<IdentityRole> roleManager, UserManager<IdentityUser> userManager)
 		{
-			string[] roleNames = {  "Admin", "User", "Marketing User", "Marketing Admin" };
+			string[] roleNames = {  
+				"Admin", 
+				"User",
+				"Marketing User",
+				"Marketing Admin",
+				"Sales Admin",
+				"Sales User",
+				"Trader",
+				"IT Admin",
+				"Procurement&Logistic",
+				"NPD"
+			};
 
 			foreach (var roleName in roleNames)
 			{

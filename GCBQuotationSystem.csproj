@@ -27,18 +27,4 @@
     <PackageReference Include="Radzen.Blazor" Version="6.3.2" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Content Update="Components\Pages\GenerateQuotePage.razor">
-      <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
-    </Content>
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="wwwroot\securefiles\" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Include="wwwroot\js\localStorageHelper.js" />
-  </ItemGroup>
-
 </Project>

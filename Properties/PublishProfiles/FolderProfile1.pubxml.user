@@ -3,7 +3,7 @@
 <Project>
   <PropertyGroup>
     <_PublishTargetUrl>C:\Users\yicheng.yeong\Source\Repos\GCBQuotationSystemLogin2\bin\Release\net9.0\publish\</_PublishTargetUrl>
-    <History>True|2025-06-17T15:32:38.5489563Z||;True|2025-06-16T14:51:00.5038712+01:00||;True|2025-06-16T14:49:32.7004803+01:00||;</History>
+    <History>True|2025-07-09T16:38:26.3797751Z||;False|2025-07-09T17:37:27.6301621+01:00||;True|2025-07-04T09:52:09.8048699+01:00||;True|2025-07-02T10:59:40.9236747+01:00||;True|2025-06-19T11:48:09.2156308+01:00||;True|2025-06-17T16:32:38.5489563+01:00||;True|2025-06-16T14:51:00.5038712+01:00||;True|2025-06-16T14:49:32.7004803+01:00||;</History>
     <LastFailureDetails />
   </PropertyGroup>
 </Project>

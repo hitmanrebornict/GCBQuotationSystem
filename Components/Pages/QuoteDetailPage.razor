@@ -1,4 +1,4 @@
-﻿@attribute [Authorize]
+﻿@attribute [Authorize(Roles = "Sales Admin,Sales User,IT Admin,Admin")]
 
 @page "/QuoteDetailPage"
 @inject QuoteDataServices QuoteDataService
@@ -254,6 +254,18 @@
                                     ShowUpDown="false"
                                     Format="c"
                                     Disabled="true" />
+                                </div>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <span>Custom Charges</span>
+                                <div class="d-flex gap-2">
+                                    <RadzenNumeric @bind-Value="@addtionalCostList.FirstOrDefault(a => a.CostName == "Custom Charges").Cost"
+                                    Change="@(value => onCustomChargesChange(value,"Custom Charges"))"
+                                    Style="width: 120px;"
+                                    TValue="decimal"
+                                    ShowUpDown="false"
+                                    Min="0"
+                                    Format="c" />
                                 </div>
                             </li>
                         </ul>
@@ -662,13 +674,17 @@
 
     private async Task RecalculateTerminalTotal(QuotationTerminalCost selectedTerminalCost)
     {
-
+        Console.WriteLine($"RecalculateTerminalTotal called with Powder: {selectedTerminalCost.Powder}");
 
         var selected = uniqueTerminalNames.FirstOrDefault(t => t.TerminalPeriod == selectedTerminalCost.TerminalPeriod);
         if (selected is null)
+        {
+            Console.WriteLine("Selected terminal is null, returning early");
             return;
+        }
 
         var currentPeriod = selected.TerminalPeriod;
+        Console.WriteLine($"Current period: {currentPeriod}");
 
         // Step 3: Find the next terminal period
         var lastPeriod = uniqueTerminalNames
@@ -677,24 +693,28 @@
             .DefaultIfEmpty(DateOnly.MinValue)
             .Max();
 
+        Console.WriteLine($"Last period: {lastPeriod}");
 
         // Step 4: Update total cost for recipes between current and next terminal period
+        int updatedRecipesCount = 0;
         foreach (var costEntry in QuoteDataService.RecipeTotalCostList)
         {
             var recipe = costEntry.QuotationRecipe1;
 
             if (recipe.PeriodMonth <= currentPeriod && recipe.PeriodMonth > lastPeriod)
             {
+                Console.WriteLine($"Updating recipe {recipe.Recipe.RecipeCode} for period {recipe.PeriodMonth}");
+                updatedRecipesCount++;
+                
                 recipe.QuotationTerminalCost.LifeGbp = selectedTerminalCost.LifeGbp;
                 recipe.QuotationTerminalCost.Butter = selectedTerminalCost.Butter;
                 recipe.QuotationTerminalCost.Powder = selectedTerminalCost.Powder;
                 recipe.QuotationTerminalCost.Liquor = selectedTerminalCost.Liquor;
 
-                var updatedMassButterCost = RecalculateRawMaterialCosts(recipe);
-                // var existingCosts = recipe.QuotationRawMaterialCosts
-                // .Where(x => x.MaterialName != "Cocoa Mass" && x.MaterialName != "Cocoa Butter")
-                // .ToList();
+                Console.WriteLine($"Updated Powder value: {recipe.QuotationTerminalCost.Powder}");
 
+                var updatedMassButterCost = RecalculateRawMaterialCosts(recipe);
+               
                 // recipe.QuotationRawMaterialCosts = existingCosts.Concat(updatedMassButterCost).ToList();
 
                 foreach (var updatedCost in updatedMassButterCost)
@@ -708,26 +728,22 @@
                         // Update the existing cost entry
                         existingCost.Cost = updatedCost.Cost;
                         existingCost.CostAmount = updatedCost.CostAmount * weightRatio;
+                        Console.WriteLine($"Updated {updatedCost.MaterialName} cost: {updatedCost.Cost}, amount: {existingCost.CostAmount}");
                     }
                     else
                     {
                         // If the cost doesn't exist, add it to the list
                         recipe.QuotationRawMaterialCosts.Add(updatedCost);
+                        Console.WriteLine($"Added new {updatedCost.MaterialName} cost: {updatedCost.Cost}");
                     }
                 }
 
-                // costEntry.TotalCost =
-                //     recipe.QuotationPremiumCosts.Sum(x => x.CostAmount) +
-                //     recipe.QuotationRawMaterialCosts.Sum(x => x.CostAmount) +
-                //     recipe.QuotationPackagingCost.CostAmount +
-                //     recipe.QuotationDeliveryCost.CostAmount +
-                //     recipe.QuotationAdditionalCosts.Sum(x => x.CostAmount);
-
                 costEntry.TotalCost = QuoteDataService.CalculateTotalCost(recipe);
-
-
+                Console.WriteLine($"New total cost for {recipe.Recipe.RecipeCode}: {costEntry.TotalCost}");
             }
         }
+
+        Console.WriteLine($"Total recipes updated: {updatedRecipesCount}");
 
         // Step 5: Regenerate matrix
         // QuoteDataService.RecipeCostMatrix = QuoteDataService.RecipeTotalCostList
@@ -812,27 +828,48 @@
 
     private List<QuotationRawMaterialCost> RecalculateRawMaterialCosts(QuotationRecipe recipe)
     {
-        return recipe.Recipe.RecipeIngredients
+        Console.WriteLine($"RecalculateRawMaterialCosts called for recipe {recipe.Recipe.RecipeCode}");
+        Console.WriteLine($"Terminal values - Powder: {recipe.QuotationTerminalCost.Powder}, Butter: {recipe.QuotationTerminalCost.Butter}, Liquor: {recipe.QuotationTerminalCost.Liquor}, LifeGBP: {recipe.QuotationTerminalCost.LifeGbp}");
+        
+        var result = recipe.Recipe.RecipeIngredients
             .Where(ingredient =>
                 ingredient.Material.MaterialName == "Cocoa Mass" ||
-                ingredient.Material.MaterialName == "Cocoa Butter")
+                ingredient.Material.MaterialName == "Cocoa Butter" ||
+                ingredient.Material.MaterialName == "Cocoa Powder")
             .Select(ingredient =>
             {
                 decimal basePrice = 0;
 
                 if (ingredient.Material.MaterialName == "Cocoa Mass")
+                {
                     basePrice = QuoteDataService.CalculateMassTotal(recipe.QuotationTerminalCost.Liquor, recipe.QuotationTerminalCost.LifeGbp);
+                    Console.WriteLine($"Cocoa Mass base price: {basePrice} (Liquor: {recipe.QuotationTerminalCost.Liquor}, LifeGBP: {recipe.QuotationTerminalCost.LifeGbp})");
+                }
                 else if (ingredient.Material.MaterialName == "Cocoa Butter")
-                    basePrice = QuoteDataService.CalculateMassTotal(recipe.QuotationTerminalCost.Butter, recipe.QuotationTerminalCost.LifeGbp);
-
+                {
+                    basePrice = QuoteDataService.CalculateButterTotal(recipe.QuotationTerminalCost.Butter, recipe.QuotationTerminalCost.LifeGbp);
+                    Console.WriteLine($"Cocoa Butter base price: {basePrice} (Butter: {recipe.QuotationTerminalCost.Butter}, LifeGBP: {recipe.QuotationTerminalCost.LifeGbp})");
+                }
+                else if (ingredient.Material.MaterialName == "Cocoa Powder")
+                {
+                    basePrice = QuoteDataService.CalculatePowderTotal(recipe.QuotationTerminalCost.Powder, recipe.QuotationTerminalCost.LifeGbp);
+                    Console.WriteLine($"Cocoa Powder base price: {basePrice} (Powder: {recipe.QuotationTerminalCost.Powder}, LifeGBP: {recipe.QuotationTerminalCost.LifeGbp})");
+                }
+                
+                var costAmount = basePrice * (ingredient.Amount / 100);
+                Console.WriteLine($"Material: {ingredient.Material.MaterialName}, Amount: {ingredient.Amount}, Cost: {basePrice}, CostAmount: {costAmount}");
+                
                 return new QuotationRawMaterialCost
                     {
                         MaterialName = ingredient.Material.MaterialName,
                         Cost = basePrice,
-                        CostAmount = basePrice * (ingredient.Amount / 100) * (recipe.Quantity / 1000),
+                        CostAmount = costAmount,
                     };
             })
             .ToList();
+            
+        Console.WriteLine($"RecalculateRawMaterialCosts returning {result.Count} items");
+        return result;
     }
 
     private async void onDiscountAmountChanged(decimal value)
@@ -1137,6 +1174,19 @@
             qr.TotalCost += qr.QuotationRecipe1.QuotationAdditionalCosts.FirstOrDefault(x => x.CostName == costName).CostAmount;
         }
 
+        QuoteDataService.RecipeCostMatrix = await QuoteDataService.PrepareCostMatrix(QuoteDataService.RecipeTotalCostList);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task onCustomChargesChange(decimal value, string costName){
+        foreach(var qr in QuoteDataService.RecipeTotalCostList){
+            var customCharge = qr.QuotationRecipe1.QuotationAdditionalCosts.FirstOrDefault(x => x.CostName == costName);
+            if (customCharge != null) {
+                customCharge.Cost = value;
+                customCharge.CostAmount = value; // Direct cost in pounds
+            }
+            qr.TotalCost = QuoteDataService.CalculateTotalCost(qr.QuotationRecipe1);
+        }
         QuoteDataService.RecipeCostMatrix = await QuoteDataService.PrepareCostMatrix(QuoteDataService.RecipeTotalCostList);
         await InvokeAsync(StateHasChanged);
     }

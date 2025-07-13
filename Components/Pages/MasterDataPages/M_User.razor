@@ -1,4 +1,6 @@
-﻿@page "/user"
+﻿@attribute [Authorize(Roles = "IT Admin,Admin")]
+
+@page "/user"
 @using GCBQuotationSystem.Models
 @using GCBQuotationSystem.Components
 @inject DialogService dialogService

@@ -1,3 +1,5 @@
+@attribute [Authorize(Roles = "IT Admin,Admin,Trader")]
+
 @page "/TerminalCost"
 @using Radzen
 @using Radzen.Blazor
@@ -44,6 +46,7 @@
                     AllowFiltering="true"
                     AllowSorting="true"
                     AllowPaging="true"
+                    AllowColumnResize="true"
                     PageSize="10"
                     FilterMode="FilterMode.CheckBoxList"
                     FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"

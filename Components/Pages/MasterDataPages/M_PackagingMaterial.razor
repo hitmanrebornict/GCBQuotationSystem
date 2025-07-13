@@ -1,3 +1,5 @@
+@attribute [Authorize(Roles = "Sales Admin,Sales User,IT Admin,Admin,Procurement&Logistic,NPD")]
+
 @page "/packagingMaterial"
 @inject MasterDataServices MDS
 @inject DialogService DialogService
@@ -17,6 +19,7 @@
                     AllowFiltering="true"
                     AllowSorting="true"
                     AllowPaging="true"
+                    AllowColumnResize="true"
                     PageSize="10"
                     FilterMode="FilterMode.CheckBoxList"
                     FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
@@ -26,6 +29,7 @@
             <RadzenDataGridColumn Property="Packaging" Title="Packaging" Width="150px" />
             <RadzenDataGridColumn Property="Product" Title="Product" Width="150px" />
             <RadzenDataGridColumn Property="Weight" Title="Weight" Width="100px" />
+            <RadzenDataGridColumn Property="CostGbpton" Title="Cost (GBP/ton)" Width="100px" FormatString="{0:C2}" />
             <RadzenDataGridColumn Property="Cost100kgEuro" Title="Cost (€/100kg)" Width="130px" FormatString="{0:C2}" />
             <RadzenDataGridColumn Property="CostPerTon" Title="Cost (€/ton)" Width="130px" FormatString="{0:C2}" />
             <RadzenDataGridColumn Property="ExchangeRate" Title="Exchange Rate" Width="130px" FormatString="{0:F4}" />

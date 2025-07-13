@@ -1,5 +1,5 @@
-﻿@attribute [Authorize(Roles = "Sales Admin,Sales User,IT Admin,Admin")]
-
+@page "/newquote"
+@attribute [Authorize(Roles = "Sales Admin,Sales User,IT Admin,Admin")]
 
 @inject MasterDataServices MDS
 @inject NotificationService NotificationService
@@ -617,4 +617,3 @@
     }
 
 }
-

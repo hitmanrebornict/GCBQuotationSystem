@@ -1,276 +1,89 @@
-﻿@attribute [Authorize]
+﻿@page "/"
+@attribute [Authorize]
 
-@inject MasterDataServices MDS
-@inject NotificationService NotificationService
-@inject DialogService DialogService
+@using Microsoft.AspNetCore.Components.Authorization
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject QuoteDataServices QuoteDataServices
+@inject NavigationManager NavigationManager
 
-<PageTitle>Home</PageTitle>
+<PageTitle>Dashboard</PageTitle>
 
-<h1>New Quotation</h1>
-
-<RadzenText Text="Customer:"></RadzenText>
-<RadzenDropDown TValue="int"
-@bind-Value="selectedCustomer"
-Data="@customers"
-TextProperty="CustName"
-ValueProperty="CustNo"
-Placeholder="Select Customer"
-Change="OnCustomerChanged"
-Style="width:200px" />
-
-<RadzenDropDown TValue="int"
-@bind-Value="selectedDelivery"
-Data="@deliveryAddresses"
-TextProperty="DeliveryName"
-ValueProperty="DeliveryId"
-Placeholder="Select Delivery Address"
-Style="width:200px" />
-<hr/>
-
-<RadzenText Text="Recipe:"></RadzenText>
-<RadzenDropDown TValue="int"
-@bind-Value="selectedProductType"
-Data="@productTypes"
-TextProperty="TypeName"
-ValueProperty="ProductTypeId"
-Placeholder="Select Product Type"
-Style="width:200px" />
-
-<RadzenDropDown TValue="int"
-                @bind-Value="selectedRecipeId"
-                Data="@recipes"
-                TextProperty="RecipeDesc"
-                ValueProperty="RecipeId"
-                Placeholder="Select Recipe"
-                Change="OnRecipeChanged"
-                Style="width:300px" />
-
-                <RadzenTextBox Placeholder="Amount"/>
-@* @if (selectedRecipe != null)
-{
-    <div style="margin-top:20px">
-        <h4>Recipe Details</h4>
-        <p><strong>Code:</strong> @selectedRecipe.RecipeCode</p>
-        <p><strong>Description:</strong> @selectedRecipe.RecipeDesc</p>
-        <p><strong>Product Type:</strong> @selectedRecipe.ProductTypeId</p>
-        <p><strong>Packaging Material:</strong> @selectedRecipe.PackagingMaterialId</p>
+<div class="container py-4">
+    <!-- Welcome Banner -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="p-4 rounded-4 shadow-sm d-flex align-items-center justify-content-between" style="background: linear-gradient(90deg, #053F5E 0%, #1F7A8C 100%); color: #fff;">
+                <div>
+                    <h2 class="fw-bold mb-1">Welcome, <span style="color: #FFD166">@userId</span>!</h2>
+                    <div class="fs-5">Role: <span class="badge bg-light text-dark">@userRole</span></div>
+                </div>
+                <img src="/assets/CocoaIcon.png" alt="Logo" style="height:64px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+            </div>
+        </div>
     </div>
 
-    <RadzenDataGrid Data="@selectedRecipeIngredients" TItem="RecipeIngredient" AllowPaging="false" ShowPagingSummary="true">
-        <Columns>
-            <RadzenDataGridColumn TItem="RecipeIngredient" Property="Material.MaterialName" Title="Material" />
-            <RadzenDataGridColumn TItem="RecipeIngredient" Property="Amount" Title="Amount (% per 100g)" FormatString="{0:N2}" />
-        </Columns>
-    </RadzenDataGrid>
-} *@
-<hr/>
-
-<RadzenText Text="Premium Cost:"></RadzenText>
- <!-- Premium Cost Section -->
-            <RadzenCard Title="Premium Cost" Style="margin-bottom:20px;">
-                <div class="row">
-                    <div class="col-md-12">
-                        <RadzenLabel Text="Select Premium Option:" />
-                        <RadzenDropDown TValue="string" 
-                                        @bind-Value="costDetails.PremiumCost" 
-                                        Data="@premiumOptions" 
-                                        Placeholder="Choose an option"
-                                        Style="width:100%;" />
-                    </div>
+    <!-- Stats Cards -->
+    <div class="row g-4">
+        <div class="col-md-4">
+            <div class="card border-0 shadow-lg h-100 dashboard-card dashboard-card-hover" style="background: linear-gradient(135deg, #2193b0 0%, #6dd5ed 100%); color: #fff;">
+                <div class="card-body text-center">
+                    <span class="bi bi-file-earmark-text display-3 mb-2"></span>
+                    <h5 class="card-title mt-2">Total Quotes</h5>
+                    <h2 class="fw-bold">@totalQuotes</h2>
                 </div>
-            </RadzenCard>
-
-<RadzenText Text="Additional Cost:"></RadzenText>
-            <!-- Additional Cost Section -->
-            <RadzenCard Title="Delivery Cost" Style="margin-bottom:20px;">
-                <div class="row" style="margin-bottom:10px">
-                    <div class="col-md-6">
-                        <RadzenLabel Text="Additional Cost Name:" />
-                    </div>
-                    <div class="col-md-6">
-                        <RadzenTextBox @bind-Value="costDetails.AdditionalCostName" Style="width:100%" />
-                    </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-0 shadow-lg h-100 dashboard-card dashboard-card-hover" style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); color: #fff;">
+                <div class="card-body text-center">
+                    <span class="bi bi-check-circle display-3 mb-2"></span>
+                    <h5 class="card-title mt-2">Completed Quotes</h5>
+                    <h2 class="fw-bold">@completedQuotes</h2>
                 </div>
-                <div class="row">
-                    <div class="col-md-6">
-                        <RadzenLabel Text="Packaging Material Cost:" />
-                    </div>
-                    <div class="col-md-6">
-                        <RadzenTextBox @bind-Value="costDetails.AdditionalCostValue" Style="width:100%" />
-                    </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-0 shadow-lg h-100 dashboard-card dashboard-card-hover" style="background: linear-gradient(135deg, #f7971e 0%, #ffd200 100%); color: #333;">
+                <div class="card-body text-center">
+                    <span class="bi bi-hourglass-split display-3 mb-2"></span>
+                    <h5 class="card-title mt-2">Quotes In Progress</h5>
+                    <h2 class="fw-bold">@inProgressQuotes</h2>
                 </div>
-            </RadzenCard>
-
-            
-    
-
-<hr/>
-<RadzenText Text="Period:"></RadzenText>
-<div style="display: flex; align-items: center; gap: 20px; margin-bottom: 20px;">
-    <!-- Date pickers configured to display only Month and Year -->
-    <RadzenDatePicker @bind-Value="startDate" DateFormat="MMM yyyy" Style="width:200px" />
-    <RadzenLabel Text="to" />
-    <RadzenDatePicker @bind-Value="endDate" DateFormat="MMM yyyy" Style="width:200px" />
-    <RadzenButton Text="Load Prices" Click="LoadPrices" Style="margin-left:20px" />
+            </div>
+        </div>
+    </div>
 </div>
 
-@if (monthPrices?.Count > 0)
-{
-    <h4>Prices from @startDate.ToString("MMM yyyy") to @endDate.ToString("MMM yyyy")</h4>
-    <table class="table table-bordered">
-        <thead>
-            <tr>
-                @foreach (var mp in monthPrices)
-                {
-                    <th>@mp.Month.ToString("MMM yyyy")</th>
-                }
-            </tr>
-        </thead>
-        <tbody>
-            <tr>
-                @foreach (var mp in monthPrices)
-                {
-                    <td>@mp.Price.ToString("C")</td>
-                }
-            </tr>
-        <td>
-            <RadzenButton Text="Modify" Click="OpenCostDetailsDialog" Style="width:100%" />
-        </td>
-        </tbody>
-    </table>
+<style>
+.dashboard-card {
+    border-radius: 1.5rem;
+    transition: transform 0.15s, box-shadow 0.15s;
 }
-else
-{
-    <p>No data loaded.</p>
+.dashboard-card-hover:hover {
+    transform: translateY(-6px) scale(1.03);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+    z-index: 2;
 }
+</style>
 
 @code {
-    // Lists to hold the data
-    List<Customer> customers = new();
-    List<CustomerDeliveryDetail> deliveryAddresses = new();
-    List<ProductType> productTypes = new();
-
-    // Selected values
-    int selectedCustomer;
-    int selectedDelivery;
-    int selectedProductType;
-
-    List<Recipe> recipes = new();
-    // Selected recipe id from the dropdown.
-    int selectedRecipeId;
-    // The currently selected recipe.
-    Recipe selectedRecipe;
-    // List to hold ingredients of the selected recipe.
-    List<RecipeIngredient> selectedRecipeIngredients = new();
-
-    public class CostDetails
-    {
-        public string Sugar { get; set; } = "0.00";
-        public string CocoaMass { get; set; } = "0.00";
-        public string Energy { get; set; } = "0.00";
-        public string BoxCost { get; set; } = "0.00";
-        public string Freight { get; set; } = "0.00";
-        public string PremiumCost { get; set; } = ""; 
-        public string AdditionalCostName { get; set; } = "";
-        public string AdditionalCostValue { get; set; } = "0.00";
-    }
-
-    CostDetails costDetails = new CostDetails();
-    List<string> premiumOptions = new List<string> { "Option A", "Option B", "Option C" };
-
+    string userId = "";
+    string userRole = "";
+    int totalQuotes = 0;
+    int completedQuotes = 0;
+    int inProgressQuotes = 0;
 
     protected override async Task OnInitializedAsync()
     {
-        // Load all customers
-        customers = await MDS.GetAllCustomersAsync();
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        userId = user.Identity?.Name ?? "Unknown";
+        userRole = user.Claims.FirstOrDefault(c => c.Type.Contains("role"))?.Value ?? "Unknown";
 
-        // Load product types from the newly created table.
-        productTypes = await MDS.GetProductTypesAsync();
-
-        recipes = await MDS.GetRecipesAsync();
-    }
-
-    async Task OnCustomerChanged(object value)
-    {
-        if (selectedCustomer > 0)
-        {
-            // Load delivery addresses for the selected customer
-            deliveryAddresses = await MDS.GetDeliveryDetailsForCustomerAsync(selectedCustomer);
-        }
-        else
-        {
-            deliveryAddresses.Clear();
-        }
-    }
-
-    async Task OnRecipeChanged(object value)
-    {
-        selectedRecipeId = (int)value;
-        // Find the selected recipe from the list.
-        selectedRecipe = recipes.FirstOrDefault(r => r.RecipeId == selectedRecipeId);
-        if (selectedRecipe != null)
-        {
-            // Load its ingredients.
-            selectedRecipeIngredients = selectedRecipe.RecipeIngredients.ToList();
-        }
-        else
-        {
-            selectedRecipeIngredients.Clear();
-        }
-        await InvokeAsync(StateHasChanged);
-    }
-
-    // Using DateTime for the RadzenDatePicker; we'll use the first day of the month for processing.
-    DateTime startDate = DateTime.Today;
-    DateTime endDate = DateTime.Today;
-
-    // Class to represent a month and its randomly generated price.
-    class MonthPrice
-    {
-        public DateTime Month { get; set; }
-        public decimal Price { get; set; }
-    }
-
-    List<MonthPrice> monthPrices = new List<MonthPrice>();
-    Random rnd = new Random();
-
-    void LoadPrices()
-    {
-        if (startDate > endDate)
-        {
-            NotificationService.Notify(new NotificationMessage
-                {
-                    Severity = NotificationSeverity.Error,
-                    Summary = "Invalid Range",
-                    Detail = "Start date must be before end date."
-                });
-            return;
-        }
-
-        // Clear previous results.
-        monthPrices.Clear();
-
-        // Round start and end dates to the first day of their month.
-        var start = new DateTime(startDate.Year, startDate.Month, 1);
-        var end = new DateTime(endDate.Year, endDate.Month, 1);
-
-        var current = start;
-        while (current <= end)
-        {
-            // Generate a random price between 10 and 100.
-            decimal randomPrice = (decimal)(rnd.NextDouble() * 90 + 10);
-            monthPrices.Add(new MonthPrice { Month = current, Price = randomPrice });
-            current = current.AddMonths(1);
-        }
-    }
-
-    async Task OpenCostDetailsDialog()
-    {
-        // Open the dialog. In this demo, we pass no parameters.
-        await DialogService.OpenAsync<CostDetailDialog>(
-            "Edit Cost Details",
-            new Dictionary<string, object>(),
-            new DialogOptions() { Width = "600px", Height = "500px" });
+        var stats = await QuoteDataServices.GetQuoteStatisticsAsync();
+        totalQuotes = stats.TotalQuotes;
+        completedQuotes = stats.CompletedQuotes;
+        inProgressQuotes = stats.InProgressQuotes;
     }
 }
 

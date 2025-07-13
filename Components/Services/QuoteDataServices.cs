@@ -1,10 +1,24 @@
-﻿using static GCBQuotationSystem.Components.Pages.GenerateQuotePage;
+﻿
 using GCBQuotationSystem.Models;
+using Microsoft.EntityFrameworkCore;
 
 namespace GCBQuotationSystem.Components.Services
 {
+	public class QuoteStatisticsResult
+	{
+		public int TotalQuotes { get; set; }
+		public int CompletedQuotes { get; set; }
+		public int InProgressQuotes { get; set; }
+	}
+
 	public class QuoteDataServices
 	{
+		private readonly QuotationSystemContext _dbContext;
+		public QuoteDataServices(QuotationSystemContext dbContext)
+		{
+			_dbContext = dbContext;
+		}
+
 		// This will hold the recipeCostMatrix data temporarily
 		public List<RecipeCostMatrix> RecipeCostMatrix { get; set; } = new List<RecipeCostMatrix>();
 
@@ -492,6 +506,25 @@ namespace GCBQuotationSystem.Components.Services
 			}
 
 			return localTotalCost;
+		}
+
+		public decimal CalculatePowderTotal(Decimal powder, Decimal LifeGBP)
+		{
+			return LifeGBP * powder;
+		}
+
+		public async Task<QuoteStatisticsResult> GetQuoteStatisticsAsync()
+		{
+			var quotes = await _dbContext.Quotes.Include(q => q.Status).ToListAsync();
+			int total = quotes.Count;
+			int completed = quotes.Count(q => q.Status.StatusName == "Completed");
+			int inProgress = quotes.Count(q => q.Status.StatusName == "Created" || q.Status.StatusName == "Confirmed");
+			return new QuoteStatisticsResult
+			{
+				TotalQuotes = total,
+				CompletedQuotes = completed,
+				InProgressQuotes = inProgress
+			};
 		}
 	}
 }

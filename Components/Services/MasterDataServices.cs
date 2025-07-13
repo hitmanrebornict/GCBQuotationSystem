@@ -319,8 +319,25 @@ namespace GCBQuotationSystem.Components.Services
 		public async Task<List<ProductionCost>> GetProductionCostsAsync()
 		{
 			return await _dbContext.ProductionCosts
-						.Where(p => p.Active)
 						.ToListAsync();
+		}
+
+		public async Task<ProductionCost> GetProductionCostByIdAsync(int id)
+		{
+			return await _dbContext.ProductionCosts
+						.FirstOrDefaultAsync(p => p.Id == id);
+		}
+
+		public async Task AddProductionCostAsync(ProductionCost productionCost)
+		{
+			_dbContext.ProductionCosts.Add(productionCost);
+			await _dbContext.SaveChangesAsync();
+		}
+
+		public async Task UpdateProductionCostAsync(ProductionCost productionCost)
+		{
+			_dbContext.ProductionCosts.Update(productionCost);
+			await _dbContext.SaveChangesAsync();
 		}
 
 		public async Task<Customer?> GetCustomerByIdAsync(int custNo)
@@ -498,6 +515,15 @@ namespace GCBQuotationSystem.Components.Services
 				Detail = "User created successfully",
 				Duration = 4000
 			});
+		}
+
+		public async Task<List<string>> GetAllRolesAsync()
+		{
+			return await _dbContext.AspNetRoles
+				.Where(r => r.Name != null)
+				.Select(r => r.Name!)
+				.OrderBy(name => name)
+				.ToListAsync();
 		}
 	}
 }

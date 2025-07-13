@@ -1,33 +1,24 @@
-﻿@inject MasterDataServices MDS
+@inject MasterDataServices MDS
 @inject DialogService DialogService
 @inject NotificationService NotificationService
 
 <div class="col-md-12">
     <div style="margin-bottom: 1rem" class="row">
         <div class="col-md-3">
-            <RadzenLabel Text="Username" Component="UserName" style="width: 100%">
+            <RadzenLabel Text="Product Type" Component="ProductType" style="width: 100%">
             </RadzenLabel>
         </div>
         <div class="col-md-9">
-            <RadzenTextBox MaxLength="100" style="width: 100%" @bind-Value="userName" Name="UserName" Placeholder="Username" />
+            <RadzenTextBox MaxLength="100" style="width: 100%" @bind-Value="productionCost.ProductType" Name="ProductType" Placeholder="Please enter product type..." />
         </div>
     </div>
     <div style="margin-bottom: 1rem" class="row">
         <div class="col-md-3">
-            <RadzenLabel Text="Email" Component="Email" style="width: 100%">
+            <RadzenLabel Text="Product Type Cost" Component="ProductTypeCost" style="width: 100%">
             </RadzenLabel>
         </div>
         <div class="col-md-9">
-            <RadzenTextBox style="width: 100%" @bind-Value="email" Name="Email" Placeholder="Please enter email..." />
-        </div>
-    </div>
-    <div style="margin-bottom: 1rem" class="row">
-        <div class="col-md-3">
-            <RadzenLabel Text="Role" Component="Role" style="width: 100%">
-            </RadzenLabel>
-        </div>
-        <div class="col-md-9">
-            <RadzenDropDown TValue="string" Data=@roleList @bind-Value="selectedRole" style="width: 100%"></RadzenDropDown>
+            <RadzenNumeric TValue="decimal" @bind-Value="@productionCost.ProductTypeCost" style="width: 100%" Format="c2" />
         </div>
     </div>
     <div style="margin-bottom: 1rem" class="row">
@@ -36,7 +27,7 @@
             </RadzenLabel>
         </div>
         <div class="col-md-9">
-            <RadzenSwitch @bind-Value="@isActive" Name="Active" />
+            <RadzenSwitch @bind-Value="@productionCost.Active" Name="Active" />
         </div>
     </div>
 </div>
@@ -49,33 +40,13 @@
 </div>
 
 @code {
-    [Parameter]
-    public AspNetUser selectedUser { get; set; }
-
     [CascadingParameter]
     private Dialog _dialog { get; set; }
 
-    private string userName;
-    private string email;
-    private string selectedRole;
-    private bool isActive;
-
-    private List<string> roleList = new List<string>();
+    private ProductionCost productionCost = new ProductionCost { Active = true };
 
     protected override async Task OnInitializedAsync()
     {
-        roleList = await MDS.GetAllRolesAsync();
-        if (selectedUser != null)
-        {
-            userName = selectedUser.UserName;
-            email = selectedUser.Email;
-            isActive = selectedUser.Active;
-            selectedRole = selectedUser.Roles.FirstOrDefault()?.Name ?? roleList.FirstOrDefault();
-        }
-        else if (roleList.Any())
-        {
-            selectedRole = roleList[0];
-        }
         SetTitleContent();
         DialogService.Refresh();
     }
@@ -84,32 +55,28 @@
     {
         try
         {
-            if (string.IsNullOrWhiteSpace(userName))
+            if (string.IsNullOrEmpty(productionCost.ProductType) || productionCost.ProductTypeCost <= 0)
             {
                 NotificationService.Notify(new NotificationMessage
                 {
                     Severity = NotificationSeverity.Error,
                     Summary = "Error",
-                    Detail = "Username is required.",
+                    Detail = "Please fill in all required fields.",
                     Duration = 4000
                 });
                 return;
             }
-
-            selectedUser.UserName = userName;
-            selectedUser.Email = email;
-            selectedUser.Active = isActive;
-
-            await MDS.UpdateUserAsync(selectedUser, selectedRole);
-
+            
+            await MDS.AddProductionCostAsync(productionCost);
+            
             NotificationService.Notify(new NotificationMessage
             {
                 Severity = NotificationSeverity.Success,
                 Summary = "Success",
-                Detail = "User updated successfully",
+                Detail = "Production cost added successfully",
                 Duration = 4000
             });
-
+            
             DialogService.Close(true);
         }
         catch (Exception ex)
@@ -118,7 +85,7 @@
             {
                 Severity = NotificationSeverity.Error,
                 Summary = "Error",
-                Detail = $"Failed to update user: {ex.Message}",
+                Detail = $"Failed to add production cost: {ex.Message}",
                 Duration = 4000
             });
         }
@@ -128,13 +95,13 @@
     {
         DialogService.Close(false);
     }
-
+    
     void SetTitleContent()
     {
         _dialog.Title = null; // clear default title
         _dialog.Options.TitleContent = service =>
         @<RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Start" Gap="10px">
-            <h5>Edit User</h5>
+            <h5>Add Production Cost</h5>
         </RadzenStack>;
     }
-}
+} 

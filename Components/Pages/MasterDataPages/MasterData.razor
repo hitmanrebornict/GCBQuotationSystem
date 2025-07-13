@@ -1,3 +1,5 @@
+@attribute [Authorize(Roles = "IT Admin,Admin,Procurement&Logistic")]
+
 @page "/masterdata"
 @using GCBQuotationSystem.Models
 @using System.IO
@@ -403,19 +405,13 @@
                                         ["Whey Powder"] = row.Cell("J").GetValue<decimal>(),
                                         ["Lactose"] = row.Cell("K").GetValue<decimal>(),
                                         ["Anhydrous Milk Fat"] = row.Cell("L").GetValue<decimal>(),
-                                        ["CBE"] = row.Cell("M").GetValue<decimal>()
+                                        ["CBE"] = row.Cell("M").GetValue<decimal>(),
+                                        ["Sunflower Lecithin"] = row.Cell("D").GetValue<decimal>(),
+                                        ["PgPr"] = row.Cell("E").GetValue<decimal>() * 1000, // Convert kg to g
+                                        ["Vanilla (Doehler)"] = row.Cell("G").GetValue<decimal>() * 1000 // Convert kg to g
                                     };
 
-                                    Console.WriteLine($"  Sugar: {prices["Sugar"]:C2}");
-                                    Console.WriteLine($"  Lecethin: {prices["Soya Lecithin"]:C2}");
-                                    Console.WriteLine($"  Vanilla: {prices["Vanilla"]:C2} (converted from kg)");
-                                    Console.WriteLine($"  Full Cream Milk Powder: {prices["Full Cream Milk Powder"]:C2}");
-                                    Console.WriteLine($"  Skimmed Milk Powder: {prices["Skimmed Milk Powder"]:C2}");
-                                    Console.WriteLine($"  Whey Powder: {prices["Whey Powder"]:C2}");
-                                    Console.WriteLine($"  Lactose: {prices["Lactose"]:C2}");
-                                    Console.WriteLine($"  Anhydrous Milk Fat: {prices["Anhydrous Milk Fat"]:C2}");
-                                    Console.WriteLine($"  CBE: {prices["CBE"]:C2}");
-
+                            
                                     // Only process if we have at least one non-zero price
                                     if (prices.Values.Any(p => p > 0))
                                     {
@@ -525,52 +521,64 @@
 
     private async Task UpdateQuarterPrices(QuarterItem quarter, Dictionary<string, decimal> prices)
     {
-        // Get or create price update for the quarter start month
-        var priceUpdate = await MasterDataService.GetPriceUpdateByMonthAsync(quarter.StartDate);
-        
-        if (priceUpdate == null)
-        {
-            priceUpdate = new RawMaterialPriceUpdate
-            {
-                PriceMonth = quarter.StartDate,
-                UpdateDate = DateTime.Now,
-                Remark = $"Updated from Excel upload - {quarter.Text}",
-                RawMaterialPriceDetails = new List<RawMaterialPriceDetail>()
-            };
-        }
+        // Get the start and end months of the quarter
+        int startMonth = quarter.StartDate.Month;
+        int endMonth = startMonth + 2; // 3 months per quarter
+        int year = quarter.StartDate.Year;
 
-        // Update or create price details
-        foreach (var price in prices)
+        // Loop through each month in the quarter
+        for (int m = startMonth; m <= endMonth; m++)
         {
-            var material = await MasterDataService.GetMaterialByNameAsync(price.Key);
-            if (material != null)
+            // Build a DateOnly for the quarter month
+            DateOnly quarterMonth = new DateOnly(year, m, 1);
+
+            // Get or create price update for this month
+            var priceUpdate = await MasterDataService.GetPriceUpdateByMonthAsync(quarterMonth);
+            
+            if (priceUpdate == null)
             {
-                var existingDetail = priceUpdate.RawMaterialPriceDetails.FirstOrDefault(d => d.MaterialId == material.MaterialId);
-                
-                if (existingDetail != null)
+                priceUpdate = new RawMaterialPriceUpdate
                 {
-                    existingDetail.Price = price.Value;
-                }
-                else
+                    PriceMonth = quarterMonth,
+                    UpdateDate = DateTime.Now,
+                    Remark = $"Updated from Excel upload - {quarter.Text}",
+                    RawMaterialPriceDetails = new List<RawMaterialPriceDetail>()
+                };
+            }
+
+            // Update or create price details for this month
+            foreach (var price in prices)
+            {
+                var material = await MasterDataService.GetMaterialByNameAsync(price.Key);
+                if (material != null)
                 {
-                    priceUpdate.RawMaterialPriceDetails.Add(new RawMaterialPriceDetail
+                    var existingDetail = priceUpdate.RawMaterialPriceDetails.FirstOrDefault(d => d.MaterialId == material.MaterialId);
+                    
+                    if (existingDetail != null)
                     {
-                        MaterialId = material.MaterialId,
-                        Material = material,
-                        Price = price.Value
-                    });
+                        existingDetail.Price = price.Value;
+                    }
+                    else
+                    {
+                        priceUpdate.RawMaterialPriceDetails.Add(new RawMaterialPriceDetail
+                        {
+                            MaterialId = material.MaterialId,
+                            Material = material,
+                            Price = price.Value
+                        });
+                    }
                 }
             }
-        }
 
-        // Save the price update
-        if (priceUpdate.PriceUpdateId == 0)
-        {
-            await MasterDataService.CreatePriceUpdateAsync(priceUpdate);
-        }
-        else
-        {
-            await MasterDataService.UpdatePriceUpdateAsync(priceUpdate);
+            // Save the price update for this month
+            if (priceUpdate.PriceUpdateId == 0)
+            {
+                await MasterDataService.CreatePriceUpdateAsync(priceUpdate);
+            }
+            else
+            {
+                await MasterDataService.UpdatePriceUpdateAsync(priceUpdate);
+            }
         }
     }
 }

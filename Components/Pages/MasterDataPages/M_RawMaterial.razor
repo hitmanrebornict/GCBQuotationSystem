@@ -1,4 +1,6 @@
-﻿@page "/rawmaterials"
+﻿@attribute [Authorize(Roles = "IT Admin,Admin,Procurement&Logistic,NPD")]
+
+@page "/rawmaterials"
 @inject MasterDataServices MasterDataServices
 @inject DialogService DialogService
 @inject NotificationService NotificationService
@@ -20,6 +22,7 @@
                     AllowFiltering="true" 
                     AllowSorting="true" 
                     AllowPaging="true" 
+                    AllowColumnResize="true"
                     PageSize="10" 
                     FilterMode="FilterMode.CheckBoxList"
                     FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"

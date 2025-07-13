@@ -1,4 +1,6 @@
-﻿@page "/Recipe"
+﻿@attribute [Authorize(Roles = "Sales Admin,Sales User,IT Admin,Admin,NPD")]
+
+@page "/Recipe"
 @inject DialogService DialogService
 @inject MasterDataServices MDS
 
@@ -17,6 +19,7 @@
                     AllowFiltering="true"
                     AllowSorting="true"
                     AllowPaging="true"
+                    AllowColumnResize="true"
                     PageSize="10"
                     FilterMode="FilterMode.CheckBoxList"
                     FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
