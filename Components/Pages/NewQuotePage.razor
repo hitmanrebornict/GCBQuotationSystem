@@ -9,17 +9,17 @@
 @inject NavigationManager NavigationManager
 @inject UserPreferenceSettings UserPreferenceSetting
 
-<PageTitle>Home</PageTitle>
+<PageTitle>New Quote</PageTitle>
 <RadzenCard class="p-4">
-    <div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3 gap-2">
         <RadzenText Text="New Quotation" TextStyle="TextStyle.DisplayH5" class="mb-0"></RadzenText>
-        <RadzenButton Text="Generate" Click="@GenerateQuote" ButtonStyle="ButtonStyle.Primary" class="px-4"></RadzenButton>
+        <RadzenButton Text="Generate" Click="@GenerateQuote" ButtonStyle="ButtonStyle.Primary" class="px-4  flex-grow-0"></RadzenButton>
     </div>
 
     <hr class="my-4" />
 
     <div class="row mb-4">
-        <div class="col-md-4 mb-3">
+        <div class="col-12 col-lg-4 mb-3">
             <RadzenText TextStyle="TextStyle.Subtitle2" class="mb-2">Customer</RadzenText>
             <RadzenDropDown TValue="int"
             @bind-Value="selectedCustomer"
@@ -31,9 +31,9 @@
             FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive" 
             FilterOperator="StringFilterOperator.StartsWith" 
             AllowFiltering="true"
-                            Style="width: 100%" />
+            Style="width: 100%" />
         </div>
-        <div class="col-md-4 mb-3">
+        <div class="col-12 col-lg-4 mb-3">
             <RadzenText TextStyle="TextStyle.Subtitle2" class="mb-2">Delivery Address</RadzenText>
             <RadzenDropDownDataGrid
             @bind-Value="selectedDelivery"
@@ -44,16 +44,16 @@
             Style="width: 100%"
             >
                 <Columns>
-                    <RadzenDropDownDataGridColumn Property="DeliveryName" Title="Delivery Name" Width="150px" />
-                    <RadzenDropDownDataGridColumn Property="Address1" Title="Address 1" Width="150px" />
-                    <RadzenDropDownDataGridColumn Property="Address2" Title="Address 2" Width="150px" />
-                    <RadzenDropDownDataGridColumn Property="City" Title="City" Width="100px" />
-                    <RadzenDropDownDataGridColumn Property="Postcode" Title="Post Code" Width="100px" />
+                    <RadzenDropDownDataGridColumn Property="DeliveryName" Title="Delivery Name" Width="120px" />
+                    <RadzenDropDownDataGridColumn Property="Address1" Title="Address 1" Width="120px" />
+                    <RadzenDropDownDataGridColumn Property="Address2" Title="Address 2" Width="120px" />
+                    <RadzenDropDownDataGridColumn Property="City" Title="City" Width="80px" />
+                    <RadzenDropDownDataGridColumn Property="Postcode" Title="Post Code" Width="80px" />
                 </Columns>
             </RadzenDropDownDataGrid>
         </div>
 
-        <div class="col-md-4 mb-3">
+        <div class="col-12 col-lg-4 mb-3">
             <RadzenText TextStyle="TextStyle.Subtitle2" class="mb-2">Delivery Cost</RadzenText>
             <RadzenDropDownDataGrid 
             @bind-Value="selectedDeliveryCost"
@@ -63,42 +63,56 @@
             AllowVirtualization = "true">
 
                 <Columns>
-                    <RadzenDropDownDataGridColumn Property="Zone" Title="Zone" Width="100px" />
-                    <RadzenDropDownDataGridColumn Property="PostCode" Title="Post Code" Width="150px" />
-                    <RadzenDropDownDataGridColumn Property="Pallet" Title="Pallet" Width="150px" />
-                    <RadzenDropDownDataGridColumn Property="ServiceHours" Title="Service Hours" Width="150px" />
-                    <RadzenDropDownDataGridColumn Property="Cost" Title="Cost" Width="150px" />
+                 
+                    <RadzenDropDownDataGridColumn Property="PostCode" Title="Post Code" Width="100px" />
+                    <RadzenDropDownDataGridColumn Property="Cost" Title="Cost" Width="80px" FormatString="{0:C2}" />
+                    
+                    <RadzenDropDownDataGridColumn Property="Weight" Title="Weight" Width="80px" />
+                    <RadzenDropDownDataGridColumn Property="Pallet" Title="Pallet" Width="100px" />
+                       <RadzenDropDownDataGridColumn Property="Zone" Title="Zone" Width="60px" />
+                    <RadzenDropDownDataGridColumn Property="ServiceHours" Title="Service Hours" Width="90px" />
+
                 </Columns>
             </RadzenDropDownDataGrid>
 
         </div>
     </div>
 
-    <RadzenText TextStyle="TextStyle.H6" class="mb-3">Recipe Periods</RadzenText>
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3 gap-2">
+        <RadzenText TextStyle="TextStyle.H6" class="mb-0">Recipe Periods</RadzenText>
+        <RadzenButton Text="Copy First Date to All" Click="@CopyFirstDateToAll" ButtonStyle="ButtonStyle.Secondary" Size="ButtonSize.Small" />
+    </div>
 
-    <RadzenDataGrid @ref="grid" 
-    Data="@RecipePeriods" 
-    TItem="RecipePeriod"
-    GridLines="DataGridGridLines.Horizontal"
-    AllowFiltering="false"
-    AllowColumnResize="true"
-    AllowAlternatingRows="true"
-    Style="min-width: 1200px; overflow-x: auto;">
+    <div class="table-responsive">
+        <RadzenDataGrid @ref="grid"
+        Data="@RecipePeriods" 
+        TItem="RecipePeriod"
+        GridLines="DataGridGridLines.Horizontal"
+        AllowFiltering="false"
+        AllowColumnResize="true"
+        AllowAlternatingRows="true"
+        Style="min-width: 100%; overflow-x: auto;">
         <Columns>
-            <RadzenDataGridColumn TItem="RecipePeriod" Title="Recipe" MinWidth="200px">
+            <RadzenDataGridColumn TItem="RecipePeriod" Title="Recipe" MinWidth="220px" MaxWidth="320px">
                 <Template Context="data">
-                    <RadzenDropDown @bind-Value="data.SelectedRecipe"
-                    Data="@recipes"
-                    TextProperty="RecipeCode"
-                    Style="width:100%; "
-                    Change="@(() => OnRecipeSelected(data))"
-                                    FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
-                                    FilterOperator="StringFilterOperator.StartsWith"
-                                    AllowFiltering="true" />
+                    <div class="d-flex align-items-center gap-2" style="width:100%">
+                        <RadzenDropDown @bind-Value="data.SelectedRecipe"
+                        Data="@recipes"
+                        TextProperty="RecipeCode"
+                        Style="width:100%;"
+                        Change="@(() => OnRecipeSelected(data))"
+                                        FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                                        FilterOperator="StringFilterOperator.StartsWith"
+                                        AllowFiltering="true" />
+
+                        <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Size="ButtonSize.Small"
+                                      Click="@(() => RemoveRecipePeriod(data))"
+                                      class="flex-shrink-0" />
+                    </div>
                 </Template>
             </RadzenDataGridColumn>
 
-            <RadzenDataGridColumn TItem="RecipePeriod" Title="Period From" MinWidth="150px">
+            <RadzenDataGridColumn TItem="RecipePeriod" Title="Period From" MinWidth="120px" MaxWidth="150px">
                 <Template Context="data">
                     <RadzenDatePicker @bind-Value="data.PeriodFrom"
                     DateFormat="MM/yyyy"
@@ -108,7 +122,7 @@
                 </Template>
             </RadzenDataGridColumn>
 
-            <RadzenDataGridColumn TItem="RecipePeriod" Title="Period To" MinWidth="150px">
+            <RadzenDataGridColumn TItem="RecipePeriod" Title="Period To" MinWidth="120px" MaxWidth="150px">
                 <Template Context="data">
                     <RadzenDatePicker @bind-Value="data.PeriodTo"
                     DateFormat="MM/yyyy"
@@ -118,7 +132,7 @@
                 </Template>
             </RadzenDataGridColumn>
 
-            <RadzenDataGridColumn TItem="RecipePeriod" Title="Packaging Material" MinWidth="200px" >
+            <RadzenDataGridColumn TItem="RecipePeriod" Title="Packaging Material" MinWidth="180px" MaxWidth="220px" >
                 <Template Context="data">
                     <RadzenDropDownDataGrid @bind-Value="data.SelectedPackagingMaterial"
                     Data="@packagingMaterials"
@@ -129,14 +143,14 @@
                     FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
                    >
                         <Columns>
-                            <RadzenDropDownDataGridColumn Property="Type" Title="Type" Width="100px" />
-                            <RadzenDropDownDataGridColumn Property="Packaging" Title="Packaging" Width="150px" />
+                            <RadzenDropDownDataGridColumn Property="Type" Title="Type" Width="80px" />
+                            <RadzenDropDownDataGridColumn Property="Packaging" Title="Packaging" Width="120px" />
                         </Columns>
                     </RadzenDropDownDataGrid>
                 </Template>
             </RadzenDataGridColumn>
 
-            <RadzenDataGridColumn TItem="RecipePeriod" Title="Production Cost" MinWidth="200px">
+            <RadzenDataGridColumn TItem="RecipePeriod" Title="Production Cost" MinWidth="180px" MaxWidth="220px">
                 <Template Context="data">
                     <RadzenDropDownDataGrid @bind-Value="data.SelectedProductionCost"
                     Data="@productionCosts"
@@ -147,14 +161,14 @@
                     FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
                     >
                         <Columns>
-                            <RadzenDropDownDataGridColumn Property="ProductType" Title="Product Type" Width="150px" />
-                            <RadzenDropDownDataGridColumn Property="ProductTypeCost" Title="Cost" Width="100px" />
+                            <RadzenDropDownDataGridColumn Property="ProductType" Title="Product Type" Width="120px" />
+                            <RadzenDropDownDataGridColumn Property="ProductTypeCost" Title="Cost" Width="80px" />
                         </Columns>
                     </RadzenDropDownDataGrid>
                 </Template>
             </RadzenDataGridColumn>
 
-            <RadzenDataGridColumn TItem="RecipePeriod" Title="Premium" MinWidth="250px">
+            <RadzenDataGridColumn TItem="RecipePeriod" Title="Premium" MinWidth="200px" MaxWidth="280px">
                 <Template Context="data">
                     <RadzenDropDown @bind-Value="data.SelectedPremiumList"
                     Data="@premiums"
@@ -166,11 +180,27 @@
 
 
         </Columns>
-    </RadzenDataGrid>
+        </RadzenDataGrid>
+    </div>
 </RadzenCard>
 
 
 @code {
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     // Lists to hold the data
     List<Customer> customers = new();
     List<CustomerDeliveryDetail> deliveryAddresses = new();
@@ -197,9 +227,56 @@
         if (selectedRow == RecipePeriods.Last() && selectedRow.SelectedRecipe != null)
         {
             RecipePeriods.Add(new RecipePeriod());
-            recipes.Remove(selectedRow.SelectedRecipe);
+            // Don't remove the recipe from the list - allow it to be selected multiple times
             grid.Reload();
             StateHasChanged();
+        }
+    }
+
+    private async Task RemoveRecipePeriod(RecipePeriod period)
+    {
+        if (RecipePeriods.Contains(period))
+        {
+            RecipePeriods.Remove(period);
+        }
+
+        if (RecipePeriods.Count == 0)
+        {
+            RecipePeriods.Add(new RecipePeriod());
+        }
+
+        await grid.Reload();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void CopyFirstDateToAll()
+    {
+        if (RecipePeriods.Count > 0 && RecipePeriods[0].PeriodFrom.HasValue)
+        {
+            var firstFromDate = RecipePeriods[0].PeriodFrom.Value;
+            var firstToDate = RecipePeriods[0].PeriodTo;
+
+            // Copy both dates to all other recipe periods
+            for (int i = 1; i < RecipePeriods.Count; i++)
+            {
+                RecipePeriods[i].PeriodFrom = firstFromDate;
+                RecipePeriods[i].PeriodTo = firstToDate;
+            }
+
+            // Refresh the grid to show the updated dates
+            grid?.Reload();
+            StateHasChanged();
+
+            string message = firstToDate.HasValue 
+                ? $"First dates ({firstFromDate:MM/yyyy} to {firstToDate.Value:MM/yyyy}) have been copied to all recipe periods."
+                : $"First date ({firstFromDate:MM/yyyy}) has been copied to all recipe periods.";
+
+            NotificationService.Notify(NotificationSeverity.Info, "Dates Copied", message);
+        }
+        else
+        {
+            NotificationService.Notify(NotificationSeverity.Warning, "No Date to Copy", 
+                "Please ensure the first recipe period has a valid date.");
         }
     }
 
@@ -277,7 +354,7 @@
             return;
         }
 
-        
+
 
         // Check each recipe period for required fields
         foreach (var period in RecipePeriods.Where(rp => rp.SelectedRecipe != null))
@@ -322,9 +399,7 @@
         foreach (var recipePeriod in RecipePeriods)
         {
             decimal localTotalCost = 0;
-            decimal butterPrice = 0;
-            decimal liquorPrice = 0;
-            decimal powderPrice = 0;
+
             decimal yieldCost, totalRawMaterialCost = 0;
             if (recipePeriod.SelectedRecipe != null)
             {
@@ -367,7 +442,8 @@
 							LifeGbp = terminalCost.LifeGbp,
                             Liquor = terminalCost.Liquor,
                             Butter = terminalCost.Butter,
-							Powder = terminalCost.Powder
+							Powder = terminalCost.Powder,
+                            GhanaLiquor = terminalCost.GhanaLiquor
 						};
 
                     quotationRecipe.QuotationTerminalCost = quotationTerminalCost;
@@ -378,15 +454,19 @@
                     foreach(var rmp in rawMaterialPrice){
                         if(rmp.Material.MaterialName == "Cocoa Mass"){
                             rmp.Price = QuoteDataService.CalculateMassTotal(quotationTerminalCost.Liquor , quotationTerminalCost.LifeGbp);
-                            liquorPrice = rmp.Price;
+
                         }
                         else if(rmp.Material.MaterialName == "Cocoa Butter"){
                             rmp.Price = QuoteDataService.CalculateButterTotal(quotationTerminalCost.Butter, quotationTerminalCost.LifeGbp);
-                            butterPrice = rmp.Price;
+
                         }
                         else if(rmp.Material.MaterialName == "Cocoa Powder"){
                             rmp.Price = QuoteDataService.CalculatePowderTotal(quotationTerminalCost.Powder, quotationTerminalCost.LifeGbp);
-                            powderPrice = rmp.Price;
+
+                        }
+                        else if (rmp.Material.MaterialName == "Ghana Cocoa Mass")
+                        {
+                            rmp.Price = QuoteDataService.CalculateGhanaLiquorTotal(quotationTerminalCost.GhanaLiquor, quotationTerminalCost.LifeGbp);
                         }
                     }
 
@@ -584,33 +664,27 @@
 
     async Task OnDeliveryChanged(object value)
     {
-
         var localDeliveryCost = await MDS.GetDeliveryCostAsync();
 
-        string customerPostCode = selectedDelivery.Postcode;
-
-
-        // Find matching delivery costs where the customer's postcode is contained
-        // in the delivery cost postcodes
-        if (string.IsNullOrEmpty(customerPostCode))
+        // If a specific delivery address is selected, filter by DeliveryAddressId
+        if (selectedDelivery != null && selectedDelivery.DeliveryId > 0)
         {
-            // If customer postcode is null or empty, show the complete list
-            deliveryCost = localDeliveryCost.ToList();
-          
-        }
-        else
-        {
+            // Filter delivery costs that match the selected delivery address
             deliveryCost = localDeliveryCost.Where(dc => 
-                !string.IsNullOrEmpty(dc.PostCode) && 
-                dc.PostCode.Contains(customerPostCode)
+                dc.DeliveryAddressId.HasValue && 
+                dc.DeliveryAddressId.Value == selectedDelivery.DeliveryId
             ).ToList();
             
-            // If no matches found, show the complete list
+            // If no specific delivery costs found for this address, show all
             if (deliveryCost.Count == 0)
             {
                 deliveryCost = localDeliveryCost.ToList();
             }
-       
+        }
+        else
+        {
+            // If no delivery address is selected, show all delivery costs
+            deliveryCost = localDeliveryCost.ToList();
         }
 
         await InvokeAsync(StateHasChanged);

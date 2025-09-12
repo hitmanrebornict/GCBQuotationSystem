@@ -11,11 +11,17 @@ public partial class DeliveryCost
 
     public string PostCode { get; set; } = null!;
 
-    public string Pallet { get; set; } = null!;
+    public string? Pallet { get; set; }
 
     public decimal Cost { get; set; }
 
     public int ServiceHours { get; set; }
 
     public bool Active { get; set; }
+
+    public int? Weight { get; set; }
+
+    public int? DeliveryAddressId { get; set; }
+
+    public virtual CustomerDeliveryDetail? DeliveryAddress { get; set; }
 }

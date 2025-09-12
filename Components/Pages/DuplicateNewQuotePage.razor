@@ -4,14 +4,32 @@
 
 @inject QuoteDetailServices QuoteDetailService
 @inject QuoteDataServices QuoteDataService
+@inject GenerateQuoteServices GenerateQuoteService
+@inject NotificationService NotificationService
+@inject NavigationManager NavigationManager
 
-<QuoteDetailPage ></QuoteDetailPage>
+<PageTitle>Duplicate Quote</PageTitle>
 
-<hr/>
+<RadzenCard class="p-4">
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3 gap-2">
+        <RadzenText Text="Duplicate Quotation" TextStyle="TextStyle.DisplayH5" class="mb-0"></RadzenText>
+        <div class="d-flex gap-2">
+            <RadzenButton Text="Apply Latest" Click="@ApplyLatestButtonOnClick" ButtonStyle="ButtonStyle.Secondary" class="px-3" />
+            <RadzenButton Text="Create" Click="@DuplicateButtonOnClick" ButtonStyle="ButtonStyle.Primary" class="px-3" />
+        </div>
+    </div>
 
-<RadzenButton Text="Create" Click="@DuplicateButtonOnClick" Style="background-color:#3B82F6" />
+    <hr class="my-3" />
+
+    <QuoteDetailPage @ref="quoteDetailPage"></QuoteDetailPage>
+</RadzenCard>
+
+
+
+
 
 @code {
+
     private async void DuplicateButtonOnClick()
     {
         Quote newQuote = new Quote();
@@ -29,4 +47,118 @@
         NavigationManager.NavigateTo($"/QuoteDetailPage/{newQuote.QuoteId}");
         // NavigationManager.NavigateTo("/QuotationList");
     }
+
+    private async void ApplyLatestButtonOnClick()
+    {
+        if (QuoteDataService.RecipeTotalCostList == null || !QuoteDataService.RecipeTotalCostList.Any())
+        {
+            NotificationService.Notify(new NotificationMessage
+               {
+                   Severity = NotificationSeverity.Warning,
+                   Summary = "No data",
+                   Detail = "There are no recipes to update.",
+                   Duration = 3000
+               });
+            return;
+        }
+
+        try
+        {
+            foreach (var costEntry in QuoteDataService.RecipeTotalCostList)
+            {
+                var recipe = costEntry.QuotationRecipe1;
+                if (recipe?.Recipe == null)
+                    continue;
+
+                var period = recipe.PeriodMonth; // DateOnly
+
+                // Update terminal costs for the period
+                var terminalCost = await GenerateQuoteService.GetTerminalCostByDate(period);
+                if (recipe.QuotationTerminalCost == null)
+                {
+                    recipe.QuotationTerminalCost = new QuotationTerminalCost();
+                }
+
+                recipe.QuotationTerminalCost.TerminalName = terminalCost.PeriodName;
+                recipe.QuotationTerminalCost.TerminalPeriod = terminalCost.TerminalPeriod;
+                recipe.QuotationTerminalCost.LifeGbp = terminalCost.LifeGbp;
+                recipe.QuotationTerminalCost.Liquor = terminalCost.Liquor;
+                recipe.QuotationTerminalCost.Butter = terminalCost.Butter;
+                recipe.QuotationTerminalCost.Powder = terminalCost.Powder;
+                recipe.QuotationTerminalCost.GhanaLiquor = terminalCost.GhanaLiquor;
+
+                // Get base raw material prices for the same period
+                var rawMaterialPrice = await GenerateQuoteService.GetRawMaterialCostByRecipeID(period);
+
+                // Adjust cocoa-linked materials to terminal-derived prices
+                foreach (var rmp in rawMaterialPrice)
+                {
+                    if (rmp.Material.MaterialName == "Cocoa Mass")
+                    {
+                        rmp.Price = QuoteDataService.CalculateMassTotal(recipe.QuotationTerminalCost.Liquor, recipe.QuotationTerminalCost.LifeGbp);
+                    }
+                    else if (rmp.Material.MaterialName == "Cocoa Butter")
+                    {
+                        rmp.Price = QuoteDataService.CalculateButterTotal(recipe.QuotationTerminalCost.Butter, recipe.QuotationTerminalCost.LifeGbp);
+                    }
+                    else if (rmp.Material.MaterialName == "Cocoa Powder")
+                    {
+                        rmp.Price = QuoteDataService.CalculatePowderTotal(recipe.QuotationTerminalCost.Powder, recipe.QuotationTerminalCost.LifeGbp);
+                    }
+                    else if (rmp.Material.MaterialName == "Ghana Cocoa Mass")
+                    {
+                        rmp.Price = QuoteDataService.CalculateGhanaLiquorTotal(recipe.QuotationTerminalCost.GhanaLiquor, recipe.QuotationTerminalCost.LifeGbp);
+                    }
+                }
+
+                var rawPriceDict = rawMaterialPrice.ToDictionary(p => p.MaterialId, p => p.Price);
+
+                // Rebuild raw material costs based on current recipe ingredients and updated prices
+                var updatedRawCosts = recipe.Recipe.RecipeIngredients
+                    .Where(i => rawPriceDict.ContainsKey(i.MaterialId))
+                    .Select(i => new QuotationRawMaterialCost
+                       {
+                           MaterialName = i.Material.MaterialName,
+                           Cost = rawPriceDict[i.MaterialId],
+                           CostAmount = rawPriceDict[i.MaterialId] * (i.Amount / 100)
+                       })
+                    .ToList();
+
+                recipe.QuotationRawMaterialCosts = updatedRawCosts;
+
+                // Recalculate totals (handles Yield and ORD Rebate logic internally)
+                costEntry.TotalCost = QuoteDataService.CalculateTotalCost(recipe);
+            }
+
+            // Rebuild matrix
+            QuoteDataService.RecipeCostMatrix = await QuoteDataService.PrepareCostMatrix(QuoteDataService.RecipeTotalCostList);
+
+            await InvokeAsync(StateHasChanged);
+
+           // Refresh the embedded detail page to reflect all recalculated values and fees
+           if(quoteDetailPage != null)
+           {
+               await quoteDetailPage.Refresh();
+           }
+
+           NotificationService.Notify(new NotificationMessage
+               {
+                   Severity = NotificationSeverity.Success,
+                   Summary = "Updated",
+                   Detail = "Applied latest prices based on each period.",
+                   Duration = 3000
+               });
+       }
+       catch (Exception ex)
+       {
+           NotificationService.Notify(new NotificationMessage
+               {
+                   Severity = NotificationSeverity.Error,
+                   Summary = "Error",
+                   Detail = $"Failed to apply latest prices: {ex.Message}",
+                   Duration = 5000
+               });
+       }
+    }
+    private QuoteDetailPage quoteDetailPage;
 }

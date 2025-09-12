@@ -21,7 +21,11 @@ public partial class Customer
 
     public bool Active { get; set; }
 
+    public int? CurrencyId { get; set; }
+
     public virtual Country? Country { get; set; }
+
+    public virtual Currency? Currency { get; set; }
 
     public virtual ICollection<CustomerDeliveryDetail> CustomerDeliveryDetails { get; set; } = new List<CustomerDeliveryDetail>();
 

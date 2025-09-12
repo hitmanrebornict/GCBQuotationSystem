@@ -21,5 +21,7 @@ public partial class QuotationTerminalCost
 
     public int QuotationRecipeId { get; set; }
 
+    public decimal GhanaLiquor { get; set; }
+
     public virtual QuotationRecipe QuotationRecipe { get; set; } = null!;
 }

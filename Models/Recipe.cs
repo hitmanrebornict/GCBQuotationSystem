@@ -17,6 +17,8 @@ public partial class Recipe
 
     public bool Active { get; set; }
 
+    public bool Certified { get; set; }
+
     public virtual PackagingMaterial PackagingMaterial { get; set; } = null!;
 
     public virtual ProductType? ProductType { get; set; }

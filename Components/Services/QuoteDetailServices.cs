@@ -269,6 +269,7 @@ namespace GCBQuotationSystem.Components.Services
 						Liquor = recipe.QuotationTerminalCost.Liquor,
 						Butter = recipe.QuotationTerminalCost.Butter,
 						Powder = recipe.QuotationTerminalCost.Powder,
+						GhanaLiquor = recipe.QuotationTerminalCost.GhanaLiquor,
 
 						// Copy other fields but not Id
 					},
@@ -309,6 +310,30 @@ namespace GCBQuotationSystem.Components.Services
 							.Include(q => q.Status)
 							.Include(q => q.QuotationRecipes)
 								.ThenInclude(q => q.Recipe)
+							.OrderByDescending(q => q.QuoteId)
+							.AsNoTracking().ToListAsync();
+		}
+
+		public async Task<List<Quote>> GetActiveQuotesAsync()
+		{
+			return await _dbContext.Quotes
+							.Include(q => q.Customer)
+							.Include(q => q.Status)
+							.Include(q => q.QuotationRecipes)
+								.ThenInclude(q => q.Recipe)
+							.Where(q => q.StatusId == 1 || q.StatusId == 2)
+							.OrderByDescending(q => q.QuoteId)
+							.AsNoTracking().ToListAsync();
+		}
+
+		public async Task<List<Quote>> GetArchivedQuotesAsync()
+		{
+			return await _dbContext.Quotes
+							.Include(q => q.Customer)
+							.Include(q => q.Status)
+							.Include(q => q.QuotationRecipes)
+								.ThenInclude(q => q.Recipe)
+							.Where(q => q.StatusId == 3 || q.StatusId == 4)
 							.OrderByDescending(q => q.QuoteId)
 							.AsNoTracking().ToListAsync();
 		}
@@ -376,6 +401,12 @@ namespace GCBQuotationSystem.Components.Services
 		public async Task CompleteQuote(Quote selectedQuote)
 		{
 			selectedQuote.StatusId = 3;
+			await _dbContext.SaveChangesAsync();
+		}
+
+		public async Task ArchiveQuote(Quote selectedQuote)
+		{
+			selectedQuote.StatusId = 4;
 			await _dbContext.SaveChangesAsync();
 		}
 

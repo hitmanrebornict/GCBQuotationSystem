@@ -10,6 +10,8 @@
 @inject NavigationManager NavigationManager
 @inject NotificationService NotificationService
 
+<PageTitle>Quote Details</PageTitle>
+
 @using iText.Kernel.Pdf;
 @using iText.Layout;
 @using iText.Layout.Element;
@@ -19,7 +21,7 @@
 
 <div class="container-fluid mb-4">
     <div class="row mb-3">
-        <div class="col-md-6">
+        <div class="col-12 col-md-6 mb-3 mb-md-0">
             <RadzenSelectBar @bind-Value=@SelectBarValue TValue="bool" class="w-100">
                 <Items>
                     <RadzenSelectBarItem Text="Summary" Value="true" />
@@ -27,49 +29,53 @@
                 </Items>
             </RadzenSelectBar>
         </div>
-        <div class="col-md-6 d-flex justify-content-end align-items-center">
+        <div class="col-12 col-md-6">
             @if (hasCurrencyChanged)
             {
-                <div class="me-3">
+                <div class="mb-2 mb-md-0">
                     <RadzenBadge Text="@($"Viewing in {UserPreferenceSetting.Currency}")" 
-                                BadgeStyle="BadgeStyle.Info" 
-                                class="me-2" />
+                                BadgeStyle="BadgeStyle.Info" />
                 </div>
             }
             
-            <div class="btn-group">
+            <div class="d-flex flex-wrap gap-2 justify-content-md-end">
                 @if (quote.StatusId != 3)
                 {
                     <RadzenButton Text="Update" Icon="arrow_upward" ButtonType="ButtonType.Submit" 
                         Click="@(async() => await updateQuote(quote))" 
-                        ButtonStyle="ButtonStyle.Primary" class="me-2" />
+                        ButtonStyle="ButtonStyle.Primary" Size="ButtonSize.Small" />
                 }
 
                 @if (quote.StatusId == 1)
                 {
                     <RadzenButton Icon="upload_file" ButtonType="ButtonType.Submit" Text="Post" 
                         Click="@(async() => await postQuote(quote))" 
-                        ButtonStyle="ButtonStyle.Primary" class="me-2" />
+                        ButtonStyle="ButtonStyle.Primary" Size="ButtonSize.Small" />
                 }
                 else if (quote.StatusId == 2)
                 {
                     <RadzenButton Icon="check" ButtonType="ButtonType.Submit" Text="Complete" 
                         Click="@(async() => await completeQuote(quote))" 
-                        ButtonStyle="ButtonStyle.Primary" class="me-2" />
+                        ButtonStyle="ButtonStyle.Primary" Size="ButtonSize.Small" />
+                }
+
+                @if (quote.StatusId != 4)
+                {
+                    <RadzenButton Icon="archive" ButtonType="ButtonType.Submit" Text="Archive" 
+                        Click="@(async() => await archiveQuote(quote))" 
+                        ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small" />
                 }
 
                 <RadzenButton Text="Duplicate" ButtonType="ButtonType.Submit" 
                     Click="DuplicateQuotation" Icon="content_copy" 
-                    ButtonStyle="ButtonStyle.Secondary" class="me-2" />
+                    ButtonStyle="ButtonStyle.Secondary" Size="ButtonSize.Small" />
 
-                <div class="btn-group">
-                    <RadzenButton Icon="file_download" Text="Excel" ButtonType="ButtonType.Submit" 
-                        Click="ExportSummaryAndRedirect" 
-                        ButtonStyle="ButtonStyle.Info" class="me-2" />
-                    <RadzenButton Icon="file_download" Text="PDF" ButtonType="ButtonType.Submit" 
-                        Click="ExportSummaryToPDF" 
-                        ButtonStyle="ButtonStyle.Info" />
-                </div>
+                <RadzenButton Icon="file_download" Text="Excel" ButtonType="ButtonType.Submit" 
+                    Click="ExportSummaryAndRedirect" 
+                    ButtonStyle="ButtonStyle.Info" Size="ButtonSize.Small" />
+                <RadzenButton Icon="file_download" Text="PDF" ButtonType="ButtonType.Submit" 
+                    Click="ExportSummaryToPDF" 
+                    ButtonStyle="ButtonStyle.Info" Size="ButtonSize.Small" />
             </div>
         </div>
     </div>
@@ -78,9 +84,9 @@
         @if (load)
         {
             <div class="row">
-                <div class="col-md-6">
-                    <div class="d-flex align-items-center mb-3">
-                        <h4 class="me-3 mb-0">Quotation ID: @quote.QuoteId</h4>
+                <div class="col-12">
+                    <div class="d-flex flex-column flex-md-row align-items-start align-items-md-center mb-3">
+                        <h4 class="me-md-3 mb-2 mb-md-0">Quotation ID: @quote.QuoteId</h4>
                         @if (status == "Created")
                         {
                             <RadzenBadge Text="Created" BadgeStyle="BadgeStyle.Warning" />
@@ -96,15 +102,17 @@
                     </div>
 
                     <div class="row">
-                        <div class="col-md-6">
-                            <p><strong>Quote Date:</strong></p>
-                            <p><strong>Customer Name:</strong></p>
-                            <p><strong>Delivery Address:</strong></p>
+                        <div class="col-12 col-sm-6 col-md-4">
+                            <p class="mb-1"><strong>Quote Date:</strong></p>
+                            <p class="mb-2">@quote.CreatedAt?.ToString("dd MMM yyyy hh:mm tt")</p>
                         </div>
-                        <div class="col-md-6">
-                            <p>@quote.CreatedAt?.ToString("dd MMM yyyy hh:mm tt")</p>
-                            <p>@quote.Customer.CustName</p>
-                            <p>@GetDeliveryAddress()</p>
+                        <div class="col-12 col-sm-6 col-md-4">
+                            <p class="mb-1"><strong>Customer Name:</strong></p>
+                            <p class="mb-2">@quote.Customer.CustName</p>
+                        </div>
+                        <div class="col-12 col-md-4">
+                            <p class="mb-1"><strong>Delivery Address:</strong></p>
+                            <p class="mb-2">@GetDeliveryAddress()</p>
                         </div>
                     </div>
                 </div>
@@ -132,10 +140,282 @@
     }
     else
     {
-        <div class="alert alert-info">
-            <i class="rz-icon-info-circle me-2"></i>
-            Listing view is currently under development.
+        @if(isDataLoaded)
+        {
+            <RadzenCard class="shadow-sm mb-4">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <RadzenText Text="Cost Conclusion Summary" TextStyle="TextStyle.DisplayH5" class="mb-0"></RadzenText>
+                    <RadzenText Text="@($"Average costs across all periods ({GetRecipeCount()} recipes)")" TextStyle="TextStyle.Subtitle2" class="text-muted"></RadzenText>
+                </div>
+                
+                <div class="row">
+                    @foreach (var recipeSummary in GetRecipeCostSummaries())
+                    {
+                        <div class="col-12 col-sm-6 col-lg-4 mb-4">
+                            <div class="card h-100 shadow-sm">
+                                <div class="card-header bg-primary text-white">
+                                    <h6 class="mb-0 text-truncate">
+                                        <i class="rz-icon-receipt me-2"></i>
+                                        @recipeSummary.RecipeCode
+                                    </h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        <!-- Raw Material Cost -->
+                                        <div class="mb-2">
+                                            <div class="d-flex justify-content-between align-items-center" style="cursor: pointer;" @onclick="@(() => ToggleExpanded($"{recipeSummary.RecipeCode}_rawmaterial"))">
+                                                <span class="text-muted small">Raw Material Cost:</span>
+                                                <div class="d-flex align-items-center">
+                                                    <strong class="text-primary me-2 small">@recipeSummary.AverageRawMaterialCost.ToString("C0", UserPreferenceSetting.CultureInfo)</strong>
+                                                    <i class="rz-icon @(IsExpanded($"{recipeSummary.RecipeCode}_rawmaterial") ? "chevron-up" : "chevron-down") small"></i>
+                                                </div>
+                                            </div>
+                                            @if (IsExpanded($"{recipeSummary.RecipeCode}_rawmaterial"))
+                                            {
+                                                <div class="ms-2 ms-md-3 mt-2" style="background-color: #f8f9fa; padding: 8px; border-radius: 5px;">
+                                                    @foreach (var material in recipeSummary.RawMaterialBreakdown)
+                                                    {
+                                                        <div class="d-flex justify-content-between align-items-center py-1">
+                                                            <small class="text-muted">@material.Key:</small>
+                                                            <small class="fw-medium">@material.Value.ToString("C0", UserPreferenceSetting.CultureInfo)</small>
+                                                        </div>
+                                                    }
+                                                </div>
+                                            }
+                                        </div>
+
+
+
+                                        <!-- Premium Cost -->
+                                        <div class="mb-2">
+                                            <div class="d-flex justify-content-between align-items-center" style="cursor: pointer;" @onclick="@(() => ToggleExpanded($"{recipeSummary.RecipeCode}_premium"))">
+                                                <span class="text-muted small">Premium Cost:</span>
+                                                <div class="d-flex align-items-center">
+                                                    <strong class="text-warning me-2 small">@recipeSummary.AveragePremiumCost.ToString("C0", UserPreferenceSetting.CultureInfo)</strong>
+                                                    <i class="rz-icon @(IsExpanded($"{recipeSummary.RecipeCode}_premium") ? "chevron-up" : "chevron-down") small"></i>
+                                                </div>
+                                            </div>
+                                            @if (IsExpanded($"{recipeSummary.RecipeCode}_premium"))
+                                            {
+                                                <div class="ms-2 ms-md-3 mt-2" style="background-color: #f8f9fa; padding: 8px; border-radius: 5px;">
+                                                    @foreach (var premium in recipeSummary.PremiumCostBreakdown)
+                                                    {
+                                                        <div class="d-flex justify-content-between align-items-center py-1">
+                                                            <small class="text-muted">@premium.Key:</small>
+                                                            <small class="fw-medium">@premium.Value.ToString("C0", UserPreferenceSetting.CultureInfo)</small>
+                                                        </div>
+                                                    }
+                                                </div>
+                                            }
+                                        </div>
+
+                                        <!-- Packaging Cost -->
+                                        <div class="mb-2">
+                                            <div class="d-flex justify-content-between align-items-center" style="cursor: pointer;" @onclick="@(() => ToggleExpanded($"{recipeSummary.RecipeCode}_packaging"))">
+                                                <span class="text-muted small">Packaging Cost:</span>
+                                                <div class="d-flex align-items-center">
+                                                    <strong class="text-secondary me-2 small">@recipeSummary.AveragePackagingCost.ToString("C0", UserPreferenceSetting.CultureInfo)</strong>
+                                                    <i class="rz-icon @(IsExpanded($"{recipeSummary.RecipeCode}_packaging") ? "chevron-up" : "chevron-down") small"></i>
+                                                </div>
+                                            </div>
+                                            @if (IsExpanded($"{recipeSummary.RecipeCode}_packaging"))
+                                            {
+                                                <div class="ms-2 ms-md-3 mt-2" style="background-color: #f8f9fa; padding: 8px; border-radius: 5px;">
+                                                    <small class="text-muted">@recipeSummary.PackagingDetails</small>
+                                                </div>
+                                            }
+                                        </div>
+
+                                        <!-- Delivery Cost -->
+                                        <div class="mb-2">
+                                            <div class="d-flex justify-content-between align-items-center" style="cursor: pointer;" @onclick="@(() => ToggleExpanded($"{recipeSummary.RecipeCode}_delivery"))">
+                                                <span class="text-muted small">Delivery Cost:</span>
+                                                <div class="d-flex align-items-center">
+                                                    <strong class="text-dark me-2 small">@recipeSummary.AverageDeliveryCost.ToString("C0", UserPreferenceSetting.CultureInfo)</strong>
+                                                    <i class="rz-icon @(IsExpanded($"{recipeSummary.RecipeCode}_delivery") ? "chevron-up" : "chevron-down") small"></i>
+                                                </div>
+                                            </div>
+                                            @if (IsExpanded($"{recipeSummary.RecipeCode}_delivery"))
+                                            {
+                                                <div class="ms-2 ms-md-3 mt-2" style="background-color: #f8f9fa; padding: 8px; border-radius: 5px;">
+                                                    <small class="text-muted">@recipeSummary.DeliveryDetails</small>
+                                                </div>
+                                            }
+                                        </div>
+
+                                        <!-- Production Cost -->
+                                        <div class="mb-2">
+                                            <div class="d-flex justify-content-between align-items-center" style="cursor: pointer;" @onclick="@(() => ToggleExpanded($"{recipeSummary.RecipeCode}_production"))">
+                                                <span class="text-muted small">Production Cost:</span>
+                                                <div class="d-flex align-items-center">
+                                                    <strong class="text-success me-2 small">@recipeSummary.AverageProductionCost.ToString("C0", UserPreferenceSetting.CultureInfo)</strong>
+                                                    <i class="rz-icon @(IsExpanded($"{recipeSummary.RecipeCode}_production") ? "chevron-up" : "chevron-down") small"></i>
+                                                </div>
+                                            </div>
+                                            @if (IsExpanded($"{recipeSummary.RecipeCode}_production"))
+                                            {
+                                                <div class="ms-2 ms-md-3 mt-2" style="background-color: #f8f9fa; padding: 8px; border-radius: 5px;">
+                                                    <small class="text-muted">@recipeSummary.ProductionDetails</small>
+                                                </div>
+                                            }
+                                        </div>
+
+                                        <!-- Additional Cost -->
+                                        <div class="mb-2">
+                                            <div class="d-flex justify-content-between align-items-center" style="cursor: pointer;" @onclick="@(() => ToggleExpanded($"{recipeSummary.RecipeCode}_additional"))">
+                                                <span class="text-muted small">Additional Cost:</span>
+                                                <div class="d-flex align-items-center">
+                                                    <strong class="text-danger me-2 small">@recipeSummary.AverageAdditionalCost.ToString("C0", UserPreferenceSetting.CultureInfo)</strong>
+                                                    <i class="rz-icon @(IsExpanded($"{recipeSummary.RecipeCode}_additional") ? "chevron-up" : "chevron-down") small"></i>
+                                                </div>
+                                            </div>
+                                            @if (IsExpanded($"{recipeSummary.RecipeCode}_additional"))
+                                            {
+                                                <div class="ms-2 ms-md-3 mt-2" style="background-color: #f8f9fa; padding: 8px; border-radius: 5px;">
+                                                    @foreach (var additional in recipeSummary.AdditionalCostBreakdown)
+                                                    {
+                                                        <div class="d-flex justify-content-between align-items-center py-1">
+                                                            <small class="text-muted">@additional.Key:</small>
+                                                            <small class="fw-medium">@additional.Value.ToString("C0", UserPreferenceSetting.CultureInfo)</small>
+                                                        </div>
+                                                    }
+                                                </div>
+                                            }
+                                        </div>
+
+                                        <!-- Financial Cost -->
+                                        <div class="mb-2">
+                                            <div class="d-flex justify-content-between align-items-center" style="cursor: pointer;" @onclick="@(() => ToggleExpanded($"{recipeSummary.RecipeCode}_financial"))">
+                                                <span class="text-muted small">Financial Cost:</span>
+                                                <div class="d-flex align-items-center">
+                                                    <strong class="text-primary me-2 small">@recipeSummary.AverageFinancialCost.ToString("C0", UserPreferenceSetting.CultureInfo)</strong>
+                                                    <i class="rz-icon @(IsExpanded($"{recipeSummary.RecipeCode}_financial") ? "chevron-up" : "chevron-down") small"></i>
+                                                </div>
+                                            </div>
+                                            @if (IsExpanded($"{recipeSummary.RecipeCode}_financial"))
+                                            {
+                                                <div class="ms-2 ms-md-3 mt-2" style="background-color: #f8f9fa; padding: 8px; border-radius: 5px;">
+                                                    <small class="text-muted">@recipeSummary.FinancialDetails</small>
+                                                </div>
+                                            }
+                                        </div>
+
+                                        <hr class="my-2">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <span class="text-muted fw-bold">Total Average Cost:</span>
+                                            <strong class="text-primary fs-5">@recipeSummary.AverageCost.ToString("C0", UserPreferenceSetting.CultureInfo)</strong>
+                                        </div>
+                                        <div class="d-flex justify-content-between align-items-center mt-1">
+                                            <span class="text-muted">Periods:</span>
+                                            <span class="badge bg-secondary">@recipeSummary.PeriodCount periods</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
         </div>
+                    }
+                </div>
+                
+                @if (GetRecipeCostSummaries().Any())
+                {
+                    <hr class="my-4">
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="card bg-light border-primary">
+                                <div class="card-body text-center">
+                                    <h5 class="card-title text-primary mb-3">
+                                        <i class="rz-icon-calculate me-2"></i>
+                                        Overall Summary
+                                    </h5>
+                                    <div class="row mb-3">
+                                        <div class="col-6 col-md-3 mb-3 mb-md-0">
+                                            <div class="text-center">
+                                                <h5 class="text-primary mb-1">@GetTotalAverageCost().ToString("C0", UserPreferenceSetting.CultureInfo)</h5>
+                                                <small class="text-muted">Total Average Cost</small>
+                                            </div>
+                                        </div>
+                                        <div class="col-6 col-md-3 mb-3 mb-md-0">
+                                            <div class="text-center">
+                                                <h5 class="text-success mb-1">@GetOverallMinCost().ToString("C0", UserPreferenceSetting.CultureInfo)</h5>
+                                                <small class="text-muted">Lowest Cost</small>
+                                            </div>
+                                        </div>
+                                        <div class="col-6 col-md-3 mb-3 mb-md-0">
+                                            <div class="text-center">
+                                                <h5 class="text-danger mb-1">@GetOverallMaxCost().ToString("C0", UserPreferenceSetting.CultureInfo)</h5>
+                                                <small class="text-muted">Highest Cost</small>
+                                            </div>
+                                        </div>
+                                        <div class="col-6 col-md-3">
+                                            <div class="text-center">
+                                                <h5 class="text-info mb-1">@GetTotalPeriods()</h5>
+                                                <small class="text-muted">Total Periods</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <hr class="my-3">
+                                    <h6 class="text-muted mb-3">Average Cost Breakdown by Component:</h6>
+                                    <div class="row">
+                                        <div class="col-6 col-md-4 col-lg-3 mb-2">
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <small class="text-muted">Raw Material:</small>
+                                                <small class="fw-medium text-primary">@GetTotalAverageRawMaterialCost().ToString("C0", UserPreferenceSetting.CultureInfo)</small>
+                                            </div>
+                                        </div>
+
+                                        <div class="col-6 col-md-4 col-lg-3 mb-2">
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <small class="text-muted">Premium:</small>
+                                                <small class="fw-medium text-warning">@GetTotalAveragePremiumCost().ToString("C0", UserPreferenceSetting.CultureInfo)</small>
+                                            </div>
+                                        </div>
+                                        <div class="col-6 col-md-4 col-lg-3 mb-2">
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <small class="text-muted">Packaging:</small>
+                                                <small class="fw-medium text-secondary">@GetTotalAveragePackagingCost().ToString("C0", UserPreferenceSetting.CultureInfo)</small>
+                                            </div>
+                                        </div>
+                                        <div class="col-6 col-md-4 col-lg-3 mb-2">
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <small class="text-muted">Delivery:</small>
+                                                <small class="fw-medium text-dark">@GetTotalAverageDeliveryCost().ToString("C0", UserPreferenceSetting.CultureInfo)</small>
+                                            </div>
+                                        </div>
+                                        <div class="col-6 col-md-4 col-lg-3 mb-2">
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <small class="text-muted">Production:</small>
+                                                <small class="fw-medium text-success">@GetTotalAverageProductionCost().ToString("C0", UserPreferenceSetting.CultureInfo)</small>
+                                            </div>
+                                        </div>
+                                        <div class="col-6 col-md-4 col-lg-3 mb-2">
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <small class="text-muted">Additional:</small>
+                                                <small class="fw-medium text-danger">@GetTotalAverageAdditionalCost().ToString("C0", UserPreferenceSetting.CultureInfo)</small>
+                                            </div>
+                                        </div>
+                                        <div class="col-6 col-md-4 col-lg-3 mb-2">
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <small class="text-muted">Financial:</small>
+                                                <small class="fw-medium text-primary">@GetTotalAverageFinancialCost().ToString("C0", UserPreferenceSetting.CultureInfo)</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </RadzenCard>
+        }
+        else
+        {
+            <div class="text-center p-5">
+                <RadzenProgressBar Value="100" ShowValue="false" Mode="ProgressBarMode.Indeterminate" 
+                    Style="width: 50%; margin: 0 auto;" />
+                <p class="mt-3">Loading cost summary...</p>
+            </div>
+        }
     }
 </div>
 
@@ -164,6 +444,9 @@
 
     private bool isDataLoaded = false;
     private string custName;
+    
+    // State management for expandable sections
+    private Dictionary<string, bool> expandedSections = new Dictionary<string, bool>();
 
     protected override async Task OnInitializedAsync()
     {
@@ -244,6 +527,275 @@
         public decimal TotalCost => PeriodCosts.Values.Sum();  // Calculate the sum of all period costs
     }
 
+    public class RecipeCostSummary
+    {
+        public string RecipeCode { get; set; }
+        public decimal AverageCost { get; set; }
+        public decimal MinCost { get; set; }
+        public decimal MaxCost { get; set; }
+        public int PeriodCount { get; set; }
+        public Dictionary<string, decimal> PeriodCosts { get; set; } = new();
+        
+        // Detailed cost breakdowns
+        public decimal AverageRawMaterialCost { get; set; }
+        public decimal AveragePremiumCost { get; set; }
+        public decimal AveragePackagingCost { get; set; }
+        public decimal AverageDeliveryCost { get; set; }
+        public decimal AverageProductionCost { get; set; }
+        public decimal AverageAdditionalCost { get; set; }
+        public decimal AverageFinancialCost { get; set; }
+        
+        // Detailed breakdowns for expandable sections
+        public Dictionary<string, decimal> RawMaterialBreakdown { get; set; } = new();
+        public Dictionary<string, decimal> AdditionalCostBreakdown { get; set; } = new();
+        public Dictionary<string, decimal> PremiumCostBreakdown { get; set; } = new();
+        public string PackagingDetails { get; set; } = "";
+        public string DeliveryDetails { get; set; } = "";
+        public string ProductionDetails { get; set; } = "";
+        public string FinancialDetails { get; set; } = "";
+    }
+
+    private List<RecipeCostSummary> GetRecipeCostSummaries()
+    {
+        if (QuoteDataService?.RecipeTotalCostList == null || !QuoteDataService.RecipeTotalCostList.Any())
+            return new List<RecipeCostSummary>();
+
+        // Group by recipe code to calculate averages for each cost component
+        var groupedByRecipe = QuoteDataService.RecipeTotalCostList
+            .GroupBy(r => r.QuotationRecipe1.Recipe.RecipeCode)
+            .ToList();
+
+        return groupedByRecipe.Select(recipeGroup => 
+        {
+            var recipes = recipeGroup.ToList();
+            var recipeCode = recipeGroup.Key;
+            
+            // Calculate detailed breakdowns
+            var rawMaterialBreakdown = new Dictionary<string, decimal>();
+            var additionalCostBreakdown = new Dictionary<string, decimal>();
+            var premiumCostBreakdown = new Dictionary<string, decimal>();
+            
+            // Aggregate raw material costs by material name
+            foreach (var recipe in recipes)
+            {
+                if (recipe.QuotationRecipe1.QuotationRawMaterialCosts != null)
+                {
+                    foreach (var rm in recipe.QuotationRecipe1.QuotationRawMaterialCosts)
+                    {
+                        if (rawMaterialBreakdown.ContainsKey(rm.MaterialName))
+                            rawMaterialBreakdown[rm.MaterialName] += rm.CostAmount;
+                        else
+                            rawMaterialBreakdown[rm.MaterialName] = rm.CostAmount;
+                    }
+                }
+            }
+            
+            // Average the raw material costs
+            foreach (var key in rawMaterialBreakdown.Keys.ToList())
+            {
+                rawMaterialBreakdown[key] = rawMaterialBreakdown[key] / recipes.Count;
+            }
+            
+            // Aggregate additional costs by cost name
+            foreach (var recipe in recipes)
+            {
+                if (recipe.QuotationRecipe1.QuotationAdditionalCosts != null)
+                {
+                    foreach (var ac in recipe.QuotationRecipe1.QuotationAdditionalCosts)
+                    {
+                        if (additionalCostBreakdown.ContainsKey(ac.CostName))
+                            additionalCostBreakdown[ac.CostName] += ac.CostAmount;
+                        else
+                            additionalCostBreakdown[ac.CostName] = ac.CostAmount;
+                    }
+                }
+            }
+            
+            // Average the additional costs
+            foreach (var key in additionalCostBreakdown.Keys.ToList())
+            {
+                additionalCostBreakdown[key] = additionalCostBreakdown[key] / recipes.Count;
+            }
+            
+            // Aggregate premium costs by premium name
+            foreach (var recipe in recipes)
+            {
+                if (recipe.QuotationRecipe1.QuotationPremiumCosts != null)
+                {
+                    foreach (var pc in recipe.QuotationRecipe1.QuotationPremiumCosts)
+                    {
+                        if (premiumCostBreakdown.ContainsKey(pc.PremiumName))
+                            premiumCostBreakdown[pc.PremiumName] += pc.CostAmount;
+                        else
+                            premiumCostBreakdown[pc.PremiumName] = pc.CostAmount;
+                    }
+                }
+            }
+            
+            // Average the premium costs
+            foreach (var key in premiumCostBreakdown.Keys.ToList())
+            {
+                premiumCostBreakdown[key] = premiumCostBreakdown[key] / recipes.Count;
+            }
+            
+            // Get sample details for single-value costs
+            var sampleRecipe = recipes.First();
+            var packagingDetails = sampleRecipe.QuotationRecipe1.QuotationPackagingCost != null ? 
+                $"{sampleRecipe.QuotationRecipe1.QuotationPackagingCost.PackagingName}: {sampleRecipe.QuotationRecipe1.QuotationPackagingCost.Cost:C0}" : "N/A";
+            
+            var deliveryDetails = sampleRecipe.QuotationRecipe1.QuotationDeliveryCost != null ? 
+                $"{sampleRecipe.QuotationRecipe1.QuotationDeliveryCost.DeliveryName}" : "N/A";
+            
+            var productionDetails = sampleRecipe.QuotationRecipe1.QuotationProductionCost != null ? 
+                $"{sampleRecipe.QuotationRecipe1.QuotationProductionCost.ProductType}: {sampleRecipe.QuotationRecipe1.QuotationProductionCost.ProductTypeCost:C0}" : "N/A";
+            
+            var financialDetails = sampleRecipe.QuotationRecipe1.QuotationFinancialCost != null ? 
+                $"Interest Rate: {sampleRecipe.QuotationRecipe1.QuotationFinancialCost.InterestRate}%, Finance Days: {sampleRecipe.QuotationRecipe1.QuotationFinancialCost.FinanceDays}" : "N/A";
+            
+            return new RecipeCostSummary
+            {
+                RecipeCode = recipeCode,
+                PeriodCosts = recipes.ToDictionary(
+                    r => r.QuotationRecipe1.PeriodMonth.ToString("MMMM yyyy"), 
+                    r => r.TotalCost
+                ),
+                AverageCost = recipes.Average(r => r.TotalCost),
+                MinCost = recipes.Min(r => r.TotalCost),
+                MaxCost = recipes.Max(r => r.TotalCost),
+                PeriodCount = recipes.Count,
+                
+                // Calculate average for each cost component
+                AverageRawMaterialCost = recipes.Average(r => r.QuotationRecipe1.QuotationRawMaterialCosts?.Sum(rm => rm.CostAmount) ?? 0),
+                AveragePremiumCost = recipes.Average(r => r.QuotationRecipe1.QuotationPremiumCosts?.Sum(p => p.CostAmount) ?? 0),
+                AveragePackagingCost = recipes.Average(r => r.QuotationRecipe1.QuotationPackagingCost?.CostAmount ?? 0),
+                AverageDeliveryCost = recipes.Average(r => r.QuotationRecipe1.QuotationDeliveryCost?.CostAmount ?? 0),
+                AverageProductionCost = recipes.Average(r => r.QuotationRecipe1.QuotationProductionCost?.ProductTypeCost ?? 0),
+                AverageAdditionalCost = recipes.Average(r => r.QuotationRecipe1.QuotationAdditionalCosts?.Sum(a => a.CostAmount) ?? 0),
+                AverageFinancialCost = recipes.Average(r => r.QuotationRecipe1.QuotationFinancialCost != null ? 
+                    (r.QuotationRecipe1.QuotationFinancialCost.InterestRate / 100 * r.TotalCost * r.QuotationRecipe1.QuotationFinancialCost.FinanceDays / 365) : 0),
+                
+                // Detailed breakdowns
+                RawMaterialBreakdown = rawMaterialBreakdown,
+                AdditionalCostBreakdown = additionalCostBreakdown,
+                PremiumCostBreakdown = premiumCostBreakdown,
+                PackagingDetails = packagingDetails,
+                DeliveryDetails = deliveryDetails,
+                ProductionDetails = productionDetails,
+                FinancialDetails = financialDetails
+            };
+        }).ToList();
+    }
+
+    private int GetRecipeCount()
+    {
+        return QuoteDataService?.RecipeCostMatrix?.Count ?? 0;
+    }
+
+    private decimal GetTotalAverageCost()
+    {
+        var summaries = GetRecipeCostSummaries();
+        if (!summaries.Any()) return 0;
+        
+        return summaries.Average(s => s.AverageCost);
+    }
+
+    private decimal GetOverallMinCost()
+    {
+        var summaries = GetRecipeCostSummaries();
+        if (!summaries.Any()) return 0;
+        
+        return summaries.Min(s => s.MinCost);
+    }
+
+    private decimal GetOverallMaxCost()
+    {
+        var summaries = GetRecipeCostSummaries();
+        if (!summaries.Any()) return 0;
+        
+        return summaries.Max(s => s.MaxCost);
+    }
+
+    private int GetTotalPeriods()
+    {
+        var summaries = GetRecipeCostSummaries();
+        if (!summaries.Any()) return 0;
+        
+        return summaries.Sum(s => s.PeriodCount);
+    }
+
+    private decimal GetTotalAverageRawMaterialCost()
+    {
+        var summaries = GetRecipeCostSummaries();
+        if (!summaries.Any()) return 0;
+        
+        return summaries.Average(s => s.AverageRawMaterialCost);
+    }
+
+
+
+    private decimal GetTotalAveragePremiumCost()
+    {
+        var summaries = GetRecipeCostSummaries();
+        if (!summaries.Any()) return 0;
+        
+        return summaries.Average(s => s.AveragePremiumCost);
+    }
+
+    private decimal GetTotalAveragePackagingCost()
+    {
+        var summaries = GetRecipeCostSummaries();
+        if (!summaries.Any()) return 0;
+        
+        return summaries.Average(s => s.AveragePackagingCost);
+    }
+
+    private decimal GetTotalAverageDeliveryCost()
+    {
+        var summaries = GetRecipeCostSummaries();
+        if (!summaries.Any()) return 0;
+        
+        return summaries.Average(s => s.AverageDeliveryCost);
+    }
+
+    private decimal GetTotalAverageProductionCost()
+    {
+        var summaries = GetRecipeCostSummaries();
+        if (!summaries.Any()) return 0;
+        
+        return summaries.Average(s => s.AverageProductionCost);
+    }
+
+    private decimal GetTotalAverageAdditionalCost()
+    {
+        var summaries = GetRecipeCostSummaries();
+        if (!summaries.Any()) return 0;
+        
+        return summaries.Average(s => s.AverageAdditionalCost);
+    }
+
+    private decimal GetTotalAverageFinancialCost()
+    {
+        var summaries = GetRecipeCostSummaries();
+        if (!summaries.Any()) return 0;
+        
+        return summaries.Average(s => s.AverageFinancialCost);
+    }
+
+    private void ToggleExpanded(string key)
+    {
+        if (expandedSections.ContainsKey(key))
+            expandedSections[key] = !expandedSections[key];
+        else
+            expandedSections[key] = true;
+        
+        StateHasChanged();
+    }
+
+    private bool IsExpanded(string key)
+    {
+        return expandedSections.ContainsKey(key) && expandedSections[key];
+    }
+
     private async Task ExportSummaryAndRedirect()
     {
         string folderPath = Path.Combine(Environment.CurrentDirectory, "wwwroot", "securefiles");
@@ -313,7 +865,7 @@
         var i = 1;
         foreach (var recipe in dataToExport)
         {
-            string fileName = $"Quote_{quote.QuoteId}_{i}_{DateTime.Now:yyyyMMddHHmmss}.pdf";
+            string fileName = $"Quote_{quote.QuoteId}_{i}_{DateTime.Now:yyyyMMdd}.pdf";
             string fullPath = Path.Combine(folderPath, fileName);
 
             using (var pdfReader = new PdfReader(templatePath))
@@ -366,7 +918,7 @@
                     foreach (var period in recipe.PeriodCosts.Keys.OrderBy(p => DateTime.TryParse(p, out var dt) ? dt : DateTime.MaxValue))
                     {
                         table.AddCell(new Cell().Add(new Paragraph(period).SetFontSize(8)));
-                        table.AddCell(new Cell().Add(new Paragraph(recipe.PeriodCosts[period].ToString("C0")).SetFontSize(8)));
+                        table.AddCell(new Cell().Add(new Paragraph(Math.Ceiling(recipe.PeriodCosts[period]).ToString("C0")).SetFontSize(8)));
                     }
                 }
                 else // QUARTER view
@@ -448,6 +1000,16 @@
         await InvokeAsync(StateHasChanged);
 
         NotificationService.Notify(NotificationSeverity.Success, "Quotation is updated successfully.");
+    }
+
+    private async Task archiveQuote(Quote selectedQuote)
+    {
+        await QuoteDetailService.ArchiveQuote(selectedQuote);
+        await OnInitializedAsync();
+
+        await InvokeAsync(StateHasChanged);
+
+        NotificationService.Notify(NotificationSeverity.Success, "Quotation archived successfully.");
     }
 
     private async Task updateQuote(Quote selectedQuote)

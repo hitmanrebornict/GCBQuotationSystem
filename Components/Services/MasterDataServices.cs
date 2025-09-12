@@ -79,6 +79,7 @@ namespace GCBQuotationSystem.Components.Services
 		public async Task<List<Customer>> GetAllCustomersAsync()
 		{
 			return await _dbContext.Customers
+				.Include(c => c.Currency)
 				.Where(c => c.Active)
 				.OrderBy(c => c.CustName)
 				.AsNoTracking().ToListAsync();
@@ -127,6 +128,7 @@ namespace GCBQuotationSystem.Components.Services
 		{
 			try
 			{
+				customer.Active = true;
 				_dbContext.Customers.Add(customer);
 				await _dbContext.SaveChangesAsync();
 				return true;
@@ -141,6 +143,11 @@ namespace GCBQuotationSystem.Components.Services
 		public async Task<List<Country>> GetAllCountriesAsync()
 		{
 			return await _dbContext.Countries.ToListAsync();
+		}
+
+		public async Task<List<Currency>> GetAllCurrenciesAsync()
+		{
+			return await _dbContext.Currencies.ToListAsync();
 		}
 
 		public async Task<List<ProductType>> GetAllProductTypesAsync()
@@ -158,8 +165,12 @@ namespace GCBQuotationSystem.Components.Services
 			return await _dbContext.PackagingMaterials.ToListAsync();
 		}
 
-		public async Task addNewRecipeAsync(Recipe newRecipe)
+		public async Task addNewRecipeAsync(Recipe newRecipe, int productTypeId, int packagingId)
 		{
+			newRecipe.ProductTypeId = productTypeId;
+			newRecipe.PackagingMaterialId = packagingId;
+			newRecipe.Active = true;
+			
 			await _dbContext.Recipes.AddAsync(newRecipe);
 			await _dbContext.SaveChangesAsync();
 		}
@@ -208,6 +219,7 @@ namespace GCBQuotationSystem.Components.Services
 
 		public async Task<TerminalCost> AddTerminalCostAsync(TerminalCost terminalCost)
 		{
+			terminalCost.Active = true;
 			await _dbContext.TerminalCosts.AddAsync(terminalCost);
 			await _dbContext.SaveChangesAsync();
 			return terminalCost;
@@ -244,6 +256,7 @@ namespace GCBQuotationSystem.Components.Services
 
 		public async Task AddPremiumAsync(Premium premium)
 		{
+			premium.Active = true;
 			_dbContext.Premiums.Add(premium);
 			await _dbContext.SaveChangesAsync();
 		}
@@ -261,6 +274,7 @@ namespace GCBQuotationSystem.Components.Services
 
 		public async Task AddPackagingMaterialAsync(PackagingMaterial packagingMaterial)
 		{
+			packagingMaterial.Active = true;
 			_dbContext.PackagingMaterials.Add(packagingMaterial);
 			await _dbContext.SaveChangesAsync();
 		}
@@ -277,7 +291,8 @@ namespace GCBQuotationSystem.Components.Services
 		}
 
 		public async Task AddDeliveryCostAsync(DeliveryCost deliveryCost)
-		{
+		{	
+			deliveryCost.Active = true;	
 			_dbContext.DeliveryCosts.Add(deliveryCost);
 			await _dbContext.SaveChangesAsync();
 		}
@@ -305,7 +320,7 @@ namespace GCBQuotationSystem.Components.Services
 		}
 
 		public async Task AddCustomerDeliveryDetailAsync(CustomerDeliveryDetail deliveryDetail)
-		{
+		{	deliveryDetail.Active = true;
 			_dbContext.CustomerDeliveryDetails.Add(deliveryDetail);
 			await _dbContext.SaveChangesAsync();
 		}
@@ -330,6 +345,7 @@ namespace GCBQuotationSystem.Components.Services
 
 		public async Task AddProductionCostAsync(ProductionCost productionCost)
 		{
+			productionCost.Active = true;
 			_dbContext.ProductionCosts.Add(productionCost);
 			await _dbContext.SaveChangesAsync();
 		}

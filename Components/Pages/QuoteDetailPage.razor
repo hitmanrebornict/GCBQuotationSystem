@@ -6,8 +6,10 @@
 @inject QuoteDetailServices QuoteDetailService
 @inject UserPreferenceSettings UserPreferenceSetting
 
+<PageTitle>Quote Details</PageTitle>
+
 @if(dataLoading){
-    <PageTitle>Quote Details</PageTitle>
+    
 
 
     <RadzenCard class="mb-4">
@@ -63,6 +65,15 @@
                 <RadzenDataGrid Data="@QuoteDataService.RecipeCostMatrix" TItem="RecipeCostMatrix" GridLines="DataGridGridLines.Both" 
                 Class="rounded shadow-sm">
                     <Columns>
+                        @if(isCreateButton)
+                        {
+                            <RadzenDataGridColumn TItem="RecipeCostMatrix" Title="" Width="60px">
+                                <Template Context="data">
+                                    <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Size="ButtonSize.Small"
+                                                  Click="@(async() => await RemoveRecipeByCode(data.RecipeCode))" />
+                                </Template>
+                            </RadzenDataGridColumn>
+                        }
                         <RadzenDataGridColumn TItem="RecipeCostMatrix" Property="RecipeCode" Title="Recipe Code">
                             <Template Context="data">
                                 <strong>@data.RecipeCode</strong>
@@ -78,8 +89,8 @@
                                 <Template Context="data">
                                     <span class="cursor-pointer" @onclick="@(async(args) => await ShowCostDetails(data, period))">
                                         @((data.PeriodCosts.ContainsKey(period))
-                                                                                                                            ? data.PeriodCosts[period].ToString("C", UserPreferenceSetting.CultureInfo)
-                                                                                                                                                : "0.00")
+                                             ? Math.Ceiling(data.PeriodCosts[period]).ToString("C0", UserPreferenceSetting.CultureInfo)
+                                              : "0.00")
                                     </span>
                                 </Template>
                             </RadzenDataGridColumn>
@@ -164,6 +175,15 @@
                             <li class="list-group-item d-flex justify-content-between align-items-center">
                                 <span>Liquor</span>
                                 <RadzenNumeric @bind-Value="selectedTerminalQuarter.Liquor"
+                                Change="@(async () => await RecalculateTerminalTotal(selectedTerminalQuarter))"
+                                Style="width: 120px;"
+                                TValue="decimal"
+                                ShowUpDown="false"
+                                Min="0" />
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <span>G-Liquor</span>
+                                <RadzenNumeric @bind-Value="selectedTerminalQuarter.GhanaLiquor"
                                 Change="@(async () => await RecalculateTerminalTotal(selectedTerminalQuarter))"
                                 Style="width: 120px;"
                                 TValue="decimal"
@@ -362,7 +382,7 @@
     // Dictionary to track updated material costs by quarter
     private Dictionary<string, Dictionary<string, decimal>> updatedQuarterMaterialCosts = new();
 
-    private string costCalculationMethod = "Highest";
+    private string costCalculationMethod = "Average";
     private List<string> costCalculationMethods = new List<string> { "Highest", "Average" };
 
     // Add delivery cost variables
@@ -480,6 +500,18 @@
         //                r => r.TotalCost)
         //        })
         //    .ToList();
+    }
+
+    private async Task RemoveRecipeByCode(string recipeCode)
+    {
+        // Remove all entries with this recipe code from the in-memory lists
+        QuoteDataService.RecipeTotalCostList = QuoteDataService.RecipeTotalCostList
+            .Where(r => r.QuotationRecipe1.Recipe.RecipeCode != recipeCode)
+            .ToList();
+
+        // Recompute the matrix after removal
+        QuoteDataService.RecipeCostMatrix = await QuoteDataService.PrepareCostMatrix(QuoteDataService.RecipeTotalCostList);
+        await InvokeAsync(StateHasChanged);
     }
 
     // Method to show the dialog with the selected cost details
@@ -674,7 +706,6 @@
 
     private async Task RecalculateTerminalTotal(QuotationTerminalCost selectedTerminalCost)
     {
-        Console.WriteLine($"RecalculateTerminalTotal called with Powder: {selectedTerminalCost.Powder}");
 
         var selected = uniqueTerminalNames.FirstOrDefault(t => t.TerminalPeriod == selectedTerminalCost.TerminalPeriod);
         if (selected is null)
@@ -710,6 +741,7 @@
                 recipe.QuotationTerminalCost.Butter = selectedTerminalCost.Butter;
                 recipe.QuotationTerminalCost.Powder = selectedTerminalCost.Powder;
                 recipe.QuotationTerminalCost.Liquor = selectedTerminalCost.Liquor;
+                recipe.QuotationTerminalCost.GhanaLiquor = selectedTerminalCost.GhanaLiquor;
 
                 Console.WriteLine($"Updated Powder value: {recipe.QuotationTerminalCost.Powder}");
 
@@ -835,7 +867,8 @@
             .Where(ingredient =>
                 ingredient.Material.MaterialName == "Cocoa Mass" ||
                 ingredient.Material.MaterialName == "Cocoa Butter" ||
-                ingredient.Material.MaterialName == "Cocoa Powder")
+                ingredient.Material.MaterialName == "Cocoa Powder" ||
+                ingredient.Material.MaterialName == "Ghana Cocoa Mass")
             .Select(ingredient =>
             {
                 decimal basePrice = 0;
@@ -853,6 +886,11 @@
                 else if (ingredient.Material.MaterialName == "Cocoa Powder")
                 {
                     basePrice = QuoteDataService.CalculatePowderTotal(recipe.QuotationTerminalCost.Powder, recipe.QuotationTerminalCost.LifeGbp);
+                    Console.WriteLine($"Cocoa Powder base price: {basePrice} (Powder: {recipe.QuotationTerminalCost.Powder}, LifeGBP: {recipe.QuotationTerminalCost.LifeGbp})");
+                }
+                else if (ingredient.Material.MaterialName == "Ghana Cocoa Mass")
+                {
+                    basePrice = QuoteDataService.CalculateGhanaLiquorTotal(recipe.QuotationTerminalCost.GhanaLiquor, recipe.QuotationTerminalCost.LifeGbp);
                     Console.WriteLine($"Cocoa Powder base price: {basePrice} (Powder: {recipe.QuotationTerminalCost.Powder}, LifeGBP: {recipe.QuotationTerminalCost.LifeGbp})");
                 }
                 
@@ -975,6 +1013,19 @@
 
     private async void CreateButtonOnClick()
     {   
+        if (QuoteDataService.RecipeTotalCostList == null || !QuoteDataService.RecipeTotalCostList.Any())
+        {
+            NotificationService.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Error,
+                    Summary = "Validation Error",
+                    Detail = "Please add at least one recipe before creating a quote.",
+                    Duration = 4000
+                });
+            NavigationManager.NavigateTo("/newquote");
+            return;
+        }
+
         QuoteDataService.OriginalRecipeTotalList = QuoteDataService.RevertToOriginalUnit(QuoteDataService.RecipeTotalCostList,UserPreferenceSetting.WeightRatio);
 
         await QuoteDetailService.addQuoteIntoDatabase(QuoteDataService.newQuotation, QuoteDataService.OriginalRecipeTotalList.Select(r => r.QuotationRecipe1).ToList(), UserPreferenceSetting.Currency, QuoteRemark, CustomerRemark);
@@ -1074,6 +1125,47 @@
                                             r => r.TotalCost)
                        })
            .ToList();
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    public async Task Refresh()
+    {
+        // Recompute the matrix based on current method/selection
+        if (costCalculationMethod == "Highest")
+        {
+            if (selectBarInt == 1)
+            {
+                QuoteDataService.RecipeCostMatrix = await QuoteDataService.PrepareCostMatrix(QuoteDataService.RecipeTotalCostList);
+            }
+            else if (selectBarInt == 2)
+            {
+                QuoteDataService.RecipeCostMatrix = await QuoteDataService.PrepareQuarterCostMatrix(QuoteDataService.RecipeTotalCostList);
+            }
+            else if (selectBarInt == 3)
+            {
+                QuoteDataService.RecipeCostMatrix = await QuoteDataService.PrepareTerminalCostMatrix(QuoteDataService.RecipeTotalCostList);
+            }
+        }
+        else // Average
+        {
+            if (selectBarInt == 1)
+            {
+                QuoteDataService.RecipeCostMatrix = await QuoteDataService.PrepareAverageCostMatrix(QuoteDataService.RecipeTotalCostList);
+            }
+            else if (selectBarInt == 2)
+            {
+                QuoteDataService.RecipeCostMatrix = await QuoteDataService.PrepareAverageQuarterCostMatrix(QuoteDataService.RecipeTotalCostList);
+            }
+            else if (selectBarInt == 3)
+            {
+                QuoteDataService.RecipeCostMatrix = await QuoteDataService.PrepareAverageTerminalCostMatrix(QuoteDataService.RecipeTotalCostList);
+            }
+        }
+
+        // Refresh selection defaults in case source changed
+        selectedQuarter = uniqueQuarters.FirstOrDefault();
+        selectedTerminalQuarter = uniqueTerminalNames.FirstOrDefault();
 
         await InvokeAsync(StateHasChanged);
     }

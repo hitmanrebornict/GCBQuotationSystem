@@ -1,10 +1,10 @@
-﻿@attribute [Authorize(Roles = "Sales Admin,Sales User,IT Admin,Admin")]
+@attribute [Authorize(Roles = "Sales Admin,Sales User,IT Admin,Admin")]
 
-@page "/QuotationList"
+@page "/ArchivedQuotationList"
 @inject QuoteDetailServices QuoteDetailService
 @inject NavigationManager NavigationManager
 
-<PageTitle>Quotation List</PageTitle>
+<PageTitle>Archived Quotation List</PageTitle>
 
 <RadzenCard class="mb-4">
     <RadzenText TextStyle="TextStyle.H6">Filters</RadzenText>
@@ -38,7 +38,7 @@
 </RadzenCard>
 
 <RadzenCard>
-    <RadzenText TextStyle="TextStyle.DisplayH5">Quotation List</RadzenText>
+    <RadzenText TextStyle="TextStyle.DisplayH5">Archived Quotation List</RadzenText>
     <hr />
 
     <RadzenDataGrid TItem="Quote" Data="@filteredQuotesList" AllowColumnResize="true"
@@ -54,12 +54,10 @@
                 </Template>
             </RadzenDataGridColumn>
             
-            <!-- Updated Recipe Code Column -->
             <RadzenDataGridColumn TItem="Quote" Title="Recipe Codes" Filterable="false">
                 <Template Context="quote">
                     <div class="d-flex flex-wrap gap-1">
                         @{
-                            // Get distinct recipe codes for this quote
                             var distinctRecipeCodes = quote.QuotationRecipes
                                 .Select(qr => qr.Recipe?.RecipeCode)
                                 .Where(code => !string.IsNullOrEmpty(code))
@@ -78,17 +76,21 @@
               
             <RadzenDataGridColumn TItem="Quote" Property="Status.StatusName" Title="Status">
                 <Template Context="status">
-                    @if (status.Status.StatusName == "Created")
+                    @if (status.Status.StatusName == "Completed")
                     {
-                        <RadzenBadge Text="Created" Style="background-color:#FFA500 ; color: white;" />
+                        <RadzenBadge Text="Completed" Style="background-color: #4caf50; color: white;" />
+                    }
+                    else if (status.Status.StatusName == "Archived")
+                    {
+                        <RadzenBadge Text="Archived" Style="background-color: #6c757d; color: white;" />
                     }
                     else if (status.Status.StatusName == "Confirmed")
                     {
                         <RadzenBadge Text="Confirmed" Style="background-color: #2196f3; color: white;" />
                     }
-                    else if (status.Status.StatusName == "Completed")
+                    else if (status.Status.StatusName == "Created")
                     {
-                        <RadzenBadge Text="Completed" Style="background-color: #4caf50; color: white;" />
+                        <RadzenBadge Text="Created" Style="background-color:#FFA500 ; color: white;" />
                     }
                     else
                     {
@@ -111,7 +113,7 @@
 
     protected override async Task OnInitializedAsync()
     {
-        QuotesList = await QuoteDetailService.GetActiveQuotesAsync();
+        QuotesList = await QuoteDetailService.GetArchivedQuotesAsync();
         filteredQuotesList = QuotesList;
         
         // Extract all unique recipe codes for the filter dropdown
@@ -136,7 +138,6 @@
     {
         filteredQuotesList = QuotesList;
 
-        // Filter by recipe codes if any are selected
         if (selectedRecipeCodes != null && selectedRecipeCodes.Any())
         {
             filteredQuotesList = filteredQuotesList
@@ -146,7 +147,6 @@
                 .ToList();
         }
 
-        // Filter by date range
         if (fromDate.HasValue)
         {
             filteredQuotesList = filteredQuotesList
@@ -156,7 +156,6 @@
 
         if (toDate.HasValue)
         {
-            // Add one day to include the end date in the range
             var endDate = toDate.Value.Date.AddDays(1).AddTicks(-1);
             filteredQuotesList = filteredQuotesList
                 .Where(q => q.CreatedAt.HasValue && q.CreatedAt.Value.Date <= endDate.Date)
@@ -172,3 +171,5 @@
         filteredQuotesList = QuotesList;
     }
 }
+
+

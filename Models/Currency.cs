@@ -9,5 +9,7 @@ public partial class Currency
 
     public string CurrencyCode { get; set; } = null!;
 
+    public virtual ICollection<Customer> Customers { get; set; } = new List<Customer>();
+
     public virtual ICollection<Quote> Quotes { get; set; } = new List<Quote>();
 }

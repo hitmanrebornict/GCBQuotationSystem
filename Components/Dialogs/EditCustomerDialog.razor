@@ -72,6 +72,21 @@
         
         <div style="margin-bottom: 1rem" class="row">
             <div class="col-md-3">
+                <RadzenLabel Text="Currency" Component="Currency" style="width: 100%">
+                </RadzenLabel>
+            </div>
+            <div class="col-md-9">
+                <RadzenDropDown Data="@currencies" 
+                               @bind-Value="customer.CurrencyId" 
+                               TextProperty="CurrencyCode" 
+                               ValueProperty="CurrencyId" 
+                               style="width: 100%" 
+                               Placeholder="Select Currency..." />
+            </div>
+        </div>
+        
+        <div style="margin-bottom: 1rem" class="row">
+            <div class="col-md-3">
                 <RadzenLabel Text="Active" Component="Active" style="width: 100%">
                 </RadzenLabel>
             </div>
@@ -104,6 +119,7 @@ else
     
     private Customer? customer;
     private List<Country> countries = new List<Country>();
+    private List<Currency> currencies = new List<Currency>();
     private bool isSaving = false;
 
     protected override async Task OnInitializedAsync()
@@ -111,6 +127,7 @@ else
         try
         {
             countries = await MasterDataServices.GetAllCountriesAsync();
+            currencies = await MasterDataServices.GetAllCurrenciesAsync();
             customer = await MasterDataServices.GetCustomerByIdAsync(CustNo);
             
             if (customer == null)

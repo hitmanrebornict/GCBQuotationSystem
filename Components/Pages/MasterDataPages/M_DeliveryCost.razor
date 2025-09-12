@@ -37,6 +37,11 @@
                     <RadzenCheckBox Value="@deliveryCost.Active" Disabled="true" />
                 </Template>
             </RadzenDataGridColumn>
+            <RadzenDataGridColumn Title="Delivery Address" Width="180px">
+                <Template Context="deliveryCost">
+                    @deliveryCost.DeliveryAddress?.DeliveryName
+                </Template>
+            </RadzenDataGridColumn>
             <RadzenDataGridColumn TItem="DeliveryCost" Title="Actions" TextAlign="TextAlign.Center" Width="120px">
                 <Template Context="deliveryCost">
                     <RadzenButton Icon="edit"

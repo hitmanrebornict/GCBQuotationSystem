@@ -20,4 +20,6 @@ public partial class TerminalCost
     public decimal Powder { get; set; }
 
     public bool Active { get; set; }
+
+    public decimal GhanaLiquor { get; set; }
 }

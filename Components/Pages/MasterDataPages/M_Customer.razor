@@ -34,6 +34,7 @@
             <RadzenDataGridColumn TItem="Customer" Property="InvoiceCity" Title="Invoice City" Width="120px" />
             <RadzenDataGridColumn TItem="Customer" Property="InvoicePostcode" Title="Invoice Postcode" Width="120px" />
             <RadzenDataGridColumn TItem="Customer" Property="Country.CountryName" Title="Country" Width="120px" />
+            <RadzenDataGridColumn TItem="Customer" Property="Currency.CurrencyCode" Title="Currency" Width="100px" />
             <RadzenDataGridColumn Property="Active" Title="Active" Width="80px">
                 <Template Context="customer">
                     <RadzenCheckBox Value="@customer.Active" Disabled="true" />

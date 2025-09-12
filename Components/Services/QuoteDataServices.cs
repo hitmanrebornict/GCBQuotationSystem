@@ -250,6 +250,7 @@ namespace GCBQuotationSystem.Components.Services
 							Liquor = originalRecipe.QuotationTerminalCost.Liquor,
 							Butter = originalRecipe.QuotationTerminalCost.Butter,
 							Powder = originalRecipe.QuotationTerminalCost.Powder,
+							GhanaLiquor = originalRecipe.QuotationTerminalCost.GhanaLiquor,
 
 						}
 						: null,
@@ -378,6 +379,7 @@ namespace GCBQuotationSystem.Components.Services
 							Liquor = originalRecipe.QuotationTerminalCost.Liquor,
 							Butter = originalRecipe.QuotationTerminalCost.Butter,
 							Powder = originalRecipe.QuotationTerminalCost.Powder,
+							GhanaLiquor = originalRecipe.QuotationTerminalCost.GhanaLiquor,
 							QuotationRecipeId = originalRecipe.QuotationTerminalCost.QuotationRecipeId
 						}
 						: null,
@@ -512,6 +514,13 @@ namespace GCBQuotationSystem.Components.Services
 		{
 			return LifeGBP * powder;
 		}
+
+		public decimal CalculateGhanaLiquorTotal(Decimal ghanaLiquor, Decimal LifeGBP)
+		{
+			return LifeGBP * ghanaLiquor;
+		}
+
+
 
 		public async Task<QuoteStatisticsResult> GetQuoteStatisticsAsync()
 		{

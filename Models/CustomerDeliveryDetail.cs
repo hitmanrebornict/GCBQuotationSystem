@@ -27,5 +27,7 @@ public partial class CustomerDeliveryDetail
 
     public virtual Customer CustNoNavigation { get; set; } = null!;
 
+    public virtual ICollection<DeliveryCost> DeliveryCosts { get; set; } = new List<DeliveryCost>();
+
     public virtual ICollection<Quote> Quotes { get; set; } = new List<Quote>();
 }

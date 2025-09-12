@@ -57,7 +57,7 @@ namespace GCBQuotationSystem
 				options.LoginPath = "/login";
 				options.AccessDeniedPath = "/Identity/Account/AccessDenied";
 				options.SlidingExpiration = true;
-				options.ExpireTimeSpan = TimeSpan.FromMinutes(60);
+				options.ExpireTimeSpan = TimeSpan.FromDays(14);
 			});
 
 			// Add logging to see what's happening

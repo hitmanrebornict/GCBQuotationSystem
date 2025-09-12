@@ -1,4 +1,4 @@
-@attribute [Authorize(Roles = "IT Admin,Admin,Trader")]
+@attribute [Authorize(Roles = "IT Admin,Admin,Trader,Sales Admin,Sales User")]
 
 @page "/TerminalCost"
 @using Radzen
@@ -55,9 +55,10 @@
             <RadzenDataGridColumn Property="PeriodName" Title="Period Name" Width="150px" />
             <RadzenDataGridColumn Property="TerminalPeriod" Title="Terminal Period" FormatString="{0:yyyy-MM-dd}" Width="150px" />
             <RadzenDataGridColumn Property="LifeGbp" Title="Life GBP" FormatString="{0:C2}" Width="120px" />
-            <RadzenDataGridColumn Property="Liquor" Title="Liquor" FormatString="{0:C2}" Width="120px" />
-            <RadzenDataGridColumn Property="Butter" Title="Butter" FormatString="{0:C2}" Width="120px" />
-            <RadzenDataGridColumn Property="Powder" Title="Powder" FormatString="{0:C2}" Width="120px" />
+            <RadzenDataGridColumn Property="Liquor" Title="Liquor" Width="120px" />
+            <RadzenDataGridColumn Property="GhanaLiquor" Title="Ghana Liquor"  Width="120px" />
+            <RadzenDataGridColumn Property="Butter" Title="Butter"  Width="120px" />
+            <RadzenDataGridColumn Property="Powder" Title="Powder" Width="120px" />
             <RadzenDataGridColumn TItem="TerminalCost" Title="Actions" TextAlign="TextAlign.Center" Width="120px">
                 <Template Context="terminalCost">
                     <RadzenButton Icon="edit"

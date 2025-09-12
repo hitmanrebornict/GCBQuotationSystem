@@ -79,9 +79,11 @@ public partial class QuotationSystemContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        modelBuilder.UseCollation("Latin1_General_CI_AS");
+
         modelBuilder.Entity<AdditionalCost>(entity =>
         {
-            entity.HasKey(e => e.AdditionalCostId).HasName("PK__Addition__545DECE498C4DBF2");
+            entity.HasKey(e => e.AdditionalCostId).HasName("PK__Addition__545DECE4D6BF64C2");
 
             entity.Property(e => e.AdditionalCostId).HasColumnName("AdditionalCostID");
             entity.Property(e => e.CostName).HasMaxLength(100);
@@ -163,7 +165,7 @@ public partial class QuotationSystemContext : DbContext
 
         modelBuilder.Entity<Country>(entity =>
         {
-            entity.HasKey(e => e.CountryId).HasName("PK__Country__10D1609F665E00FF");
+            entity.HasKey(e => e.CountryId).HasName("PK__Countrie__10D1609FC66E79B9");
 
             entity.Property(e => e.Active).HasDefaultValue(true);
             entity.Property(e => e.CountryName)
@@ -173,7 +175,7 @@ public partial class QuotationSystemContext : DbContext
 
         modelBuilder.Entity<Currency>(entity =>
         {
-            entity.HasKey(e => e.CurrencyId).HasName("PK__Currency__14470B10374CC2D9");
+            entity.HasKey(e => e.CurrencyId).HasName("PK__Currency__14470B10B704E87D");
 
             entity.ToTable("Currency");
 
@@ -185,9 +187,10 @@ public partial class QuotationSystemContext : DbContext
 
         modelBuilder.Entity<Customer>(entity =>
         {
-            entity.HasKey(e => e.CustNo).HasName("PK__Customer__049E631A4CB9A698");
+            entity.HasKey(e => e.CustNo).HasName("PK__Customer__049E631AD2DA2A62");
 
             entity.Property(e => e.Active).HasDefaultValue(true);
+            entity.Property(e => e.CurrencyId).HasColumnName("CurrencyID");
             entity.Property(e => e.CustName)
                 .HasMaxLength(255)
                 .IsUnicode(false);
@@ -206,12 +209,16 @@ public partial class QuotationSystemContext : DbContext
 
             entity.HasOne(d => d.Country).WithMany(p => p.Customers)
                 .HasForeignKey(d => d.CountryId)
-                .HasConstraintName("FK__Customers__Count__3C69FB99");
+                .HasConstraintName("FK__Customers__Count__0022696D");
+
+            entity.HasOne(d => d.Currency).WithMany(p => p.Customers)
+                .HasForeignKey(d => d.CurrencyId)
+                .HasConstraintName("FK_Customers_Currency");
         });
 
         modelBuilder.Entity<CustomerDeliveryDetail>(entity =>
         {
-            entity.HasKey(e => e.DeliveryId).HasName("PK__Customer__626D8FCE4AD3BC56");
+            entity.HasKey(e => e.DeliveryId).HasName("PK__Customer__626D8FCE4CCED779");
 
             entity.Property(e => e.Active).HasDefaultValue(true);
             entity.Property(e => e.Address1).HasMaxLength(255);
@@ -223,27 +230,33 @@ public partial class QuotationSystemContext : DbContext
             entity.HasOne(d => d.Country).WithMany(p => p.CustomerDeliveryDetails)
                 .HasForeignKey(d => d.CountryId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__CustomerD__Count__4E88ABD4");
+                .HasConstraintName("FK__CustomerD__Count__7E3A20FB");
 
             entity.HasOne(d => d.CustNoNavigation).WithMany(p => p.CustomerDeliveryDetails)
                 .HasForeignKey(d => d.CustNo)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__CustomerD__CustN__4D94879B");
+                .HasConstraintName("FK__CustomerD__CustN__7F2E4534");
         });
 
         modelBuilder.Entity<DeliveryCost>(entity =>
         {
-            entity.HasKey(e => e.DeliveryId).HasName("PK__Delivery__626D8FCE691C4BC8");
+            entity.HasKey(e => e.DeliveryId).HasName("PK__Delivery__626D8FCEA08A18A6");
 
             entity.Property(e => e.Active).HasDefaultValue(true);
             entity.Property(e => e.Cost).HasColumnType("decimal(18, 2)");
             entity.Property(e => e.Pallet).HasMaxLength(50);
             entity.Property(e => e.PostCode).HasMaxLength(50);
+            entity.Property(e => e.ServiceHours).HasDefaultValue(1);
+            entity.Property(e => e.Zone).HasDefaultValue(1);
+
+            entity.HasOne(d => d.DeliveryAddress).WithMany(p => p.DeliveryCosts)
+                .HasForeignKey(d => d.DeliveryAddressId)
+                .HasConstraintName("FK_DeliveryCosts_CustomerDeliveryDetails");
         });
 
         modelBuilder.Entity<PackagingMaterial>(entity =>
         {
-            entity.HasKey(e => e.PmId).HasName("PK__Packagin__A440734CB8F1EBED");
+            entity.HasKey(e => e.PmId).HasName("PK__Packagin__A440734C580342AD");
 
             entity.Property(e => e.Active).HasDefaultValue(true);
             entity.Property(e => e.Cost100kgEuro).HasColumnType("decimal(10, 2)");
@@ -263,7 +276,7 @@ public partial class QuotationSystemContext : DbContext
 
         modelBuilder.Entity<Premium>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Premiums__3214EC07FFFA0E53");
+            entity.HasKey(e => e.Id).HasName("PK__Premiums__3214EC077D86251F");
 
             entity.Property(e => e.Active).HasDefaultValue(true);
             entity.Property(e => e.PremiumCost).HasColumnType("decimal(18, 2)");
@@ -277,7 +290,7 @@ public partial class QuotationSystemContext : DbContext
 
         modelBuilder.Entity<ProductType>(entity =>
         {
-            entity.HasKey(e => e.ProductTypeId).HasName("PK__ProductT__A1312F6EA539CD49");
+            entity.HasKey(e => e.ProductTypeId).HasName("PK__ProductT__A1312F6E3F080CCC");
 
             entity.Property(e => e.TypeName)
                 .HasMaxLength(50)
@@ -286,7 +299,7 @@ public partial class QuotationSystemContext : DbContext
 
         modelBuilder.Entity<ProductionCost>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Producti__3214EC273FE3C8BE");
+            entity.HasKey(e => e.Id).HasName("PK__Producti__3214EC273A6D8F4B");
 
             entity.Property(e => e.Id).HasColumnName("ID");
             entity.Property(e => e.Active).HasDefaultValue(true);
@@ -296,7 +309,7 @@ public partial class QuotationSystemContext : DbContext
 
         modelBuilder.Entity<QuotationAdditionalCost>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Quotatio__3214EC071112384B");
+            entity.HasKey(e => e.Id).HasName("PK__Quotatio__3214EC07E0CF7E76");
 
             entity.Property(e => e.Cost).HasColumnType("decimal(18, 2)");
             entity.Property(e => e.CostAmount).HasColumnType("decimal(18, 2)");
@@ -311,7 +324,7 @@ public partial class QuotationSystemContext : DbContext
 
         modelBuilder.Entity<QuotationDeliveryCost>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Quotatio__3214EC07F6DAF157");
+            entity.HasKey(e => e.Id).HasName("PK__Quotatio__3214EC07E82A237E");
 
             entity.HasIndex(e => e.QuotationRecipeId, "UQ_QuotationDeliveryCosts_QuotationRecipeId").IsUnique();
 
@@ -327,7 +340,7 @@ public partial class QuotationSystemContext : DbContext
 
         modelBuilder.Entity<QuotationFinancialCost>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Quotatio__3214EC07A09FB243");
+            entity.HasKey(e => e.Id).HasName("PK__Quotatio__3214EC0733BC7871");
 
             entity.HasIndex(e => e.QuotationRecipeId, "UQ_QuotationFinancialCosts_QuotationRecipeId").IsUnique();
 
@@ -341,7 +354,7 @@ public partial class QuotationSystemContext : DbContext
 
         modelBuilder.Entity<QuotationPackagingCost>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Quotatio__3214EC074C793155");
+            entity.HasKey(e => e.Id).HasName("PK__Quotatio__3214EC071D121B44");
 
             entity.HasIndex(e => e.QuotationRecipeId, "UQ_QuotationPackagingCosts_QuotationRecipeID").IsUnique();
 
@@ -358,7 +371,7 @@ public partial class QuotationSystemContext : DbContext
 
         modelBuilder.Entity<QuotationPremiumCost>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Quotatio__3214EC077FDBA665");
+            entity.HasKey(e => e.Id).HasName("PK__Quotatio__3214EC07DFC8CF62");
 
             entity.Property(e => e.Cost).HasColumnType("decimal(18, 2)");
             entity.Property(e => e.CostAmount).HasColumnType("decimal(18, 2)");
@@ -373,9 +386,9 @@ public partial class QuotationSystemContext : DbContext
 
         modelBuilder.Entity<QuotationProductionCost>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Quotatio__3214EC2755F2E09B");
+            entity.HasKey(e => e.Id).HasName("PK__Quotatio__3214EC274163C2E4");
 
-            entity.HasIndex(e => e.QuotationRecipeId, "UQ__Quotatio__A9D97D19D454CB4F").IsUnique();
+            entity.HasIndex(e => e.QuotationRecipeId, "UQ__Quotatio__A9D97D19BDD7AC03").IsUnique();
 
             entity.Property(e => e.Id).HasColumnName("ID");
             entity.Property(e => e.ProductType).HasMaxLength(100);
@@ -390,7 +403,7 @@ public partial class QuotationSystemContext : DbContext
 
         modelBuilder.Entity<QuotationRawMaterialCost>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Quotatio__3214EC0730B3456F");
+            entity.HasKey(e => e.Id).HasName("PK__Quotatio__3214EC0784C781C7");
 
             entity.Property(e => e.Cost).HasColumnType("decimal(18, 2)");
             entity.Property(e => e.CostAmount).HasColumnType("decimal(18, 2)");
@@ -413,21 +426,22 @@ public partial class QuotationSystemContext : DbContext
             entity.HasOne(d => d.Quote).WithMany(p => p.QuotationRecipes)
                 .HasForeignKey(d => d.QuoteId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__Quotation__Quote__10566F31");
+                .HasConstraintName("FK__Quotation__Quote__0A9FF7E0");
 
             entity.HasOne(d => d.Recipe).WithMany(p => p.QuotationRecipes)
                 .HasForeignKey(d => d.RecipeId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__Quotation__Recip__114A936A");
+                .HasConstraintName("FK__Quotation__Recip__0B941C19");
         });
 
         modelBuilder.Entity<QuotationTerminalCost>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Quotatio__3214EC072A3E4903");
+            entity.HasKey(e => e.Id).HasName("PK__Quotatio__3214EC0765C667FD");
 
             entity.HasIndex(e => e.QuotationRecipeId, "UQ_QuotationTerminalCosts_QuotationRecipeID").IsUnique();
 
             entity.Property(e => e.Butter).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.GhanaLiquor).HasColumnType("decimal(18, 2)");
             entity.Property(e => e.LifeGbp)
                 .HasColumnType("decimal(18, 2)")
                 .HasColumnName("LifeGBP");
@@ -444,7 +458,7 @@ public partial class QuotationSystemContext : DbContext
 
         modelBuilder.Entity<Quote>(entity =>
         {
-            entity.HasKey(e => e.QuoteId).HasName("PK__Quotes__AF9688E10BCEDB4F");
+            entity.HasKey(e => e.QuoteId).HasName("PK__Quotes__AF9688E15305A000");
 
             entity.Property(e => e.QuoteId).HasColumnName("QuoteID");
             entity.Property(e => e.CreatedAt)
@@ -467,12 +481,12 @@ public partial class QuotationSystemContext : DbContext
             entity.HasOne(d => d.Customer).WithMany(p => p.Quotes)
                 .HasForeignKey(d => d.CustomerId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__Quotes__Customer__5BE2A6F2");
+                .HasConstraintName("FK__Quotes__Customer__0D7C648B");
 
             entity.HasOne(d => d.DeliveryDetail).WithMany(p => p.Quotes)
                 .HasForeignKey(d => d.DeliveryDetailId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__Quotes__Delivery__5CD6CB2B");
+                .HasConstraintName("FK__Quotes__Delivery__0E7088C4");
 
             entity.HasOne(d => d.Status).WithMany(p => p.Quotes)
                 .HasForeignKey(d => d.StatusId)
@@ -482,11 +496,11 @@ public partial class QuotationSystemContext : DbContext
 
         modelBuilder.Entity<QuoteStatus>(entity =>
         {
-            entity.HasKey(e => e.StatusId).HasName("PK__QuoteSta__C8EE20434F4703EE");
+            entity.HasKey(e => e.StatusId).HasName("PK__QuoteSta__C8EE2043FDE1956C");
 
             entity.ToTable("QuoteStatus");
 
-            entity.HasIndex(e => e.StatusName, "UQ__QuoteSta__05E7698A0FA35F9C").IsUnique();
+            entity.HasIndex(e => e.StatusName, "UQ__QuoteSta__05E7698AB710ACF9").IsUnique();
 
             entity.Property(e => e.StatusId)
                 .ValueGeneratedNever()
@@ -498,7 +512,7 @@ public partial class QuotationSystemContext : DbContext
 
         modelBuilder.Entity<RawMaterial>(entity =>
         {
-            entity.HasKey(e => e.MaterialId).HasName("PK__RawMater__C506131781D23765");
+            entity.HasKey(e => e.MaterialId).HasName("PK__RawMater__C50613172CF9D1E9");
 
             entity.Property(e => e.MaterialId).HasColumnName("MaterialID");
             entity.Property(e => e.Active).HasDefaultValue(true);
@@ -509,7 +523,7 @@ public partial class QuotationSystemContext : DbContext
 
         modelBuilder.Entity<RawMaterialPriceDetail>(entity =>
         {
-            entity.HasKey(e => e.PriceDetailId).HasName("PK__RawMater__F6F0A0EFA3F4055F");
+            entity.HasKey(e => e.PriceDetailId).HasName("PK__RawMater__F6F0A0EF7701F571");
 
             entity.Property(e => e.PriceDetailId).HasColumnName("PriceDetailID");
             entity.Property(e => e.MaterialId).HasColumnName("MaterialID");
@@ -529,7 +543,7 @@ public partial class QuotationSystemContext : DbContext
 
         modelBuilder.Entity<RawMaterialPriceUpdate>(entity =>
         {
-            entity.HasKey(e => e.PriceUpdateId).HasName("PK__RawMater__10609CFA2F7B6085");
+            entity.HasKey(e => e.PriceUpdateId).HasName("PK__RawMater__10609CFA7595526E");
 
             entity.Property(e => e.PriceUpdateId).HasColumnName("PriceUpdateID");
             entity.Property(e => e.Remark)
@@ -540,7 +554,7 @@ public partial class QuotationSystemContext : DbContext
 
         modelBuilder.Entity<Recipe>(entity =>
         {
-            entity.HasKey(e => e.RecipeId).HasName("PK__Recipes__FDD988B01569D400");
+            entity.HasKey(e => e.RecipeId).HasName("PK__Recipes__FDD988B038C9B37D");
 
             entity.Property(e => e.Active).HasDefaultValue(true);
             entity.Property(e => e.RecipeCode).HasMaxLength(255);
@@ -558,9 +572,9 @@ public partial class QuotationSystemContext : DbContext
 
         modelBuilder.Entity<RecipeIngredient>(entity =>
         {
-            entity.HasKey(e => e.RecipeIngredientId).HasName("PK__RecipeIn__A2C34216E04C782E");
+            entity.HasKey(e => e.RecipeIngredientId).HasName("PK__RecipeIn__A2C34216D7AC7A45");
 
-            entity.Property(e => e.Amount).HasColumnType("decimal(10, 2)");
+            entity.Property(e => e.Amount).HasColumnType("decimal(18, 4)");
             entity.Property(e => e.MaterialId).HasColumnName("MaterialID");
 
             entity.HasOne(d => d.Material).WithMany(p => p.RecipeIngredients)
@@ -576,11 +590,12 @@ public partial class QuotationSystemContext : DbContext
 
         modelBuilder.Entity<TerminalCost>(entity =>
         {
-            entity.HasKey(e => e.TerminalCostId).HasName("PK__Terminal__12257C3F438D3701");
+            entity.HasKey(e => e.TerminalCostId).HasName("PK__Terminal__12257C3F72BAEBA4");
 
             entity.Property(e => e.TerminalCostId).HasColumnName("TerminalCostID");
             entity.Property(e => e.Active).HasDefaultValue(true);
             entity.Property(e => e.Butter).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.GhanaLiquor).HasColumnType("decimal(18, 2)");
             entity.Property(e => e.LifeGbp)
                 .HasColumnType("decimal(18, 2)")
                 .HasColumnName("LifeGBP");

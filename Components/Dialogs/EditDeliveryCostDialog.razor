@@ -48,6 +48,32 @@
             <RadzenNumeric TValue="int" style="width: 100%" @bind-Value="deliveryCost.ServiceHours" />
         </div>
     </div>
+    <div style="margin-bottom: 1rem" class="row">
+        <div class="col-md-3">
+            <RadzenLabel Text="Weight" Component="Weight" style="width: 100%">
+            </RadzenLabel>
+        </div>
+        <div class="col-md-9">
+            <RadzenNumeric TValue="int?" style="width: 100%" @bind-Value="deliveryCost.Weight" />
+        </div>
+    </div>
+    <div style="margin-bottom: 1rem" class="row">
+        <div class="col-md-3">
+            <RadzenLabel Text="Delivery Address" Component="DeliveryAddressId" style="width: 100%">
+            </RadzenLabel>
+        </div>
+        <div class="col-md-9">
+            <RadzenDropDown 
+                Data="@customerDeliveryDetails"
+                @bind-Value="deliveryCost.DeliveryAddressId"
+                            AllowFiltering="@true"
+                TextProperty="DeliveryName"
+                ValueProperty="DeliveryId"
+                Name="DeliveryAddressId"
+                Placeholder="Select delivery address..."
+                Style="width: 100%" />
+        </div>
+    </div>
 </div>
 
 <div class="row">
@@ -65,10 +91,12 @@
     private Dialog _dialog { get; set; }
 
     private DeliveryCost deliveryCost = new DeliveryCost();
+    private List<CustomerDeliveryDetail> customerDeliveryDetails = new List<CustomerDeliveryDetail>();
 
     protected override async Task OnInitializedAsync()
     {
         deliveryCost = await MDS.GetDeliveryCostByIdAsync(DeliveryId);
+        customerDeliveryDetails = (await MDS.GetAllCustomerDeliveryDetailsAsync()).Where(d => d.Active).ToList();
         
         SetTitleContent();
         DialogService.Refresh();

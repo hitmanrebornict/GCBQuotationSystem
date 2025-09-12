@@ -27,7 +27,7 @@
             </RadzenLabel>
         </div>
         <div class="col-md-9">
-            <RadzenDropDown Data="@ProductTypeList" @bind-Value = "@newRecipe.ProductType" TextProperty="TypeName"></RadzenDropDown>
+            <RadzenDropDown Data="@ProductTypeList" @bind-Value="@productTypeId" TextProperty="TypeName" ValueProperty="ProductTypeId"></RadzenDropDown>
         </div>
     </div>
     <div style="margin-bottom: 1rem" class="row">
@@ -36,7 +36,7 @@
             </RadzenLabel>
         </div>
         <div class="col-md-9">
-            <RadzenDropDown Data="@PackagingMaterialList" @bind-Value="@newRecipe.PackagingMaterial" TextProperty="Packaging"></RadzenDropDown>
+            <RadzenDropDown Data="@PackagingMaterialList" @bind-Value="@packagingTypeId" TextProperty="Packaging" ValueProperty="PmId"></RadzenDropDown>
         </div>
     </div>
 
@@ -70,6 +70,8 @@
     [CascadingParameter]
     private Dialog _dialog { get; set; }
 
+    private int productTypeId = 0;
+    private int packagingTypeId = 0;
 
     private decimal ratio = 0;
 
@@ -99,8 +101,16 @@
     }
 
     private async void buttonSubmitOnClick(Recipe newRecipe, List<RawMaterialViewModel> RawMaterialViewModelsList){
-        if(newRecipe.RecipeCode == null || newRecipe.RecipeDesc == null || newRecipe.ProductType == null || newRecipe.PackagingMaterial == null){
-            Console.WriteLine("null");
+        if(newRecipe.RecipeCode == null || newRecipe.RecipeDesc == null || productTypeId == 0 || packagingTypeId == 0){
+
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Error",
+                Detail = "Please enter all field.",
+                Duration = 4000
+            });
+
             return;
         }
         else if (RawMaterialViewModelsList.Sum(x => x.Amount) != 100)
@@ -125,7 +135,7 @@
                 }
             }
 
-            await MasterDataService.addNewRecipeAsync(newRecipe);
+            await MasterDataService.addNewRecipeAsync(newRecipe, productTypeId, packagingTypeId);
 
                 NotificationService.Notify(new NotificationMessage
                     {

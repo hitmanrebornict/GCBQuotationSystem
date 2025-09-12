@@ -66,7 +66,8 @@
                 await OnTerminalCostChanged(
                 recipeDetailModified.QuotationRecipe1.QuotationTerminalCost,
                 recipeDetailModified.QuotationRecipe1.QuotationRawMaterialCosts.FirstOrDefault(x => x.MaterialName == "Cocoa Mass"),
-                recipeDetailModified.QuotationRecipe1.QuotationRawMaterialCosts.FirstOrDefault(x => x.MaterialName == "Cocoa Butter")))"
+                recipeDetailModified.QuotationRecipe1.QuotationRawMaterialCosts.FirstOrDefault(x => x.MaterialName == "Cocoa Butter"),
+                                               recipeDetailModified.QuotationRecipe1.QuotationRawMaterialCosts.FirstOrDefault(x => x.MaterialName == "Ghana Cocoa Mass")))"
                 TValue="decimal"
                 Style="width: 50%;"
                 Format="0.00"
@@ -79,12 +80,27 @@
                 await OnTerminalCostChanged(
                 recipeDetailModified.QuotationRecipe1.QuotationTerminalCost,
                 recipeDetailModified.QuotationRecipe1.QuotationRawMaterialCosts.FirstOrDefault(x => x.MaterialName == "Cocoa Mass"),
-                recipeDetailModified.QuotationRecipe1.QuotationRawMaterialCosts.FirstOrDefault(x => x.MaterialName == "Cocoa Butter")))"
+                recipeDetailModified.QuotationRecipe1.QuotationRawMaterialCosts.FirstOrDefault(x => x.MaterialName == "Cocoa Butter"),
+                            recipeDetailModified.QuotationRecipe1.QuotationRawMaterialCosts.FirstOrDefault(x => x.MaterialName == "Ghana Cocoa Mass")))"
                 TValue="decimal"
                 Style="width: 50%;"
                 Format="0.00"
                 Step="0.01" />
             </li>
+        <li class="list-group-item d-flex justify-content-between">
+            <span>G-Liquor</span>
+            <RadzenNumeric @bind-Value="@recipeDetailModified.QuotationRecipe1.QuotationTerminalCost.GhanaLiquor"
+                           Change="@(async() =>
+                                           await OnTerminalCostChanged(
+                                           recipeDetailModified.QuotationRecipe1.QuotationTerminalCost,
+                                           recipeDetailModified.QuotationRecipe1.QuotationRawMaterialCosts.FirstOrDefault(x => x.MaterialName == "Cocoa Mass"),
+                                           recipeDetailModified.QuotationRecipe1.QuotationRawMaterialCosts.FirstOrDefault(x => x.MaterialName == "Cocoa Butter"),
+                            recipeDetailModified.QuotationRecipe1.QuotationRawMaterialCosts.FirstOrDefault(x => x.MaterialName == "Ghana Cocoa Mass")))"
+                           TValue="decimal"
+                           Style="width: 50%;"
+                           Format="0.00"
+                           Step="0.01" />
+        </li>
             <li class="list-group-item d-flex justify-content-between">
                 <span>Powder</span>
                 <RadzenNumeric @bind-Value="@recipeDetailModified.QuotationRecipe1.QuotationTerminalCost.Powder"
@@ -92,7 +108,8 @@
                 await OnTerminalCostChanged(
                 recipeDetailModified.QuotationRecipe1.QuotationTerminalCost,
                 recipeDetailModified.QuotationRecipe1.QuotationRawMaterialCosts.FirstOrDefault(x => x.MaterialName == "Cocoa Mass"),
-                recipeDetailModified.QuotationRecipe1.QuotationRawMaterialCosts.FirstOrDefault(x => x.MaterialName == "Cocoa Butter")))"
+                recipeDetailModified.QuotationRecipe1.QuotationRawMaterialCosts.FirstOrDefault(x => x.MaterialName == "Cocoa Butter"),
+                            recipeDetailModified.QuotationRecipe1.QuotationRawMaterialCosts.FirstOrDefault(x => x.MaterialName == "Ghana Cocoa Mass")))"
                 TValue="decimal"
                 Style="width: 50%;"
                 Format="0.00"
@@ -371,16 +388,19 @@ else
         await InvokeAsync(StateHasChanged);
     }
 
-    private async Task OnTerminalCostChanged(QuotationTerminalCost terminal, QuotationRawMaterialCost cocoaMassPrice, QuotationRawMaterialCost cocoaButterPrice)
+    private async Task OnTerminalCostChanged(QuotationTerminalCost terminal, QuotationRawMaterialCost cocoaMassPrice, QuotationRawMaterialCost cocoaButterPrice, QuotationRawMaterialCost ghanaMassPrice)
     {
 
         recipeDetailModified.TotalCost -= (cocoaButterPrice.CostAmount + cocoaMassPrice.CostAmount);
 
+        
+        ghanaMassPrice.Cost = QuoteDataService.CalculateGhanaLiquorTotal(terminal.GhanaLiquor, terminal.LifeGbp);
+        ghanaMassPrice.CostAmount = cocoaMassPrice.Cost * ingredientDict["Ghana Cocoa Mass"] / 100 * weightRatio;
 
         cocoaMassPrice.Cost = QuoteDataService.CalculateMassTotal(terminal.Liquor, terminal.LifeGbp);
         cocoaMassPrice.CostAmount = cocoaMassPrice.Cost * ingredientDict["Cocoa Mass"] / 100 * weightRatio;
 
-        cocoaButterPrice.Cost = QuoteDataService.CalculateMassTotal(terminal.Butter, terminal.LifeGbp);
+        cocoaButterPrice.Cost = QuoteDataService.CalculateButterTotal(terminal.Butter, terminal.LifeGbp);
         cocoaButterPrice.CostAmount = cocoaButterPrice.Cost  * ingredientDict["Cocoa Butter"] / 100 * weightRatio; 
 
         recipeDetailModified.TotalCost += (cocoaButterPrice.CostAmount + cocoaMassPrice.CostAmount);
