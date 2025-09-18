@@ -21,6 +21,8 @@ public partial class Quote
 
     public string? CustomerRemark { get; set; }
 
+    public decimal? CurrencyRates { get; set; }
+
     public virtual Currency Currency { get; set; } = null!;
 
     public virtual Customer Customer { get; set; } = null!;

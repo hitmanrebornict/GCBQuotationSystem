@@ -30,7 +30,7 @@
             <RadzenDropDown Data="@ProductTypeList" @bind-Value="@productTypeId" TextProperty="TypeName" ValueProperty="ProductTypeId"></RadzenDropDown>
         </div>
     </div>
-    <div style="margin-bottom: 1rem" class="row">
+    @* <div style="margin-bottom: 1rem" class="row">
         <div class="col-md-3">
             <RadzenLabel Text="Packaging Material" Component="Product Type" style="width: 100%">
             </RadzenLabel>
@@ -38,7 +38,7 @@
         <div class="col-md-9">
             <RadzenDropDown Data="@PackagingMaterialList" @bind-Value="@packagingTypeId" TextProperty="Packaging" ValueProperty="PmId"></RadzenDropDown>
         </div>
-    </div>
+    </div> *@
 
     @foreach(var rm in RawMaterialViewModelsList){
         <div style="margin-bottom: 1rem" class="row">
@@ -85,7 +85,7 @@
     protected override async Task OnInitializedAsync()
     {
         ProductTypeList = await MasterDataService.GetProductTypesAsync();
-        PackagingMaterialList = await MasterDataService.GetPackagingMaterial();
+        // PackagingMaterialList = await MasterDataService.GetPackagingMaterial();
 
 
         RawMaterialViewModelsList = (await MasterDataService.GetAllRawMaterialsAsync()).Select(r => new RawMaterialViewModel
@@ -101,7 +101,7 @@
     }
 
     private async void buttonSubmitOnClick(Recipe newRecipe, List<RawMaterialViewModel> RawMaterialViewModelsList){
-        if(newRecipe.RecipeCode == null || newRecipe.RecipeDesc == null || productTypeId == 0 || packagingTypeId == 0){
+        if(newRecipe.RecipeCode == null || newRecipe.RecipeDesc == null || productTypeId == 0 ){
 
             NotificationService.Notify(new NotificationMessage
             {
@@ -135,7 +135,7 @@
                 }
             }
 
-            await MasterDataService.addNewRecipeAsync(newRecipe, productTypeId, packagingTypeId);
+            await MasterDataService.addNewRecipeAsync(newRecipe, productTypeId, 10);
 
                 NotificationService.Notify(new NotificationMessage
                     {

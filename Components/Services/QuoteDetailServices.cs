@@ -20,17 +20,17 @@ namespace GCBQuotationSystem.Components.Services
 		{
 
 			// Find the matching currency from the database based on the provided currency code
-			var currency = await _dbContext.Currencies.FirstOrDefaultAsync(c => c.CurrencyCode == currencyCode);
-			if (currency != null)
-			{
-				selectedQuote.Currency = currency;
-				selectedQuote.CurrencyId = currency.CurrencyId;
-			}
-			else
-			{
-				// Fallback if the currency code doesn't exist in the database
-				selectedQuote.Currency.CurrencyCode = currencyCode;
-			}
+			//var currency = await _dbContext.Currencies.FirstOrDefaultAsync(c => c.CurrencyCode == currencyCode);
+			//if (currency != null)
+			//{
+			//	selectedQuote.Currency = currency;
+			//	selectedQuote.CurrencyId = currency.CurrencyId;
+			//}
+			//else
+			//{
+			//	// Fallback if the currency code doesn't exist in the database
+			//	selectedQuote.Currency.CurrencyCode = currencyCode;
+			//}
 
 
 			foreach (var recipe in selectedQuotationRecipe)
@@ -378,7 +378,8 @@ namespace GCBQuotationSystem.Components.Services
 							.ThenInclude(ri => ri.Material)
 
 				.Include(q => q.Customer)
-					.ThenInclude(q => q.CustomerDeliveryDetails)
+				
+				.Include(q => q.DeliveryDetail)
 				
 				.Include(q => q.Status)
 

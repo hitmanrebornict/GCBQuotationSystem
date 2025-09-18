@@ -4,6 +4,7 @@ using GCBQuotationSystem.Components;
 using GCBQuotationSystem.Components.Services;
 using GCBQuotationSystem.Models;
 using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Radzen;
@@ -46,13 +47,18 @@ namespace GCBQuotationSystem
 			builder.Services.AddScoped<QuoteDetailServices>();
 			builder.Services.AddScoped<UserPreferenceSettings>();
 			builder.Services.AddHostedService<RoleSeederHostedService>();
-
+			builder.Services.AddScoped<CurrencyExchange>();
 
 			builder.Services.AddScoped<ProtectedLocalStorage>();
 
 			builder.Services.AddControllersWithViews();
 
-			builder.Services.ConfigureApplicationCookie(options =>
+            builder.Services.AddDataProtection()
+			.SetApplicationName("GCBUKQuoteSystem") // same across all instances of THIS app
+			.PersistKeysToFileSystem(new DirectoryInfo("/var/app/dp-keys"))
+			.SetDefaultKeyLifetime(TimeSpan.FromDays(180));
+
+            builder.Services.ConfigureApplicationCookie(options =>
 			{
 				options.LoginPath = "/login";
 				options.AccessDeniedPath = "/Identity/Account/AccessDenied";

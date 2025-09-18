@@ -157,7 +157,6 @@
                 <RadzenDataGridColumn TItem="QuotationPackagingCost" Property="PackagingName" Title="Packaging Name" />
                 <RadzenDataGridColumn TItem="QuotationPackagingCost" Property="Cost" Title="Cost">
                     <Template Context="data">
-
                         <RadzenNumeric @bind-Value="data.Cost"
                         Change="@(async (value) => await OnPackagingCostChanged(data))"
                         TValue="decimal"

@@ -13,5 +13,9 @@
 
 		public CustomerDeliveryDetail CustomerDeliveryDetail { get; set; }
 
+		public Currency SelectedCurrency { get; set; }
+
+		public decimal ExchangeRate { get; set; } = 1.0m;
+
 	}
 }

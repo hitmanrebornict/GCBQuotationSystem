@@ -5,6 +5,7 @@
 @inject DialogService DialogServices
 @inject QuoteDetailServices QuoteDetailService
 @inject UserPreferenceSettings UserPreferenceSetting
+@inject MasterDataServices MDS
 
 <PageTitle>Quote Details</PageTitle>
 
@@ -407,6 +408,22 @@
         // Initialize delivery cost from existing data
         deliveryCostAmount = QuoteDataService.RecipeTotalCostList
         .FirstOrDefault()?.QuotationRecipe1?.QuotationDeliveryCost?.CostAmount ?? 0;
+
+        // Update currency/culture based on the selected quote currency so symbols render correctly
+        try
+        {
+            if (QuoteDataService?.newQuotation != null && QuoteDataService.newQuotation.CurrencyId > 0)
+            {
+                var currencies = await MDS.GetAllCurrenciesAsync();
+                var selectedCurrency = currencies.FirstOrDefault(c => c.CurrencyId == QuoteDataService.newQuotation.CurrencyId);
+                if (selectedCurrency != null)
+                {
+                    UserPreferenceSetting.Currency = selectedCurrency.CurrencyCode;
+                    UserPreferenceSetting.UpdateCultureBasedOnCurrency();
+                }
+            }
+        }
+        catch { /* non-blocking */ }
 
         await InvokeAsync(StateHasChanged);
     }
@@ -1226,36 +1243,28 @@
 
     private async Task CalculateFinancialCost()
     {
-        // if (QuoteDataService.RecipeTotalCostList == null || !QuoteDataService.RecipeTotalCostList.Any())
-        //     return;
+        // Recalculate totals using the centralized calculator to avoid double-adding
+        if (QuoteDataService.RecipeTotalCostList == null || !QuoteDataService.RecipeTotalCostList.Any())
+            return;
 
-        if (financialCostPercentage > 0 && financialDays > 0)
+        foreach (var qr in QuoteDataService.RecipeTotalCostList)
         {
-
-
-
-            foreach (var qr in QuoteDataService.RecipeTotalCostList)
+            // Ensure financial cost object exists
+            if (qr.QuotationRecipe1.QuotationFinancialCost == null)
             {
-                var totalFiancialcost = financialCostPercentage / 100 * qr.TotalCost * financialDays / 365;
-
-                qr.TotalCost += totalFiancialcost;
-
-                // Check if QuotationFinancialCost exists, create it if it doesn't
-                if (qr.QuotationRecipe1.QuotationFinancialCost == null)
-                {
-                    qr.QuotationRecipe1.QuotationFinancialCost = new QuotationFinancialCost();
-                }
-
-                qr.QuotationRecipe1.QuotationFinancialCost.FinanceDays = financialDays;
-                qr.QuotationRecipe1.QuotationFinancialCost.InterestRate = financialCostPercentage;
+                qr.QuotationRecipe1.QuotationFinancialCost = new QuotationFinancialCost();
             }
 
+            // Update parameters (can be zero as well)
+            qr.QuotationRecipe1.QuotationFinancialCost.InterestRate = financialCostPercentage;
+            qr.QuotationRecipe1.QuotationFinancialCost.FinanceDays = financialDays;
 
-
-            QuoteDataService.RecipeCostMatrix = await QuoteDataService.PrepareCostMatrix(QuoteDataService.RecipeTotalCostList);
-            await InvokeAsync(StateHasChanged);
-
+            // Recalculate total fresh (this method computes financial cost internally)
+            qr.TotalCost = QuoteDataService.CalculateTotalCost(qr.QuotationRecipe1);
         }
+
+        QuoteDataService.RecipeCostMatrix = await QuoteDataService.PrepareCostMatrix(QuoteDataService.RecipeTotalCostList);
+        await InvokeAsync(StateHasChanged);
     }
 
     public async Task onYieldCostChange(decimal value, string costName){

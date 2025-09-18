@@ -8,6 +8,7 @@
 @inject QuoteDataServices QuoteDataService
 @inject NavigationManager NavigationManager
 @inject UserPreferenceSettings UserPreferenceSetting
+@inject CurrencyExchange CurrencyExchangeService
 
 <PageTitle>New Quote</PageTitle>
 <RadzenCard class="p-4">
@@ -17,6 +18,21 @@
     </div>
 
     <hr class="my-4" />
+
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3 p-2 border rounded bg-light">
+        <div class="d-flex align-items-center gap-2">
+            <RadzenText TextStyle="TextStyle.Subtitle2">Self Collect</RadzenText>
+            <RadzenSwitch @bind-Value="isSelfCollect"/>
+        </div>
+        <RadzenText class="text-muted" Style="font-size: 0.9rem;">Enable if the customer will pick up the goods.</RadzenText>
+    </div>
+
+    @if (isSelfCollect)
+    {
+        <RadzenAlert Severity="AlertSeverity.Info" Style="margin-bottom: 1rem;">
+            Delivery address and cost are hidden for self-collection. No delivery fee will be applied.
+        </RadzenAlert>
+    }
 
     <div class="row mb-4">
         <div class="col-12 col-lg-4 mb-3">
@@ -33,49 +49,60 @@
             AllowFiltering="true"
             Style="width: 100%" />
         </div>
+        
+       
+        @if (!isSelfCollect)
+        {
+            <div class="col-12 col-lg-4 mb-3">
+                <RadzenText TextStyle="TextStyle.Subtitle2" class="mb-2">Delivery Address</RadzenText>
+                <RadzenDropDownDataGrid
+                @bind-Value="selectedDelivery"
+                Data="@deliveryAddresses"
+                Change="@( async ()=> await OnDeliveryChanged(selectedDelivery))"
+                TextProperty="DeliveryName"
+                Placeholder="Select Delivery Address"
+                Style="width: 100%">
+                    <Columns>
+                        <RadzenDropDownDataGridColumn Property="DeliveryName" Title="Delivery Name" Width="120px" />
+                        <RadzenDropDownDataGridColumn Property="Address1" Title="Address 1" Width="120px" />
+                        <RadzenDropDownDataGridColumn Property="Address2" Title="Address 2" Width="120px" />
+                        <RadzenDropDownDataGridColumn Property="City" Title="City" Width="80px" />
+                        <RadzenDropDownDataGridColumn Property="Postcode" Title="Post Code" Width="80px" />
+                    </Columns>
+                </RadzenDropDownDataGrid>
+            </div>
+
+            <div class="col-12 col-lg-4 mb-3">
+                <RadzenText TextStyle="TextStyle.Subtitle2" class="mb-2">Delivery Cost</RadzenText>
+                <RadzenDropDownDataGrid 
+                @bind-Value="selectedDeliveryCost"
+                Data="@deliveryCost"
+                TextProperty="PostCode"
+                Placeholder="Select Delivery Cost"
+                AllowVirtualization = "true">
+                    <Columns>
+                        <RadzenDropDownDataGridColumn Property="PostCode" Title="Post Code" Width="100px" />
+                        <RadzenDropDownDataGridColumn Property="Cost" Title="Cost" Width="80px" FormatString="{0:C2}" />
+                        <RadzenDropDownDataGridColumn Property="Weight" Title="Weight" Width="80px" />
+                        <RadzenDropDownDataGridColumn Property="Pallet" Title="Pallet" Width="100px" />
+                        <RadzenDropDownDataGridColumn Property="Zone" Title="Zone" Width="60px" />
+                        <RadzenDropDownDataGridColumn Property="ServiceHours" Title="Service Hours" Width="90px" />
+                    </Columns>
+                </RadzenDropDownDataGrid>
+            </div>
+        }
         <div class="col-12 col-lg-4 mb-3">
-            <RadzenText TextStyle="TextStyle.Subtitle2" class="mb-2">Delivery Address</RadzenText>
-            <RadzenDropDownDataGrid
-            @bind-Value="selectedDelivery"
-            Data="@deliveryAddresses"
-            Change="@( async ()=> await OnDeliveryChanged(selectedDelivery))"
-            TextProperty="DeliveryName"
-            Placeholder="Select Delivery Address"
-            Style="width: 100%"
-            >
-                <Columns>
-                    <RadzenDropDownDataGridColumn Property="DeliveryName" Title="Delivery Name" Width="120px" />
-                    <RadzenDropDownDataGridColumn Property="Address1" Title="Address 1" Width="120px" />
-                    <RadzenDropDownDataGridColumn Property="Address2" Title="Address 2" Width="120px" />
-                    <RadzenDropDownDataGridColumn Property="City" Title="City" Width="80px" />
-                    <RadzenDropDownDataGridColumn Property="Postcode" Title="Post Code" Width="80px" />
-                </Columns>
-            </RadzenDropDownDataGrid>
+            <RadzenText TextStyle="TextStyle.Subtitle2" class="mb-2">Currency</RadzenText>
+            <RadzenDropDown @bind-Value="selectedCurrency"
+                            Data="@currencies"
+                            TextProperty="CurrencyCode"
+                            Placeholder="Select Currency"
+                            FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                            FilterOperator="StringFilterOperator.StartsWith"
+                            AllowFiltering="true"
+                            Style="width: 100%" />
         </div>
 
-        <div class="col-12 col-lg-4 mb-3">
-            <RadzenText TextStyle="TextStyle.Subtitle2" class="mb-2">Delivery Cost</RadzenText>
-            <RadzenDropDownDataGrid 
-            @bind-Value="selectedDeliveryCost"
-            Data="@deliveryCost"
-            TextProperty="PostCode"
-            Placeholder="Select Delivery Cost"
-            AllowVirtualization = "true">
-
-                <Columns>
-                 
-                    <RadzenDropDownDataGridColumn Property="PostCode" Title="Post Code" Width="100px" />
-                    <RadzenDropDownDataGridColumn Property="Cost" Title="Cost" Width="80px" FormatString="{0:C2}" />
-                    
-                    <RadzenDropDownDataGridColumn Property="Weight" Title="Weight" Width="80px" />
-                    <RadzenDropDownDataGridColumn Property="Pallet" Title="Pallet" Width="100px" />
-                       <RadzenDropDownDataGridColumn Property="Zone" Title="Zone" Width="60px" />
-                    <RadzenDropDownDataGridColumn Property="ServiceHours" Title="Service Hours" Width="90px" />
-
-                </Columns>
-            </RadzenDropDownDataGrid>
-
-        </div>
     </div>
 
     <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3 gap-2">
@@ -93,7 +120,7 @@
         AllowAlternatingRows="true"
         Style="min-width: 100%; overflow-x: auto;">
         <Columns>
-            <RadzenDataGridColumn TItem="RecipePeriod" Title="Recipe" MinWidth="220px" MaxWidth="320px">
+            <RadzenDataGridColumn TItem="RecipePeriod" Title="Recipe" MinWidth="220px" >
                 <Template Context="data">
                     <div class="d-flex align-items-center gap-2" style="width:100%">
                         <RadzenDropDown @bind-Value="data.SelectedRecipe"
@@ -103,7 +130,8 @@
                         Change="@(() => OnRecipeSelected(data))"
                                         FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
                                         FilterOperator="StringFilterOperator.StartsWith"
-                                        AllowFiltering="true" />
+                                        AllowFiltering="true"
+                                         />
 
                         <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Size="ButtonSize.Small"
                                       Click="@(() => RemoveRecipePeriod(data))"
@@ -193,19 +221,27 @@
 
 
 
+    // Add this property
+    bool isSelfCollect = false;
 
+    // Add this method
+    void OnSelfCollectChanged(bool value)
+    {
+        isSelfCollect = value;
+        if (!isSelfCollect)
+        {
+            selectedDelivery = new CustomerDeliveryDetail();
+        }
 
-
-
-
-
-
+        StateHasChanged();
+    }
 
     // Lists to hold the data
     List<Customer> customers = new();
     List<CustomerDeliveryDetail> deliveryAddresses = new();
     DeliveryCost selectedDeliveryCost = new();
     List<ProductionCost> productionCosts = new();
+    List<Currency> currencies = new();
 
     public class RecipePeriod
     {
@@ -282,6 +318,7 @@
 
     // Selected values
     int selectedCustomer;
+    Currency selectedCurrency = new Currency();
     CustomerDeliveryDetail selectedDelivery = new();
 
     List<Recipe> recipes = new();
@@ -294,6 +331,9 @@
     {
         // Load all customers
         customers = await MDS.GetAllCustomersAsync();
+        currencies = await MDS.GetAllCurrenciesAsync();
+
+        selectedCurrency = currencies.FirstOrDefault();
         recipes = await MDS.GetRecipesAsync();
         var recipeGroupBy = recipes.GroupBy(r => r.ProductType.TypeName).ToList();
         premiums = await MDS.GetAllPremiumsAsync();
@@ -301,7 +341,6 @@
 
         packagingMaterials = await MDS.GetAllPackagingMaterialsAsync();
         deliveryCost = await MDS.GetDeliveryCostAsync();
-
 
         RecipePeriods.Add(new RecipePeriod(){
             PeriodFrom = DateTime.Now,
@@ -341,7 +380,13 @@
             return;
         }
 
-        if (selectedDelivery == null || selectedDelivery.DeliveryId <= 0)
+        if (selectedCurrency.CurrencyId <= 0)
+        {
+            NotificationService.Notify(NotificationSeverity.Error, "Validation Error", "Please select a currency.");
+            return;
+        }
+
+        if (!isSelfCollect && (selectedDelivery == null || selectedDelivery.DeliveryId <= 0))
         {
             NotificationService.Notify(NotificationSeverity.Error, "Validation Error", "Please select a delivery address.");
             return;
@@ -382,10 +427,32 @@
 
         var WeightRatio = UserPreferenceSetting.WeightRatio;
 
+        // Get currency codes for conversion
+        string gbpCurrencyCode = "GBP"; // Default to GBP
+        decimal exchangeRate = 1.0m; // Default exchange rate for GBP
+        
+        if (selectedCurrency.CurrencyId != 1) // If not GBP
+        {
+       
+            // Get exchange rate from GBP to selected currency
+            try
+            {
+                exchangeRate = await CurrencyExchangeService.getChangedCurrency(gbpCurrencyCode, selectedCurrency.CurrencyCode);
+            }
+            catch (Exception ex)
+            {
+                NotificationService.Notify(NotificationSeverity.Warning, "Currency Conversion", 
+                    $"Failed to get exchange rate. Using 1.0 as default. Error: {ex.Message}");
+                exchangeRate = 1.0m;
+            }
+        }
+
         QuoteDataService.newQuotation = new Quote
             {
                 CustomerId = selectedCustomer,
-                DeliveryDetailId = selectedDelivery.DeliveryId,
+                DeliveryDetailId = isSelfCollect ? 530 : selectedDelivery.DeliveryId,
+                CurrencyId = selectedCurrency.CurrencyId,
+			CurrencyRates = exchangeRate,
                 CreatedAt = DateTime.Now
             };
 
@@ -477,8 +544,8 @@
                                 .Select(i => new QuotationRawMaterialCost
                                     {
                                         MaterialName = i.Material.MaterialName.ToString(),
-                                        Cost = rawPriceDict[i.MaterialId],
-                                        CostAmount = rawPriceDict[i.MaterialId] * (i.Amount / 100),
+                                        Cost = rawPriceDict[i.MaterialId] * exchangeRate,
+                                        CostAmount = (rawPriceDict[i.MaterialId] * (i.Amount / 100)) * exchangeRate,
 
                                     }).ToList();
 
@@ -503,8 +570,8 @@
                             QuotationPremiumCost qpc = new QuotationPremiumCost()
                                 {
                                     PremiumName = selectedPremium.PremiumName,
-                                    Cost = selectedPremium.PremiumCost,
-                                    CostAmount = PremiumCost
+                                    Cost = selectedPremium.PremiumCost * exchangeRate,
+                                    CostAmount = PremiumCost * exchangeRate
                                 };
 
                             quotationPremiumList.Add(qpc);
@@ -519,7 +586,7 @@
                         quotationRecipe.QuotationProductionCost = new QuotationProductionCost
                         {
                             ProductType = recipePeriod.SelectedProductionCost.ProductType,
-                            ProductTypeCost = recipePeriod.SelectedProductionCost.ProductTypeCost,
+                            ProductTypeCost = recipePeriod.SelectedProductionCost.ProductTypeCost * exchangeRate,
                         };
                     }
 
@@ -535,9 +602,9 @@
                     {
                         quotationRecipe.QuotationPackagingCost = new QuotationPackagingCost
                         {
-                            PackagingName = recipePeriod.SelectedRecipe.PackagingMaterial.Packaging,
-                            Cost = recipePeriod.SelectedPackagingMaterial.CostGbpton.Value,
-                            CostAmount = recipePeriod.SelectedPackagingMaterial.CostGbpton.Value
+                            PackagingName = recipePeriod.SelectedPackagingMaterial.Packaging,
+                            Cost = recipePeriod.SelectedPackagingMaterial.CostGbpton.Value * exchangeRate,
+                            CostAmount = recipePeriod.SelectedPackagingMaterial.CostGbpton.Value * exchangeRate
                         };
                     }
                     else
@@ -555,7 +622,7 @@
                          quotationRecipe.QuotationDeliveryCost = new QuotationDeliveryCost
                         {
                            DeliveryName = selectedDelivery.DeliveryName,
-                           CostAmount = selectedDeliveryCost.Cost,
+                           CostAmount = selectedDeliveryCost.Cost * exchangeRate,
                         };
                     }
                     else
@@ -569,10 +636,11 @@
 
                    
 
-                    quotationRecipe.QuotationProductionCost = new QuotationProductionCost
+                    // Set default financial cost
+                    quotationRecipe.QuotationFinancialCost = new QuotationFinancialCost
                     {
-                        ProductType =  recipePeriod.SelectedProductionCost.ProductType,
-                        ProductTypeCost = recipePeriod.SelectedProductionCost.ProductTypeCost
+                        InterestRate = 8.5m,
+                        FinanceDays = 30
                     };
 
 
@@ -585,8 +653,8 @@
                         var additionalCost = new QuotationAdditionalCost
                         {
                             CostName = ac.CostName,
-                            Cost = ac.DefaultAmount,
-                            CostAmount = costAmount,
+                            Cost = ac.DefaultAmount * exchangeRate,
+                            CostAmount = costAmount * exchangeRate,
                         };
 
                         quotationRecipe.QuotationAdditionalCosts.Add(additionalCost);
@@ -610,6 +678,7 @@
                             Quarter = quarter,
                             RawMaterialPriceDetailList = rawMaterialPrice,
                             CustomerDeliveryDetail = selectedDelivery,
+                            
                         };
 
                     recipeTotalCostList.Add(recipeTotalCost);

@@ -318,8 +318,7 @@ public partial class QuotationSystemContext : DbContext
 
             entity.HasOne(d => d.QuotationRecipe).WithMany(p => p.QuotationAdditionalCosts)
                 .HasForeignKey(d => d.QuotationRecipeId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK_QuotationAdditionalCosts_QuotationRecipe");
+                .HasConstraintName("FK_QuotationAdditionalCosts_QuotationRecipes");
         });
 
         modelBuilder.Entity<QuotationDeliveryCost>(entity =>
@@ -334,8 +333,7 @@ public partial class QuotationSystemContext : DbContext
 
             entity.HasOne(d => d.QuotationRecipe).WithOne(p => p.QuotationDeliveryCost)
                 .HasForeignKey<QuotationDeliveryCost>(d => d.QuotationRecipeId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK_QuotationDeliveryCosts_QuotationRecipeId");
+                .HasConstraintName("FK_QuotationDeliveryCosts_QuotationRecipes");
         });
 
         modelBuilder.Entity<QuotationFinancialCost>(entity =>
@@ -348,8 +346,7 @@ public partial class QuotationSystemContext : DbContext
 
             entity.HasOne(d => d.QuotationRecipe).WithOne(p => p.QuotationFinancialCost)
                 .HasForeignKey<QuotationFinancialCost>(d => d.QuotationRecipeId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK_QuotationFinancialCosts_QuotationRecipeId");
+                .HasConstraintName("FK_QuotationFinancialCosts_QuotationRecipes");
         });
 
         modelBuilder.Entity<QuotationPackagingCost>(entity =>
@@ -365,7 +362,6 @@ public partial class QuotationSystemContext : DbContext
 
             entity.HasOne(d => d.QuotationRecipe).WithOne(p => p.QuotationPackagingCost)
                 .HasForeignKey<QuotationPackagingCost>(d => d.QuotationRecipeId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_QuotationPackagingCosts_QuotationRecipes");
         });
 
@@ -380,8 +376,7 @@ public partial class QuotationSystemContext : DbContext
 
             entity.HasOne(d => d.QuotationRecipe).WithMany(p => p.QuotationPremiumCosts)
                 .HasForeignKey(d => d.QuotationRecipeId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK_QuotationPremiumCosts_QuotationRecipe");
+                .HasConstraintName("FK_QuotationPremiumCosts_QuotationRecipes");
         });
 
         modelBuilder.Entity<QuotationProductionCost>(entity =>
@@ -397,7 +392,6 @@ public partial class QuotationSystemContext : DbContext
 
             entity.HasOne(d => d.QuotationRecipe).WithOne(p => p.QuotationProductionCost)
                 .HasForeignKey<QuotationProductionCost>(d => d.QuotationRecipeId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_QuotationProductionCosts_QuotationRecipes");
         });
 
@@ -412,8 +406,7 @@ public partial class QuotationSystemContext : DbContext
 
             entity.HasOne(d => d.QuotationRecipe).WithMany(p => p.QuotationRawMaterialCosts)
                 .HasForeignKey(d => d.QuotationRecipeId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK_QuotationRawMaterialCosts_QuotationRecipe");
+                .HasConstraintName("FK_QuotationRawMaterialCosts_QuotationRecipes");
         });
 
         modelBuilder.Entity<QuotationRecipe>(entity =>
@@ -425,8 +418,7 @@ public partial class QuotationSystemContext : DbContext
 
             entity.HasOne(d => d.Quote).WithMany(p => p.QuotationRecipes)
                 .HasForeignKey(d => d.QuoteId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__Quotation__Quote__0A9FF7E0");
+                .HasConstraintName("FK_QuotationRecipes_Quotes");
 
             entity.HasOne(d => d.Recipe).WithMany(p => p.QuotationRecipes)
                 .HasForeignKey(d => d.RecipeId)
@@ -452,7 +444,6 @@ public partial class QuotationSystemContext : DbContext
 
             entity.HasOne(d => d.QuotationRecipe).WithOne(p => p.QuotationTerminalCost)
                 .HasForeignKey<QuotationTerminalCost>(d => d.QuotationRecipeId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_QuotationTerminalCosts_QuotationRecipes");
         });
 
@@ -467,6 +458,7 @@ public partial class QuotationSystemContext : DbContext
             entity.Property(e => e.CurrencyId)
                 .HasDefaultValue(1)
                 .HasColumnName("CurrencyID");
+            entity.Property(e => e.CurrencyRates).HasColumnType("decimal(18, 6)");
             entity.Property(e => e.CustomerId).HasColumnName("CustomerID");
             entity.Property(e => e.DeliveryDetailId).HasColumnName("DeliveryDetailID");
             entity.Property(e => e.StatusId)

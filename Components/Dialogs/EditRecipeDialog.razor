@@ -30,7 +30,7 @@
             <RadzenDropDown Data="@ProductTypeList" @bind-Value="@recipe.ProductType" TextProperty="TypeName"></RadzenDropDown>
         </div>
     </div>
-    <div style="margin-bottom: 1rem" class="row">
+   @*  <div style="margin-bottom: 1rem" class="row">
         <div class="col-md-3">
             <RadzenLabel Text="Packaging Material" Component="Product Type" style="width: 100%">
             </RadzenLabel>
@@ -39,7 +39,7 @@
             <RadzenDropDown Data="@PackagingMaterialList" @bind-Value="@recipe.PackagingMaterial" TextProperty="Packaging"></RadzenDropDown>
         </div>
     </div>
-
+ *@
     @foreach(var rm in RawMaterialViewModelsList)
     {
         <div style="margin-bottom: 1rem" class="row">
