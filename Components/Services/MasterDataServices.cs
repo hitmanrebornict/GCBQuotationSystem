@@ -58,6 +58,50 @@ namespace GCBQuotationSystem.Components.Services
 			return await _dbContext.RawMaterials.ToListAsync();
 		}
 
+		public async Task<List<RawMaterialPriceDetail>> GetRawMaterialPricesByQuarterAsync(DateOnly quarterStartDate)
+		{
+			// Get the first month of the quarter
+			var firstMonth = quarterStartDate;
+			
+			return await _dbContext.RawMaterialPriceDetails
+				.Include(d => d.Material)
+				.Include(d => d.PriceUpdate)
+				.Where(d => d.PriceUpdate.PriceMonth == firstMonth)
+				.OrderBy(d => d.Material.MaterialName)
+				.ToListAsync();
+		}
+
+		public async Task<List<QuarterItem>> GetAvailableQuartersAsync()
+		{
+			// Generate 8 quarters (2 years) starting with the current quarter
+			var now = DateTime.Today;
+			var currentYear = now.Year;
+			var currentQuarter = (now.Month - 1) / 3 + 1;
+			
+			var quarters = new List<QuarterItem>();
+			
+			for (int yearOffset = 0; yearOffset < 2; yearOffset++)
+			{
+				int year = currentYear + yearOffset;
+				int startQuarter = yearOffset == 0 ? currentQuarter : 1;
+				
+				for (int q = startQuarter; q <= 4; q++)
+				{
+					int startMonth = (q - 1) * 3 + 1;
+					int endMonth = q * 3;
+					
+					quarters.Add(new QuarterItem 
+					{ 
+						Text = $"Q{q}/{year}",
+						StartDate = new DateOnly(year, startMonth, 1),
+						EndDate = new DateOnly(year, endMonth, DateTime.DaysInMonth(year, endMonth))
+					});
+				}
+			}
+			
+			return quarters;
+		}
+
 		public async Task<RawMaterial?> GetMaterialByNameAsync(string materialName)
 		{
 			return await _dbContext.RawMaterials
@@ -104,6 +148,16 @@ namespace GCBQuotationSystem.Components.Services
 			return await _dbContext.ProductTypes.AsNoTracking().ToListAsync();
 		}
 
+		public async Task<Recipe?> GetRecipeWithIngredientsAsync(int recipeId)
+		{
+			return await _dbContext.Recipes
+				.Include(r => r.RecipeIngredients)
+					.ThenInclude(ri => ri.Material)
+				.Include(r => r.ProductType)
+				.Where(r => r.RecipeId == recipeId)
+				.FirstOrDefaultAsync();
+		}
+
 		public async Task<List<Recipe>> GetRecipesAsync()
 		{
 			return await _dbContext.Recipes
@@ -142,7 +196,66 @@ namespace GCBQuotationSystem.Components.Services
 
 		public async Task<List<Country>> GetAllCountriesAsync()
 		{
-			return await _dbContext.Countries.ToListAsync();
+			return await _dbContext.Countries
+				.Where(c => c.Active)
+				.OrderBy(c => c.CountryName)
+				.ToListAsync();
+		}
+
+		public async Task<Country?> GetCountryByIdAsync(int countryId)
+		{
+			return await _dbContext.Countries
+				.FirstOrDefaultAsync(c => c.CountryId == countryId);
+		}
+
+		public async Task<bool> AddCountryAsync(Country country)
+		{
+			try
+			{
+				country.Active = true;	
+				_dbContext.Countries.Add(country);
+				await _dbContext.SaveChangesAsync();
+				return true;
+			}
+			catch (Exception ex)
+			{
+				// Log exception
+				return false;
+			}
+		}
+
+		public async Task<bool> UpdateCountryAsync(Country country)
+		{
+			try
+			{
+				_dbContext.Countries.Update(country);
+				await _dbContext.SaveChangesAsync();
+				return true;
+			}
+			catch (Exception ex)
+			{
+				// Log exception
+				return false;
+			}
+		}
+
+		public async Task<bool> DeleteCountryAsync(int countryId)
+		{
+			try
+			{
+				var country = await _dbContext.Countries.FindAsync(countryId);
+				if (country != null)
+				{
+					country.Active = false; // Soft delete
+					await _dbContext.SaveChangesAsync();
+				}
+				return true;
+			}
+			catch (Exception ex)
+			{
+				// Log exception
+				return false;
+			}
 		}
 
 		public async Task<List<Currency>> GetAllCurrenciesAsync()
@@ -203,7 +316,9 @@ namespace GCBQuotationSystem.Components.Services
 
 		public async Task<List<TerminalCost>> GetTerminalCostAsync()
 		{
-			return await _dbContext.TerminalCosts.ToListAsync();
+            var today = DateOnly.FromDateTime(DateTime.Now);
+            
+			return await _dbContext.TerminalCosts.Where(c => c.TerminalPeriod >= today).ToListAsync();
 		}
 
 		public async Task<TerminalCost> GetTerminalCostByIdAsync(int terminalCostId)

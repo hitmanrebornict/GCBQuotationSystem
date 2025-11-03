@@ -14,12 +14,9 @@ namespace GCBQuotationSystem.Components.Services
             _dbContext = dbContext;
         }
 
-        private string apiKey = "QBiepMmnomawFEg83OlMwDalf1FrcZkuYnccKkiAKgdy4MlxwFFBkzPmIeEw3ThT";
-
         public async Task<decimal> getChangedCurrency(string fromCurrency, string toCurrency)
         {
-            string url = $"https://api.unirateapi.com/api/rates?api_key={apiKey}&from={fromCurrency}&to={toCurrency}&format=json";
-
+            string url = $"https://api.frankfurter.dev/v1/latest?base={fromCurrency}&symbols={toCurrency}";
             using (HttpClient client = new HttpClient())
             {
                 HttpResponseMessage response = await client.GetAsync(url);
@@ -29,7 +26,7 @@ namespace GCBQuotationSystem.Components.Services
 
                 // Parse JSON
                 var json = JObject.Parse(responseBody);
-                decimal convertedValue = (decimal)json["result"]; // adjust based on UniRateAPI response
+                decimal convertedValue = (decimal)json["rates"][toCurrency]; // adjust based on UniRateAPI response
 
                 Console.WriteLine($"{fromCurrency} = {convertedValue} {toCurrency}");
 

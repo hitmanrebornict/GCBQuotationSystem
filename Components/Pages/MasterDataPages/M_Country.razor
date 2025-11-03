@@ -1,0 +1,154 @@
+@attribute [Authorize(Roles = "IT Admin,Admin,Sales Admin,Sales User")]
+
+@page "/countries"
+@inject MasterDataServices MasterDataServices
+@inject DialogService DialogService
+@inject NotificationService NotificationService
+
+<PageTitle>Countries</PageTitle>
+
+<RadzenCard>
+    <h3>Countries</h3>
+    <hr />
+    <div class="d-flex justify-content-between mb-4">
+        <RadzenButton Text="Create New Country"
+                      Icon="add_circle_outline"
+                      ButtonStyle="ButtonStyle.Primary"
+                      Click="@CreateButtonOnClick" />
+    </div>
+
+    <RadzenDataGrid TItem="Country" 
+                    Data="@Countries" 
+                    AllowFiltering="true" 
+                    AllowSorting="true" 
+                    AllowPaging="true" 
+                    AllowColumnResize="true"
+                    PageSize="10" 
+                    FilterMode="FilterMode.CheckBoxList"
+                    FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                    EmptyText="No countries found">
+        <Columns>
+            <RadzenDataGridColumn TItem="Country" Property="CountryName" Title="Country Name" Width="300px" />
+            <RadzenDataGridColumn TItem="Country" Property="Active" Title="Active" Width="100px">
+                <Template Context="country">
+                    <RadzenBadge Text="@(country.Active ? "Yes" : "No")" 
+                                 BadgeStyle="@(country.Active ? BadgeStyle.Success : BadgeStyle.Danger)" />
+                </Template>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn TItem="Country" Title="Actions" Width="150px" Sortable="false" Filterable="false">
+                <Template Context="country">
+                    <div class="d-flex gap-2">
+                        <RadzenButton Icon="edit" 
+                                      ButtonStyle="ButtonStyle.Light" 
+                                      Size="ButtonSize.Small"
+                                      Click="@(() => EditCountry(country))" />
+                       @*  <RadzenButton Icon="delete" 
+                                      ButtonStyle="ButtonStyle.Danger" 
+                                      Size="ButtonSize.Small"
+                                      Click="@(() => DeleteCountry(country))" /> *@
+                    </div>
+                </Template>
+            </RadzenDataGridColumn>
+        </Columns>
+    </RadzenDataGrid>
+</RadzenCard>
+
+<style>
+    .rz-datagrid {
+        height: calc(100vh - 250px);
+        min-height: 400px;
+    }
+</style>
+
+@code {
+    private List<Country> Countries = new List<Country>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCountries();
+    }   
+
+    private async Task CreateButtonOnClick()
+    {
+        var options = new DialogOptions() 
+        { 
+            Width = "500px",
+            Height = "400px",
+            CloseDialogOnOverlayClick = false,
+            Resizable = true,
+            Draggable = true
+        };
+        
+        var result = await DialogService.OpenAsync<AddCountryDialog>("New Country", 
+            options: options);
+            
+        if (result == true)
+        {
+            await LoadCountries();
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task EditCountry(Country country)
+    {
+        var options = new DialogOptions() 
+        { 
+            Width = "500px",
+            Height = "400px",
+            CloseDialogOnOverlayClick = false,
+            Resizable = true,
+            Draggable = true
+        };
+        
+        var result = await DialogService.OpenAsync<EditCountryDialog>("Edit Country", 
+            new Dictionary<string, object>() { { "CountryId", country.CountryId } },
+            options);
+            
+        if (result == true)
+        {
+            await LoadCountries();
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task DeleteCountry(Country country)
+    {
+        var result = await DialogService.Confirm("Are you sure you want to delete this country?", 
+            "Delete Country", 
+            new ConfirmOptions() { OkButtonText = "Yes", CancelButtonText = "No" });
+            
+        if (result == true)
+        {
+            var success = await MasterDataServices.DeleteCountryAsync(country.CountryId);
+            
+            if (success)
+            {
+                NotificationService.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Success,
+                    Summary = "Success",
+                    Detail = "Country deleted successfully",
+                    Duration = 4000
+                });
+                
+                await LoadCountries();
+                await InvokeAsync(StateHasChanged);
+            }
+            else
+            {
+                NotificationService.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Error,
+                    Summary = "Error",
+                    Detail = "Failed to delete country",
+                    Duration = 4000
+                });
+            }
+        }
+    }
+
+    private async Task LoadCountries()
+    {
+        Countries = await MasterDataServices.GetAllCountriesAsync();
+    }
+}

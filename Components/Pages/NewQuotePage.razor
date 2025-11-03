@@ -199,7 +199,7 @@
             <RadzenDataGridColumn TItem="RecipePeriod" Title="Premium" MinWidth="200px" MaxWidth="280px">
                 <Template Context="data">
                     <RadzenDropDown @bind-Value="data.SelectedPremiumList"
-                    Data="@premiums"
+                    Data="@GetFilteredPremiums(data)"
                     TextProperty="PremiumName"
                     Multiple="true"
                     Style="width:100%; " />
@@ -267,6 +267,57 @@
             grid.Reload();
             StateHasChanged();
         }
+        
+        // Clear selected premiums when recipe changes to avoid invalid selections
+        selectedRow.SelectedPremiumList.Clear();
+    }
+
+    private List<Premium> GetFilteredPremiums(RecipePeriod recipePeriod)
+    {
+        if (recipePeriod.SelectedRecipe == null)
+        {
+            return premiums.Where(p => p.Active).ToList();
+        }
+
+        var recipeIngredients = recipePeriod.SelectedRecipe.RecipeIngredients;
+        
+        // Check if recipe contains cocoa mass (MaterialId 13 or 18), cocoa butter (MaterialId 14), or cocoa powder (MaterialId 9)
+        bool hasCocoaMass = recipeIngredients.Any(ri => ri.MaterialId == 13 || ri.MaterialId == 18);
+        bool hasCocoaButter = recipeIngredients.Any(ri => ri.MaterialId == 14);
+        bool hasCocoaPowder = recipeIngredients.Any(ri => ri.MaterialId == 9);
+
+        // Filter premiums based on recipe ingredients and active status
+        var filteredPremiums = premiums.Where(p => 
+        {
+            // Only show active premiums
+            if (!p.Active)
+            {
+                return false;
+            }
+            
+            // If premium type is "Butter", only show if recipe has cocoa butter
+            if (p.PremiumType == "Butter")
+            {
+                return hasCocoaButter;
+            }
+            
+            // If premium type is "Liquor", only show if recipe has cocoa mass
+            if (p.PremiumType == "Liquor")
+            {
+                return hasCocoaMass;
+            }
+            
+            // If premium type is "Powder", only show if recipe has cocoa powder
+            if (p.PremiumType == "Powder")
+            {
+                return hasCocoaPowder;
+            }
+            
+            // For other premium types or null, show all active premiums
+            return true;
+        }).ToList();
+
+        return filteredPremiums;
     }
 
     private async Task RemoveRecipePeriod(RecipePeriod period)
@@ -468,6 +519,17 @@
             decimal localTotalCost = 0;
 
             decimal yieldCost, totalRawMaterialCost = 0;
+            decimal yieldPercentage = 1.0m; // Default yield percentage
+            
+            if (recipePeriod.SelectedRecipe != null)
+            {
+                // Calculate yield percentage: 1.5% for recipes containing 'LQ', 1% for others
+                yieldPercentage = recipePeriod.SelectedRecipe.RecipeCode?.Contains("LQ", StringComparison.OrdinalIgnoreCase) == true ? 1.5m : 1.0m;
+                
+                // Debug: Log the recipe code and yield percentage
+                Console.WriteLine($"Recipe Code: {recipePeriod.SelectedRecipe.RecipeCode}, Yield Percentage: {yieldPercentage}%");
+            }
+            
             if (recipePeriod.SelectedRecipe != null)
             {
                 DateTime startDate = recipePeriod.PeriodFrom ?? DateTime.MinValue;
@@ -510,7 +572,9 @@
                             Liquor = terminalCost.Liquor,
                             Butter = terminalCost.Butter,
 							Powder = terminalCost.Powder,
-                            GhanaLiquor = terminalCost.GhanaLiquor
+                            GhanaLiquor = terminalCost.GhanaLiquor,
+                            Cifbutter = terminalCost.Cifbutter,
+                            Cifliquor = terminalCost.Cifliquor
 						};
 
                     quotationRecipe.QuotationTerminalCost = quotationTerminalCost;
@@ -520,11 +584,11 @@
 
                     foreach(var rmp in rawMaterialPrice){
                         if(rmp.Material.MaterialName == "Cocoa Mass"){
-                            rmp.Price = QuoteDataService.CalculateMassTotal(quotationTerminalCost.Liquor , quotationTerminalCost.LifeGbp);
+                            rmp.Price = QuoteDataService.CalculateMassTotalWithPercentage(quotationTerminalCost.Liquor, quotationTerminalCost.LifeGbp, quotationTerminalCost.Cifliquor, recipePeriod.SelectedRecipe.RecipeIngredients.ToList());
 
                         }
                         else if(rmp.Material.MaterialName == "Cocoa Butter"){
-                            rmp.Price = QuoteDataService.CalculateButterTotal(quotationTerminalCost.Butter, quotationTerminalCost.LifeGbp);
+                            rmp.Price = QuoteDataService.CalculateButterTotalWithPercentage(quotationTerminalCost.Butter, quotationTerminalCost.LifeGbp, quotationTerminalCost.Cifbutter, recipePeriod.SelectedRecipe.RecipeIngredients.ToList());
 
                         }
                         else if(rmp.Material.MaterialName == "Cocoa Powder"){
@@ -591,7 +655,7 @@
                     }
 
                     totalRawMaterialCost = quotationRawMaterialCostsList.Sum(s => s.CostAmount);
-                    yieldCost = totalRawMaterialCost * 1 / 100;
+                    yieldCost = totalRawMaterialCost * yieldPercentage / 100;
 
                     quotationRecipe.QuotationRawMaterialCosts = quotationRawMaterialCostsList;
                     quotationRecipe.Recipe.RecipeIngredients = recipePeriod.SelectedRecipe.RecipeIngredients;
@@ -647,13 +711,15 @@
                     foreach(var ac in additionalCostsList)
                     {
                         decimal costAmount = ac.CostName == "Yield" 
-                            ? totalRawMaterialCost * 1 / 100 
+                            ? totalRawMaterialCost * yieldPercentage / 100 
                             : ac.DefaultAmount;
 
                         var additionalCost = new QuotationAdditionalCost
                         {
                             CostName = ac.CostName,
-                            Cost = ac.DefaultAmount * exchangeRate,
+                            Cost = ac.CostName == "Yield" 
+                                ? yieldPercentage  
+                                : ac.DefaultAmount ,
                             CostAmount = costAmount * exchangeRate,
                         };
 

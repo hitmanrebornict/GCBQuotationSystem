@@ -4,7 +4,6 @@
 @inject QuoteDataServices QuoteDataService
 @inject DialogService DialogServices
 @inject QuoteDetailServices QuoteDetailService
-@inject UserPreferenceSettings UserPreferenceSetting
 @inject MasterDataServices MDS
 
 <PageTitle>Quote Details</PageTitle>
@@ -32,9 +31,6 @@
                 </RadzenSelectBar>
                 @if(isCreateButton){
                     <RadzenButton Text="Create" Click="@CreateButtonOnClick" ButtonStyle="ButtonStyle.Primary" class="px-3"/>
-                }
-                @if(isInCompletedQuotePage){
-                    <RadzenDropDown Data="@UserPreferenceSetting.AvailableWeightUnits" @bind-Value="selectedWeightUnit" Change="@(async() => await OnWeightUnitChanged(selectedWeightUnit))" class="ml-2"/>
                 }
             </div>
         </div>
@@ -90,8 +86,8 @@
                                 <Template Context="data">
                                     <span class="cursor-pointer" @onclick="@(async(args) => await ShowCostDetails(data, period))">
                                         @((data.PeriodCosts.ContainsKey(period))
-                                             ? Math.Ceiling(data.PeriodCosts[period]).ToString("C0", UserPreferenceSetting.CultureInfo)
-                                              : "0.00")
+                                             ? CurrencyCultureHelper.FormatCurrency(Math.Ceiling(data.PeriodCosts[period]), currentCurrencyCode)
+                                              : CurrencyCultureHelper.FormatCurrency(0, currentCurrencyCode))
                                     </span>
                                 </Template>
                             </RadzenDataGridColumn>
@@ -114,7 +110,7 @@
 
             <div class="d-flex flex-wrap gap-4">
                 <!-- Display card for selected quarter -->
-                @if (!string.IsNullOrEmpty(selectedQuarter))
+                @if (!string.IsNullOrEmpty(selectedQuarter) && !HasQuoteBlocks())
                 {
                     <div class="card shadow-sm rounded" style="width: 350px;">
                         <div class="card-header bg-light">
@@ -133,7 +129,7 @@
                                     Style="width: 120px;"
                                     TValue="decimal"
                                     ShowUpDown="false"
-                                    Format="c"
+                                    Format="@GetCurrencyFormat()"
                                     Name="costInput"
                                     Min="0" />
                                 </li>
@@ -161,45 +157,75 @@
                                 Style="width: 120px;"
                                 TValue="decimal"
                                 ShowUpDown="false"
-                                Format="c"
+                                Format="@GetCurrencyFormat()"
                                 Min="0" />
                             </li>
-                            <li class="list-group-item d-flex justify-content-between align-items-center">
-                                <span>Butter</span>
-                                <RadzenNumeric @bind-Value="selectedTerminalQuarter.Butter"
-                                Change="@(async () => await RecalculateTerminalTotal(selectedTerminalQuarter))"
-                                Style="width: 120px;"
-                                TValue="decimal"
-                                ShowUpDown="false"
-                                Min="0" />
-                            </li>
-                            <li class="list-group-item d-flex justify-content-between align-items-center">
-                                <span>Liquor</span>
-                                <RadzenNumeric @bind-Value="selectedTerminalQuarter.Liquor"
-                                Change="@(async () => await RecalculateTerminalTotal(selectedTerminalQuarter))"
-                                Style="width: 120px;"
-                                TValue="decimal"
-                                ShowUpDown="false"
-                                Min="0" />
-                            </li>
-                            <li class="list-group-item d-flex justify-content-between align-items-center">
-                                <span>G-Liquor</span>
-                                <RadzenNumeric @bind-Value="selectedTerminalQuarter.GhanaLiquor"
-                                Change="@(async () => await RecalculateTerminalTotal(selectedTerminalQuarter))"
-                                Style="width: 120px;"
-                                TValue="decimal"
-                                ShowUpDown="false"
-                                Min="0" />
-                            </li>
-                            <li class="list-group-item d-flex justify-content-between align-items-center">
-                                <span>Powder</span>
-                                <RadzenNumeric @bind-Value="selectedTerminalQuarter.Powder"
-                                Change="@(async () => await RecalculateTerminalTotal(selectedTerminalQuarter))"
-                                Style="width: 120px;"
-                                TValue="decimal"
-                                ShowUpDown="false"
-                                Min="0" />
-                            </li>
+                            @if (HasQuoteBlocks())
+                            {
+                                @if (HasFullMass())
+                                {
+                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                        <span>CifLiquor</span>
+                                        <RadzenNumeric @bind-Value="selectedTerminalQuarter.Cifliquor"
+                                        Change="@(async () => await RecalculateTerminalTotal(selectedTerminalQuarter))"
+                                        Style="width: 120px;"
+                                        TValue="decimal"
+                                        ShowUpDown="false"
+                                        Min="0" />
+                                    </li>
+                                }
+                                @if (HasFullButter())
+                                {
+                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                        <span>CifButter</span>
+                                        <RadzenNumeric @bind-Value="selectedTerminalQuarter.Cifbutter"
+                                        Change="@(async () => await RecalculateTerminalTotal(selectedTerminalQuarter))"
+                                        Style="width: 120px;"
+                                        TValue="decimal"
+                                        ShowUpDown="false"
+                                        Min="0" />
+                                    </li>
+                                }
+                            }
+                            else
+                            {
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    <span>Butter</span>
+                                    <RadzenNumeric @bind-Value="selectedTerminalQuarter.Butter"
+                                    Change="@(async () => await RecalculateTerminalTotal(selectedTerminalQuarter))"
+                                    Style="width: 120px;"
+                                    TValue="decimal"
+                                    ShowUpDown="false"
+                                    Min="0" />
+                                </li>
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    <span>Liquor</span>
+                                    <RadzenNumeric @bind-Value="selectedTerminalQuarter.Liquor"
+                                    Change="@(async () => await RecalculateTerminalTotal(selectedTerminalQuarter))"
+                                    Style="width: 120px;"
+                                    TValue="decimal"
+                                    ShowUpDown="false"
+                                    Min="0" />
+                                </li>
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    <span>G-Liquor</span>
+                                    <RadzenNumeric @bind-Value="selectedTerminalQuarter.GhanaLiquor"
+                                    Change="@(async () => await RecalculateTerminalTotal(selectedTerminalQuarter))"
+                                    Style="width: 120px;"
+                                    TValue="decimal"
+                                    ShowUpDown="false"
+                                    Min="0" />
+                                </li>
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    <span>Powder</span>
+                                    <RadzenNumeric @bind-Value="selectedTerminalQuarter.Powder"
+                                    Change="@(async () => await RecalculateTerminalTotal(selectedTerminalQuarter))"
+                                    Style="width: 120px;"
+                                    TValue="decimal"
+                                    ShowUpDown="false"
+                                    Min="0" />
+                                </li>
+                            }
                         </ul>
                     </div>
                 }
@@ -230,7 +256,7 @@
                                 Style="width: 120px;"
                                 TValue="decimal"
                                 ShowUpDown="false"
-                                Format="c"
+                                Format="@GetCurrencyFormat()"
                                 Min="0" />
                             </li>
                             <li class="list-group-item d-flex justify-content-between align-items-center">
@@ -273,7 +299,7 @@
                                     Style="width: 120px;"
                                     TValue="decimal"
                                     ShowUpDown="false"
-                                    Format="c"
+                                    Format="@GetCurrencyFormat()"
                                     Disabled="true" />
                                 </div>
                             </li>
@@ -286,7 +312,7 @@
                                     TValue="decimal"
                                     ShowUpDown="false"
                                     Min="0"
-                                    Format="c" />
+                                    Format="@GetCurrencyFormat()" />
                                 </div>
                             </li>
                         </ul>
@@ -323,10 +349,16 @@
                 </div>
 
                 <!-- Add new Delivery Cost box -->
-                <div class="card shadow-sm rounded" style="width: 350px;">
-                    <div class="card-header bg-light">
-                        <RadzenText Text="Delivery Costs" TextStyle="TextStyle.Subtitle1" class="mb-0" />
-                    </div>
+                    <div class="card shadow-sm rounded" style="width: 350px;">
+                        <div class="card-header bg-light">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <RadzenText Text="Delivery Costs" TextStyle="TextStyle.Subtitle1" class="mb-0" />
+                                @if (!string.IsNullOrEmpty(DeliveryPostcode))
+                                {
+                                    <RadzenBadge Text="@DeliveryPostcode" BadgeStyle="BadgeStyle.Info" />
+                                }
+                            </div>
+                        </div>
                     <ul class="list-group list-group-flush">
                         <li class="list-group-item d-flex justify-content-between align-items-center">
                             <span>Delivery Cost</span>
@@ -336,7 +368,7 @@
                             Style="width: 120px;"
                             TValue="decimal"
                             ShowUpDown="false"
-                            Format="c"
+                            Format="@GetCurrencyFormat()"
                             Min="0" />
                         </li>
                      
@@ -350,6 +382,8 @@
 
 
 @code{
+
+
 
     // [Parameter]
     // public List<RecipeTotalCost> QuoteDataService.RecipeTotalCostList { get; set; } = new();
@@ -369,16 +403,17 @@
     [Parameter]
     public string CustomerRemark { get; set; } = null;
 
-    public System.Globalization.CultureInfo cultureInfo;
+    [Parameter]
+    public string DeliveryPostcode { get; set; } = null;
 
     private string selectedDiscountMethod = "Percentage"; // Default method
+    private string currentCurrencyCode = "GBP"; // Default currency
 
     private string selectedQuarter;
     private QuotationTerminalCost selectedTerminalQuarter;
     private bool dataLoading = false;
     private int selectBarInt = 1;
-    private string selectedWeightUnit;
-    private decimal weightRatio;
+    private decimal weightRatio = 1.0m; // Default to per tonne
 
     // Dictionary to track updated material costs by quarter
     private Dictionary<string, Dictionary<string, decimal>> updatedQuarterMaterialCosts = new();
@@ -396,9 +431,8 @@
         selectedQuarter = uniqueQuarters.FirstOrDefault();
         selectedTerminalQuarter = uniqueTerminalNames.FirstOrDefault();
         dataLoading = true;
-        selectedWeightUnit = UserPreferenceSetting.WeightUnit;
-        UserPreferenceSetting.PrintedWeightUnit = UserPreferenceSetting.WeightUnit;
-        weightRatio = UserPreferenceSetting.WeightRatio;
+        // Set default weight ratio to per tonne
+        weightRatio = 1.0m;
 
         financialCostPercentage = QuoteDataService.RecipeTotalCostList
         .FirstOrDefault()?.QuotationRecipe1?.QuotationFinancialCost?.InterestRate ?? 0;
@@ -409,7 +443,7 @@
         deliveryCostAmount = QuoteDataService.RecipeTotalCostList
         .FirstOrDefault()?.QuotationRecipe1?.QuotationDeliveryCost?.CostAmount ?? 0;
 
-        // Update currency/culture based on the selected quote currency so symbols render correctly
+        // Update currency based on the selected quote currency
         try
         {
             if (QuoteDataService?.newQuotation != null && QuoteDataService.newQuotation.CurrencyId > 0)
@@ -418,8 +452,7 @@
                 var selectedCurrency = currencies.FirstOrDefault(c => c.CurrencyId == QuoteDataService.newQuotation.CurrencyId);
                 if (selectedCurrency != null)
                 {
-                    UserPreferenceSetting.Currency = selectedCurrency.CurrencyCode;
-                    UserPreferenceSetting.UpdateCultureBasedOnCurrency();
+                    currentCurrencyCode = selectedCurrency.CurrencyCode;
                 }
             }
         }
@@ -753,12 +786,14 @@
             {
                 Console.WriteLine($"Updating recipe {recipe.Recipe.RecipeCode} for period {recipe.PeriodMonth}");
                 updatedRecipesCount++;
-                
+
                 recipe.QuotationTerminalCost.LifeGbp = selectedTerminalCost.LifeGbp;
                 recipe.QuotationTerminalCost.Butter = selectedTerminalCost.Butter;
                 recipe.QuotationTerminalCost.Powder = selectedTerminalCost.Powder;
                 recipe.QuotationTerminalCost.Liquor = selectedTerminalCost.Liquor;
                 recipe.QuotationTerminalCost.GhanaLiquor = selectedTerminalCost.GhanaLiquor;
+                recipe.QuotationTerminalCost.Cifliquor = selectedTerminalCost.Cifliquor;
+                recipe.QuotationTerminalCost.Cifbutter = selectedTerminalCost.Cifbutter;
 
                 Console.WriteLine($"Updated Powder value: {recipe.QuotationTerminalCost.Powder}");
 
@@ -892,13 +927,13 @@
 
                 if (ingredient.Material.MaterialName == "Cocoa Mass")
                 {
-                    basePrice = QuoteDataService.CalculateMassTotal(recipe.QuotationTerminalCost.Liquor, recipe.QuotationTerminalCost.LifeGbp);
-                    Console.WriteLine($"Cocoa Mass base price: {basePrice} (Liquor: {recipe.QuotationTerminalCost.Liquor}, LifeGBP: {recipe.QuotationTerminalCost.LifeGbp})");
+                    basePrice = QuoteDataService.CalculateMassTotalWithPercentage(recipe.QuotationTerminalCost.Liquor, recipe.QuotationTerminalCost.LifeGbp, recipe.QuotationTerminalCost.Cifliquor, recipe.Recipe.RecipeIngredients.ToList());
+                    Console.WriteLine($"Cocoa Mass base price: {basePrice} (Liquor: {recipe.QuotationTerminalCost.Liquor}, LifeGBP: {recipe.QuotationTerminalCost.LifeGbp}, CifLiquor: {recipe.QuotationTerminalCost.Cifliquor})");
                 }
                 else if (ingredient.Material.MaterialName == "Cocoa Butter")
                 {
-                    basePrice = QuoteDataService.CalculateButterTotal(recipe.QuotationTerminalCost.Butter, recipe.QuotationTerminalCost.LifeGbp);
-                    Console.WriteLine($"Cocoa Butter base price: {basePrice} (Butter: {recipe.QuotationTerminalCost.Butter}, LifeGBP: {recipe.QuotationTerminalCost.LifeGbp})");
+                    basePrice = QuoteDataService.CalculateButterTotalWithPercentage(recipe.QuotationTerminalCost.Butter, recipe.QuotationTerminalCost.LifeGbp, recipe.QuotationTerminalCost.Cifbutter, recipe.Recipe.RecipeIngredients.ToList());
+                    Console.WriteLine($"Cocoa Butter base price: {basePrice} (Butter: {recipe.QuotationTerminalCost.Butter}, LifeGBP: {recipe.QuotationTerminalCost.LifeGbp}, CifButter: {recipe.QuotationTerminalCost.Cifbutter})");
                 }
                 else if (ingredient.Material.MaterialName == "Cocoa Powder")
                 {
@@ -1043,9 +1078,9 @@
             return;
         }
 
-        QuoteDataService.OriginalRecipeTotalList = QuoteDataService.RevertToOriginalUnit(QuoteDataService.RecipeTotalCostList,UserPreferenceSetting.WeightRatio);
+        QuoteDataService.OriginalRecipeTotalList = QuoteDataService.RevertToOriginalUnit(QuoteDataService.RecipeTotalCostList, weightRatio);
 
-        await QuoteDetailService.addQuoteIntoDatabase(QuoteDataService.newQuotation, QuoteDataService.OriginalRecipeTotalList.Select(r => r.QuotationRecipe1).ToList(), UserPreferenceSetting.Currency, QuoteRemark, CustomerRemark);
+        await QuoteDetailService.addQuoteIntoDatabase(QuoteDataService.newQuotation, QuoteDataService.OriginalRecipeTotalList.Select(r => r.QuotationRecipe1).ToList(), currentCurrencyCode, QuoteRemark, CustomerRemark);
 
         var newQuoteId = QuoteDataService.newQuotation.QuoteId;
 
@@ -1090,35 +1125,6 @@
         await InvokeAsync(StateHasChanged);
     }
 
-    private async Task OnWeightUnitChanged(string selectedWeightUnit)
-    {
-        UserPreferenceSetting.PrintedWeightUnit = selectedWeightUnit;
-
-        switch (selectedWeightUnit)
-        {
-            case "per tonne":
-                weightRatio = 1.0m;   // 1 tonne = 1.0
-                break;
-
-            case "per kg":
-                weightRatio = 0.001m; // 1 kg = 0.001 tonne
-                break;
-
-            case "per 100 kg":
-                weightRatio = 0.1m;  // 100 kg = 0.1 tonne
-                break;
-
-            default:
-                throw new ArgumentException("Invalid weight unit selected.");
-        }
-
-        QuoteDataService.RecipeTotalCostList = QuoteDataService.ConvertRecipeCostListToPreferredUnit(QuoteDataService.OriginalRecipeTotalList, weightRatio);
-        foreach(var item in QuoteDataService.RecipeTotalCostList){
-            Console.WriteLine(item.TotalCost);
-        }
-        QuoteDataService.RecipeCostMatrix = await QuoteDataService.PrepareCostMatrix(QuoteDataService.RecipeTotalCostList);
-        await InvokeAsync(StateHasChanged);
-    }
 
     private async Task OnDiscountMethodChanged()
     {
@@ -1302,6 +1308,41 @@
 
             QuoteDataService.RecipeCostMatrix = await QuoteDataService.PrepareCostMatrix(QuoteDataService.RecipeTotalCostList);
             await InvokeAsync(StateHasChanged);
+    }
+
+    private string GetCurrencyFormat()
+    {
+        var culture = CurrencyCultureHelper.GetCultureForCurrency(currentCurrencyCode);
+        return culture.NumberFormat.CurrencyDecimalDigits == 0 ? "C0" : "C";
+    }
+
+    // Helper method to check if any recipe is a quote block (100% Cocoa Mass or Butter)
+    private bool HasQuoteBlocks()
+    {
+        return QuoteDataService.RecipeTotalCostList.Any(recipeTotalCost => 
+            QuoteDataService.IsQuoteBlock(recipeTotalCost.QuotationRecipe1.Recipe.RecipeIngredients.ToList()));
+    }
+
+    // Helper method to check if any recipe is 100% Cocoa Butter
+    private bool HasFullButter()
+    {
+        return QuoteDataService.RecipeTotalCostList.Any(recipeTotalCost => 
+        {
+            var cocoaButterIngredient = recipeTotalCost.QuotationRecipe1.Recipe.RecipeIngredients
+                .FirstOrDefault(i => i.Material.MaterialName == "Cocoa Butter");
+            return cocoaButterIngredient != null && cocoaButterIngredient.Amount == 100;
+        });
+    }
+
+    // Helper method to check if any recipe is 100% Cocoa Mass
+    private bool HasFullMass()
+    {
+        return QuoteDataService.RecipeTotalCostList.Any(recipeTotalCost => 
+        {
+            var cocoaMassIngredient = recipeTotalCost.QuotationRecipe1.Recipe.RecipeIngredients
+                .FirstOrDefault(i => i.Material.MaterialName == "Cocoa Mass");
+            return cocoaMassIngredient != null && cocoaMassIngredient.Amount == 100;
+        });
     }
 
 }

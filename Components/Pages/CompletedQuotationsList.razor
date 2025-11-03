@@ -1,0 +1,173 @@
+@attribute [Authorize(Roles = "Sales Admin,Sales User,IT Admin,Admin")]
+
+@page "/CompletedQuotationsList"
+@inject QuoteDetailServices QuoteDetailService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Completed Quotation List</PageTitle>
+
+<RadzenCard class="mb-4">
+    <RadzenText TextStyle="TextStyle.H6">Filters</RadzenText>
+    <div class="row">
+        <div class="col-md-4 mb-3">
+            <RadzenText TextStyle="TextStyle.Subtitle2">Recipe Codes</RadzenText>
+            <RadzenDropDown @bind-Value="selectedRecipeCodes" Multiple="true"
+                            Data="@allRecipeCodes"
+                            Change="@ApplyFilters"
+                            Placeholder="Select Recipe Codes"
+                            Style="width: 100%;"
+                            AllowFiltering = "true"/>
+        </div>
+        <div class="col-md-4 mb-3">
+            <RadzenText TextStyle="TextStyle.Subtitle2">From Date</RadzenText>
+            <RadzenDatePicker @bind-Value="fromDate" DateFormat="dd/MM/yyyy" 
+                              Change="@ApplyFilters" Style="width: 100%;" />
+        </div>
+        <div class="col-md-4 mb-3">
+            <RadzenText TextStyle="TextStyle.Subtitle2">To Date</RadzenText>
+            <RadzenDatePicker @bind-Value="toDate" DateFormat="dd/MM/yyyy" 
+                              Change="@ApplyFilters" Style="width: 100%;" />
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-md-12 d-flex justify-content-end">
+            <RadzenButton Click="@ResetFilters" Text="Reset Filters" ButtonStyle="ButtonStyle.Light" Class="me-2" />
+            <RadzenButton Click="@ApplyFilters" Text="Apply Filters" ButtonStyle="ButtonStyle.Primary" />
+        </div>
+    </div>
+</RadzenCard>
+
+<RadzenCard>
+    <RadzenText TextStyle="TextStyle.DisplayH5">Completed Quotation List</RadzenText>
+    <hr />
+
+    <RadzenDataGrid TItem="Quote" Data="@filteredQuotesList" AllowColumnResize="true"
+                   AllowPaging="true" RowSelect="@OnQuoteSelected"
+                   AllowSorting="true" SelectionMode="DataGridSelectionMode.Single" 
+                   class="radzen-datagrid-header" Responsive="true" AllowFiltering="true" FilterMode="FilterMode.CheckBoxList">
+        <Columns>
+            <RadzenDataGridColumn TItem="Quote" Property="QuoteId" Title="ID" Frozen="true" TextAlign="TextAlign.Center" />
+            <RadzenDataGridColumn  TItem="Quote" Property="Customer.CustName" Title="Customer Name" Resizable="true" Context="request" />
+            <RadzenDataGridColumn TItem="Quote" Property="CreatedAt" Title="Quote Time">
+                <Template Context="data">
+                    @(data.CreatedAt.Value.ToString("dd/MM/yyyy hh:mm tt") ?? "-")
+                </Template>
+            </RadzenDataGridColumn>
+            
+            <RadzenDataGridColumn TItem="Quote" Title="Recipe Codes" Filterable="false">
+                <Template Context="quote">
+                    <div class="d-flex flex-wrap gap-1">
+                        @{
+                            var distinctRecipeCodes = quote.QuotationRecipes
+                                .Select(qr => qr.Recipe?.RecipeCode)
+                                .Where(code => !string.IsNullOrEmpty(code))
+                                .Distinct(StringComparer.OrdinalIgnoreCase)
+                                .OrderBy(code => code);
+                                
+                            foreach (var recipeCode in distinctRecipeCodes)
+                            {
+                                <RadzenBadge Text="@recipeCode" 
+                                            Style="background-color: #6c757d; color: white; margin: 2px;" />
+                            }
+                        }
+                    </div>
+                </Template>
+            </RadzenDataGridColumn>
+              
+            <RadzenDataGridColumn TItem="Quote" Property="Status.StatusName" Title="Status">
+                <Template Context="status">
+                    @if (status.Status.StatusName == "Completed")
+                    {
+                        <RadzenBadge Text="Completed" Style="background-color: #4caf50; color: white;" />
+                    }
+                    else if (status.Status.StatusName == "Archived")
+                    {
+                        <RadzenBadge Text="Archived" Style="background-color: #6c757d; color: white;" />
+                    }
+                    else if (status.Status.StatusName == "Confirmed")
+                    {
+                        <RadzenBadge Text="Confirmed" Style="background-color: #2196f3; color: white;" />
+                    }
+                    else if (status.Status.StatusName == "Created")
+                    {
+                        <RadzenBadge Text="Created" Style="background-color:#FFA500 ; color: white;" />
+                    }
+                    else
+                    {
+                        <RadzenBadge Text="Unknown" Style="background-color: gray; color: white;" />
+                    }
+                </Template>
+            </RadzenDataGridColumn>
+        </Columns>
+    </RadzenDataGrid> 
+</RadzenCard>
+
+
+@code {
+    private List<Quote> QuotesList = new List<Quote>();
+    private List<Quote> filteredQuotesList = new List<Quote>();
+    private List<string> allRecipeCodes = new List<string>();
+    private IEnumerable<string> selectedRecipeCodes;
+    private DateTime? fromDate;
+    private DateTime? toDate;
+
+    protected override async Task OnInitializedAsync()
+    {
+        QuotesList = await QuoteDetailService.GetCompletedQuotesAsync();
+        filteredQuotesList = QuotesList;
+        
+        // Extract all unique recipe codes for the filter dropdown
+        allRecipeCodes = QuotesList
+            .SelectMany(q => q.QuotationRecipes)
+            .Select(qr => qr.Recipe?.RecipeCode)
+            .Where(code => !string.IsNullOrEmpty(code))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(code => code)
+            .ToList();
+    }
+
+    private void OnQuoteSelected(Quote selectedQuote)
+    {
+        if (selectedQuote != null)
+        {
+            NavigationManager.NavigateTo($"/QuoteDetailPage/{selectedQuote.QuoteId}");
+        }
+    }
+
+    private void ApplyFilters()
+    {
+        filteredQuotesList = QuotesList;
+
+        if (selectedRecipeCodes != null && selectedRecipeCodes.Any())
+        {
+            filteredQuotesList = filteredQuotesList
+                .Where(q => q.QuotationRecipes.Any(qr => 
+                    qr.Recipe != null && 
+                    selectedRecipeCodes.Contains(qr.Recipe.RecipeCode, StringComparer.OrdinalIgnoreCase)))
+                .ToList();
+        }
+
+        if (fromDate.HasValue)
+        {
+            filteredQuotesList = filteredQuotesList
+                .Where(q => q.CreatedAt.HasValue && q.CreatedAt.Value.Date >= fromDate.Value.Date)
+                .ToList();
+        }
+
+        if (toDate.HasValue)
+        {
+            var endDate = toDate.Value.Date.AddDays(1).AddTicks(-1);
+            filteredQuotesList = filteredQuotesList
+                .Where(q => q.CreatedAt.HasValue && q.CreatedAt.Value.Date <= endDate.Date)
+                .ToList();
+        }
+    }
+
+    private void ResetFilters()
+    {
+        selectedRecipeCodes = null;
+        fromDate = null;
+        toDate = null;
+        filteredQuotesList = QuotesList;
+    }
+}

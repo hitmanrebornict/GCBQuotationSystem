@@ -5,6 +5,7 @@
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject QuoteDataServices QuoteDataServices
 @inject NavigationManager NavigationManager
+@inject MasterDataServices MasterDataServices
 
 <PageTitle>Dashboard</PageTitle>
 
@@ -52,6 +53,66 @@
             </div>
         </div>
     </div>
+
+    <!-- Raw Material Prices Dashboard -->
+    <div class="row mt-5">
+        <div class="col-12">
+            <div class="card border-0 shadow-lg">
+                <div class="card-header bg-gradient-primary text-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-graph-up me-3" style="font-size: 1.5rem;"></i>
+                            <h4 class="mb-0 fw-bold">Raw Material Prices</h4>
+                        </div>
+                        <div class="d-flex align-items-center gap-3">
+                            <RadzenText TextStyle="TextStyle.Body2" class="mb-0">Filter by Quarter:</RadzenText>
+                            <RadzenDropDown @bind-Value="selectedQuarter"
+                                           Data="@availableQuarters"
+                                           TextProperty="Text"
+                                           ValueProperty="StartDate"
+                                           Change="@OnQuarterChanged"
+                                           Style="min-width: 120px;"
+                                           Placeholder="Select Quarter" />
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body p-4">
+                    @if (rawMaterialPrices.Any())
+                    {
+                        <div class="row g-4">
+                            @foreach (var priceDetail in rawMaterialPrices)
+                            {
+                                <div class="col-lg-3 col-md-4 col-sm-6">
+                                    <div class="price-card h-100">
+                                        <div class="price-card-header">
+                                            <div class="material-icon">
+                                                @GetMaterialIcon(priceDetail.Material.MaterialName)
+                                            </div>
+                                            <div class="material-info">
+                                                <h6 class="material-name mb-0">@priceDetail.Material.MaterialName</h6>
+                                            </div>
+                                        </div>
+                                        <div class="price-value">
+                                            <span class="currency">£</span>
+                                            <span class="amount">@priceDetail.Price.ToString("N2")</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="text-center py-5">
+                            <i class="bi bi-inbox display-1 text-muted mb-3"></i>
+                            <h5 class="text-muted">No Price Data Available</h5>
+                            <p class="text-muted">No raw material prices found for the selected quarter.</p>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <style>
@@ -64,6 +125,89 @@
     box-shadow: 0 8px 32px rgba(0,0,0,0.18);
     z-index: 2;
 }
+
+.bg-gradient-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+}
+
+.price-card {
+    background: linear-gradient(145deg, #ffffff 0%, #f8f9fa 100%);
+    border: 1px solid #e9ecef;
+    border-radius: 16px;
+    padding: 1.5rem;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    position: relative;
+    overflow: hidden;
+}
+
+.price-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+    border-color: #667eea;
+}
+
+.price-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+}
+
+.price-card-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.material-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 1rem;
+    font-size: 1.5rem;
+    color: white;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.material-info {
+    flex: 1;
+}
+
+.material-name {
+    font-weight: 600;
+    color: #2c3e50;
+    font-size: 1rem;
+    line-height: 1.2;
+}
+
+.price-value {
+    text-align: center;
+    margin: 1.5rem 0;
+}
+
+.currency {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: #667eea;
+    vertical-align: top;
+}
+
+.amount {
+    font-size: 2.2rem;
+    font-weight: 700;
+    color: #2c3e50;
+    margin-left: 0.2rem;
+}
+
+
 </style>
 
 @code {
@@ -72,6 +216,11 @@
     int totalQuotes = 0;
     int completedQuotes = 0;
     int inProgressQuotes = 0;
+    
+    // Raw Material Prices
+    List<RawMaterialPriceDetail> rawMaterialPrices = new();
+    List<QuarterItem> availableQuarters = new();
+    DateOnly selectedQuarter;
 
     protected override async Task OnInitializedAsync()
     {
@@ -84,6 +233,53 @@
         totalQuotes = stats.TotalQuotes;
         completedQuotes = stats.CompletedQuotes;
         inProgressQuotes = stats.InProgressQuotes;
+
+        // Load quarters and raw material prices
+        await LoadQuartersAndPrices();
+    }
+
+    private async Task LoadQuartersAndPrices()
+    {
+        availableQuarters = await MasterDataServices.GetAvailableQuartersAsync();
+        if (availableQuarters.Any())
+        {
+            selectedQuarter = availableQuarters.First().StartDate;
+            await LoadRawMaterialPrices();
+        }
+    }
+
+    private async Task OnQuarterChanged(object value)
+    {
+        if (value is DateOnly quarter)
+        {
+            selectedQuarter = quarter;
+            await LoadRawMaterialPrices();
+        }
+    }
+
+    private async Task LoadRawMaterialPrices()
+    {
+        try
+        {
+            rawMaterialPrices = await MasterDataServices.GetRawMaterialPricesByQuarterAsync(selectedQuarter);
+        }
+        catch (Exception ex)
+        {
+            // Handle error silently or show notification
+            rawMaterialPrices = new List<RawMaterialPriceDetail>();
+        }
+    }
+
+    private string GetMaterialIcon(string materialName)
+    {
+        return materialName.ToLower() switch
+        {
+            var name when name.Contains("cocoa mass") || name.Contains("liquor") => "🥜",
+            var name when name.Contains("cocoa butter") => "🧈",
+            var name when name.Contains("cocoa powder") => "☕",
+            var name when name.Contains("ghana") => "🌍",
+            _ => "📦"
+        };
     }
 }
 

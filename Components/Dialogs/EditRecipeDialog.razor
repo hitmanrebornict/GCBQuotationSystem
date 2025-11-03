@@ -21,7 +21,7 @@
             <RadzenTextBox MaxLength="100" style="width: 100%" @bind-Value="recipe.RecipeDesc" Name="RecipeDesc" Placeholder="Please enter recipe desc..." />
         </div>
     </div>
-    <div style="margin-bottom: 1rem" class="row">
+@*     <div style="margin-bottom: 1rem" class="row">
         <div class="col-md-3">
             <RadzenLabel Text="Product type" Component="Product Type" style="width: 100%">
             </RadzenLabel>
@@ -29,7 +29,7 @@
         <div class="col-md-9">
             <RadzenDropDown Data="@ProductTypeList" @bind-Value="@recipe.ProductType" TextProperty="TypeName"></RadzenDropDown>
         </div>
-    </div>
+    </div> *@
    @*  <div style="margin-bottom: 1rem" class="row">
         <div class="col-md-3">
             <RadzenLabel Text="Packaging Material" Component="Product Type" style="width: 100%">
@@ -93,15 +93,31 @@
         // Load all raw materials
         var allRawMaterials = await MasterDataService.GetAllRawMaterialsAsync();
         
-        // Create view models for each raw material
-        RawMaterialViewModelsList = allRawMaterials.Select(r => new RawMaterialViewModel
+        // Debug: Log existing recipe ingredients
+        Console.WriteLine($"Recipe {recipe.RecipeId} has {recipe.RecipeIngredients.Count} ingredients:");
+        foreach(var ingredient in recipe.RecipeIngredients)
         {
-            RawMaterialItem = r,
-            // Set amount if this raw material is in the recipe
-            Amount = recipe.RecipeIngredients
+            Console.WriteLine($"  - MaterialId: {ingredient.MaterialId}, MaterialName: {ingredient.Material.MaterialName}, Amount: {ingredient.Amount}");
+        }
+        
+        // Create view models for each raw material
+        RawMaterialViewModelsList = allRawMaterials.Select(r => {
+            var existingAmount = recipe.RecipeIngredients
                 .Where(ri => ri.MaterialId == r.MaterialId)
                 .Select(ri => ri.Amount)
-                .FirstOrDefault()
+                .FirstOrDefault();
+            
+            // Debug: Log material mapping
+            if (existingAmount > 0)
+            {
+                Console.WriteLine($"Mapping MaterialId {r.MaterialId} ({r.MaterialName}) with amount {existingAmount}");
+            }
+            
+            return new RawMaterialViewModel
+            {
+                RawMaterialItem = r,
+                Amount = existingAmount
+            };
         }).ToList();
 
         // Calculate initial ratio
@@ -118,7 +134,7 @@
 
     private async void ButtonSubmitOnClick(Recipe recipe, List<RawMaterialViewModel> rawMaterialViewModels)
     {
-        if(recipe.RecipeCode == null || recipe.RecipeDesc == null || recipe.ProductType == null || recipe.PackagingMaterial == null)
+        if(recipe.RecipeCode == null || recipe.RecipeDesc == null)
         {
             NotificationService.Notify(new NotificationMessage
             {
@@ -142,20 +158,50 @@
         }
         else
         {
-            // Clear existing ingredients and add updated ones
-            recipe.RecipeIngredients.Clear();
+            // Debug: Log what we're about to update
+            Console.WriteLine("=== UPDATING RECIPE INGREDIENTS ===");
+            Console.WriteLine($"Recipe ID: {recipe.RecipeId}");
+            Console.WriteLine("Current ingredients before update:");
+            foreach(var ingredient in recipe.RecipeIngredients)
+            {
+                Console.WriteLine($"  - MaterialId: {ingredient.MaterialId}, MaterialName: {ingredient.Material.MaterialName}, Amount: {ingredient.Amount}");
+            }
             
+            Console.WriteLine("View model data:");
+            foreach(var rm in rawMaterialViewModels.Where(rm => rm.Amount > 0))
+            {
+                Console.WriteLine($"  - MaterialId: {rm.RawMaterialItem.MaterialId}, MaterialName: {rm.RawMaterialItem.MaterialName}, Amount: {rm.Amount}");
+            }
+            
+            // Clear all existing ingredients first to avoid duplicates
+            var ingredientsToRemove = recipe.RecipeIngredients.ToList();
+            foreach(var ingredientToRemove in ingredientsToRemove)
+            {
+                Console.WriteLine($"Removing existing ingredient: MaterialId {ingredientToRemove.MaterialId} ({ingredientToRemove.Material.MaterialName})");
+                recipe.RecipeIngredients.Remove(ingredientToRemove);
+            }
+            
+            // Add all ingredients with non-zero amounts
             foreach(var rm in rawMaterialViewModels)
             {
-                if(rm.Amount != 0)
+                if(rm.Amount > 0)
                 {
+                    Console.WriteLine($"Adding ingredient: MaterialId {rm.RawMaterialItem.MaterialId} ({rm.RawMaterialItem.MaterialName}) with amount {rm.Amount}");
                     recipe.RecipeIngredients.Add(new RecipeIngredient
                     {
+                        RecipeId = recipe.RecipeId,
                         MaterialId = rm.RawMaterialItem.MaterialId,
                         Amount = rm.Amount
                     });
                 }
             }
+
+            Console.WriteLine("Final ingredients after update:");
+            foreach(var ingredient in recipe.RecipeIngredients)
+            {
+                Console.WriteLine($"  - MaterialId: {ingredient.MaterialId}, MaterialName: {ingredient.Material.MaterialName}, Amount: {ingredient.Amount}");
+            }
+            Console.WriteLine("=== END UPDATE ===");
 
             await MasterDataService.UpdateRecipeAsync(recipe);
 

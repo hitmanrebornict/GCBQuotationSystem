@@ -28,5 +28,10 @@
 	
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Components\API\" />
+    <Folder Include="wwwroot\securefiles\" />
+  </ItemGroup>
+
 
 </Project>

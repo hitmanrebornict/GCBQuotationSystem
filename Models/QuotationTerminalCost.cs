@@ -23,5 +23,9 @@ public partial class QuotationTerminalCost
 
     public decimal GhanaLiquor { get; set; }
 
+    public decimal Cifbutter { get; set; }
+
+    public decimal Cifliquor { get; set; }
+
     public virtual QuotationRecipe QuotationRecipe { get; set; } = null!;
 }

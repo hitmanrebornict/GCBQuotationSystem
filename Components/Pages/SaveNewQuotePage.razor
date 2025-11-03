@@ -4,15 +4,46 @@
 
 @inject QuoteDetailServices QuoteDetailService
 @inject QuoteDataServices QuoteDataService
+@inject MasterDataServices MasterDataService
 
 <PageTitle>Save New Quote</PageTitle>
 
 <QuoteDetailPage 
-                   isCreateButton="true"></QuoteDetailPage>
+                   isCreateButton="true"
+                   DeliveryPostcode="@GetDeliveryPostcode()"></QuoteDetailPage>
 
 @* <RadzenButton Text="Create" Click="@CreateButtonOnClick" Style="background-color:#3B82F6" /> *@
 
 @code {
+
+    private string deliveryPostcode = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDeliveryPostcode();
+    }
+
+    private async Task LoadDeliveryPostcode()
+    {
+        if (QuoteDataService.newQuotation?.DeliveryDetailId != null)
+        {
+            try
+            {
+                var deliveryDetails = await MasterDataService.GetAllCustomerDeliveryDetailsAsync();
+                var deliveryDetail = deliveryDetails.FirstOrDefault(d => d.DeliveryId == QuoteDataService.newQuotation.DeliveryDetailId);
+                deliveryPostcode = deliveryDetail?.Postcode ?? string.Empty;
+            }
+            catch
+            {
+                deliveryPostcode = string.Empty;
+            }
+        }
+    }
+
+    private string GetDeliveryPostcode()
+    {
+        return deliveryPostcode;
+    }
 
     // private async void CreateButtonOnClick(){
     //     await QuoteDetailService.addQuoteIntoDatabase(QuoteDataService.newQuotation, QuoteDataService.RecipeTotalCostList.Select(r => r.QuotationRecipe1).ToList());

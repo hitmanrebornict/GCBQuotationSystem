@@ -22,4 +22,8 @@ public partial class TerminalCost
     public bool Active { get; set; }
 
     public decimal GhanaLiquor { get; set; }
+
+    public decimal Cifliquor { get; set; }
+
+    public decimal Cifbutter { get; set; }
 }

@@ -270,6 +270,8 @@ namespace GCBQuotationSystem.Components.Services
 						Butter = recipe.QuotationTerminalCost.Butter,
 						Powder = recipe.QuotationTerminalCost.Powder,
 						GhanaLiquor = recipe.QuotationTerminalCost.GhanaLiquor,
+						Cifliquor = recipe.QuotationTerminalCost.Cifliquor,
+						Cifbutter = recipe.QuotationTerminalCost.Cifbutter,
 
 						// Copy other fields but not Id
 					},
@@ -285,6 +287,18 @@ namespace GCBQuotationSystem.Components.Services
 						PackagingName = recipe.QuotationPackagingCost.PackagingName,
 						Cost = recipe.QuotationPackagingCost.Cost,
 						CostAmount = recipe.QuotationPackagingCost.CostAmount
+					},
+
+					QuotationProductionCost = new QuotationProductionCost
+					{
+						ProductType = recipe.QuotationProductionCost.ProductType,
+						ProductTypeCost = recipe.QuotationProductionCost.ProductTypeCost
+					},
+
+					QuotationFinancialCost = new QuotationFinancialCost
+					{
+						InterestRate = recipe.QuotationFinancialCost.InterestRate,
+						FinanceDays = recipe.QuotationFinancialCost.FinanceDays
 					}
 
 					
@@ -326,6 +340,18 @@ namespace GCBQuotationSystem.Components.Services
 							.AsNoTracking().ToListAsync();
 		}
 
+		public async Task<List<Quote>> GetCompletedQuotesAsync()
+		{
+			return await _dbContext.Quotes
+							.Include(q => q.Customer)
+							.Include(q => q.Status)
+							.Include(q => q.QuotationRecipes)
+								.ThenInclude(q => q.Recipe)
+							.Where(q => q.StatusId == 3) // StatusId 3 = Completed
+							.OrderByDescending(q => q.QuoteId)
+							.AsNoTracking().ToListAsync();
+		}
+
 		public async Task<List<Quote>> GetArchivedQuotesAsync()
 		{
 			return await _dbContext.Quotes
@@ -333,7 +359,7 @@ namespace GCBQuotationSystem.Components.Services
 							.Include(q => q.Status)
 							.Include(q => q.QuotationRecipes)
 								.ThenInclude(q => q.Recipe)
-							.Where(q => q.StatusId == 3 || q.StatusId == 4)
+							.Where(q => q.StatusId == 4) // Only StatusId 4 = Archived (removed StatusId 3 = Completed)
 							.OrderByDescending(q => q.QuoteId)
 							.AsNoTracking().ToListAsync();
 		}

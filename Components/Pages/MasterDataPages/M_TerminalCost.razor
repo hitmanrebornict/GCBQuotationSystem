@@ -59,6 +59,8 @@
             <RadzenDataGridColumn Property="GhanaLiquor" Title="Ghana Liquor"  Width="120px" />
             <RadzenDataGridColumn Property="Butter" Title="Butter"  Width="120px" />
             <RadzenDataGridColumn Property="Powder" Title="Powder" Width="120px" />
+            <RadzenDataGridColumn Property="Cifliquor" Title="CifLiquor" Width="120px" />
+            <RadzenDataGridColumn Property="Cifbutter" Title="CifButter" Width="120px" />
             <RadzenDataGridColumn TItem="TerminalCost" Title="Actions" TextAlign="TextAlign.Center" Width="120px">
                 <Template Context="terminalCost">
                     <RadzenButton Icon="edit"
@@ -115,8 +117,11 @@
                                 var periodCode = row.Cell("A").GetString().Trim();
                                 var lifeGbp = row.Cell("B").GetValue<decimal>();
                                 var liquor = row.Cell("C").GetValue<decimal>();
-                                var butter = row.Cell("D").GetValue<decimal>();
-                                var powder = row.Cell("E").GetValue<decimal>();
+                                var ghanaLiquor = row.Cell("D").GetValue<decimal>();
+                                var butter = row.Cell("E").GetValue<decimal>();
+                                var powder = row.Cell("F").GetValue<decimal>();
+                                var cifliquor = row.Cell("G").GetValue<decimal>();
+                                var cifbutter = row.Cell("H").GetValue<decimal>();
 
                                 // Convert period code to match database format (e.g., "K25" -> "K 2025")
                                 var periodName = ConvertPeriodCode(periodCode);
@@ -129,6 +134,9 @@
                                     terminalCost.Liquor = liquor;
                                     terminalCost.Butter = butter;
                                     terminalCost.Powder = powder;
+                                    terminalCost.GhanaLiquor = ghanaLiquor;
+                                    terminalCost.Cifliquor = cifliquor;
+                                    terminalCost.Cifbutter = cifbutter;
 
                                     // Update in database
                                     await MDS.UpdateTerminalCostAsync(terminalCost);

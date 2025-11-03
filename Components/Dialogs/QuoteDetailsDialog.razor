@@ -338,7 +338,10 @@ else
 
         // recipeDetailModified = QuoteDetailServices.DeepClone(recipeDetailOriginal);
         recipeQuantity = recipeDetailModified.QuotationRecipe1.Quantity;
-        ingredientDict = recipeDetailModified.QuotationRecipe1.Recipe.RecipeIngredients.ToDictionary(x => x.Material.MaterialName, x => x.Amount);
+        // Handle duplicate material names by grouping and summing amounts
+        ingredientDict = recipeDetailModified.QuotationRecipe1.Recipe.RecipeIngredients
+            .GroupBy(x => x.Material.MaterialName)
+            .ToDictionary(g => g.Key, g => g.Sum(x => x.Amount));
         packagingCosts.Add(recipeDetailModified.QuotationRecipe1.QuotationPackagingCost);
         deliveryCosts.Add(recipeDetailModified.QuotationRecipe1.QuotationDeliveryCost);
         productionCosts.Add(recipeDetailModified.QuotationRecipe1.QuotationProductionCost);
@@ -396,10 +399,10 @@ else
         ghanaMassPrice.Cost = QuoteDataService.CalculateGhanaLiquorTotal(terminal.GhanaLiquor, terminal.LifeGbp);
         ghanaMassPrice.CostAmount = cocoaMassPrice.Cost * ingredientDict["Ghana Cocoa Mass"] / 100 * weightRatio;
 
-        cocoaMassPrice.Cost = QuoteDataService.CalculateMassTotal(terminal.Liquor, terminal.LifeGbp);
+        cocoaMassPrice.Cost = QuoteDataService.CalculateMassTotalWithPercentage(terminal.Liquor, terminal.LifeGbp, terminal.Cifliquor, recipeDetailModified.QuotationRecipe1.Recipe.RecipeIngredients.ToList());
         cocoaMassPrice.CostAmount = cocoaMassPrice.Cost * ingredientDict["Cocoa Mass"] / 100 * weightRatio;
 
-        cocoaButterPrice.Cost = QuoteDataService.CalculateButterTotal(terminal.Butter, terminal.LifeGbp);
+        cocoaButterPrice.Cost = QuoteDataService.CalculateButterTotalWithPercentage(terminal.Butter, terminal.LifeGbp, terminal.Cifbutter, recipeDetailModified.QuotationRecipe1.Recipe.RecipeIngredients.ToList());
         cocoaButterPrice.CostAmount = cocoaButterPrice.Cost  * ingredientDict["Cocoa Butter"] / 100 * weightRatio; 
 
         recipeDetailModified.TotalCost += (cocoaButterPrice.CostAmount + cocoaMassPrice.CostAmount);
@@ -413,7 +416,10 @@ else
         recipeDetailModified.TotalCost -= data.CostAmount;
 
         List<RecipeIngredient> recipeIngredient = recipeDetailModified.QuotationRecipe1.Recipe.RecipeIngredients.ToList();
-        var ingredientDict = recipeIngredient.ToDictionary(x => x.Material.MaterialName, x => x.Amount);
+        // Handle duplicate material names by grouping and summing amounts
+        var ingredientDict = recipeIngredient
+            .GroupBy(x => x.Material.MaterialName)
+            .ToDictionary(g => g.Key, g => g.Sum(x => x.Amount));
 
         data.CostAmount = data.Cost * ingredientDict[data.MaterialName] / 100 * weightRatio;
         // recipeDetailModified.TotalCost += data.CostAmount;
@@ -428,7 +434,10 @@ else
         recipeDetailModified.TotalCost -= data.CostAmount;
 
         List<RecipeIngredient> recipeIngredient = recipeDetailModified.QuotationRecipe1.Recipe.RecipeIngredients.ToList();
-        var ingredientDict = recipeIngredient.ToDictionary(x => x.Material.MaterialName, x => x.Amount);
+        // Handle duplicate material names by grouping and summing amounts
+        var ingredientDict = recipeIngredient
+            .GroupBy(x => x.Material.MaterialName)
+            .ToDictionary(g => g.Key, g => g.Sum(x => x.Amount));
 
         data.CostAmount = data.Cost * ingredientDict[data.MaterialName] / 100 * weightRatio;
         // recipeDetailModified.TotalCost += data.CostAmount;

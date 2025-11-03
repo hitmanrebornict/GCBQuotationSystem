@@ -32,7 +32,7 @@
                     <RadzenCheckBox Value="@recipe.Active" Disabled="true" />
                 </Template>
             </RadzenDataGridColumn>
-            <RadzenDataGridColumn TItem="Recipe" Title="Actions" TextAlign="TextAlign.Center" Width="120px">
+            <RadzenDataGridColumn TItem="Recipe" Title="Actions" TextAlign="TextAlign.Center" Width="180px">
                 <Template Context="recipe">
                     <RadzenButton Icon="edit"
                                   ButtonStyle="ButtonStyle.Info"
@@ -41,6 +41,13 @@
                                   Class="m-1"
                                   Click="@(() => EditRecipe(recipe))"
                                   ToolTip="Edit Recipe" />
+                    <RadzenButton Icon="content_copy"
+                                  ButtonStyle="ButtonStyle.Success"
+                                  Size="ButtonSize.Medium"
+                                  Variant="Variant.Flat"
+                                  Class="m-1"
+                                  Click="@(() => DuplicateRecipe(recipe))"
+                                  ToolTip="Duplicate Recipe" />
                 </Template>
             </RadzenDataGridColumn>
         </Columns>
@@ -95,6 +102,28 @@
         };
         
         var result = await DialogService.OpenAsync<EditRecipeDialog>("Edit Recipe", 
+            new Dictionary<string, object>() { { "RecipeId", recipe.RecipeId } },
+            options);
+            
+        if (result == true)
+        {
+            recipes = await MDS.GetRecipesAsync();
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task DuplicateRecipe(Recipe recipe)
+    {
+        var options = new DialogOptions() 
+        { 
+            Width = "90vw",
+            Height = "90vh",
+            CloseDialogOnOverlayClick = false,
+            Resizable = true,
+            Draggable = true
+        };
+        
+        var result = await DialogService.OpenAsync<DuplicateRecipeDialog>("Duplicate Recipe", 
             new Dictionary<string, object>() { { "RecipeId", recipe.RecipeId } },
             options);
             

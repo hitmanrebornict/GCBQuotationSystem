@@ -1,0 +1,100 @@
+@inject MasterDataServices MasterDataServices
+@inject DialogService DialogService
+@inject NotificationService NotificationService
+
+<div class="row">
+    <div class="col-12">
+        <RadzenStack Orientation="Orientation.Vertical" Gap="1rem">
+            <RadzenFieldset Text="Country Information">
+                <RadzenStack Orientation="Orientation.Vertical" Gap="1rem">
+                    <RadzenFieldsetLayout>
+                        <RadzenFieldsetLayoutItem Text="Country Name" TextAlign="TextAlign.Left">
+                            <RadzenTextBox @bind-Value="country.CountryName" 
+                                         Placeholder="Enter country name" 
+                                         Style="width: 100%" />
+                        </RadzenFieldsetLayoutItem>
+                    </RadzenFieldsetLayout>
+                    <RadzenFieldsetLayout>
+                        <RadzenFieldsetLayoutItem Text="Active" TextAlign="TextAlign.Left">
+                            <RadzenCheckBox @bind-Value="country.Active" />
+                        </RadzenFieldsetLayoutItem>
+                    </RadzenFieldsetLayout>
+                </RadzenStack>
+            </RadzenFieldset>
+        </RadzenStack>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-12">
+        <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End" Gap="0.5rem">
+            <RadzenButton Text="Cancel" 
+                          ButtonStyle="ButtonStyle.Light" 
+                          Click="@Cancel" />
+            <RadzenButton Text="Save" 
+                          ButtonStyle="ButtonStyle.Primary" 
+                          Click="@Save" 
+                          Disabled="@(string.IsNullOrWhiteSpace(country.CountryName))" />
+        </RadzenStack>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public int CountryId { get; set; }
+
+    [CascadingParameter] 
+    private Dialog _dialog { get; set; }
+
+    private Country country = new Country();
+
+    protected override async Task OnInitializedAsync()
+    {
+        country = await MasterDataServices.GetCountryByIdAsync(CountryId) ?? new Country();
+    }
+
+    private async Task Save()
+    {
+        if (string.IsNullOrWhiteSpace(country.CountryName))
+        {
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Validation Error",
+                Detail = "Country name is required",
+                Duration = 4000
+            });
+            return;
+        }
+
+        var success = await MasterDataServices.UpdateCountryAsync(country);
+        
+        if (success)
+        {
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Success,
+                Summary = "Success",
+                Detail = "Country updated successfully",
+                Duration = 4000
+            });
+            
+            DialogService.Close(true);
+        }
+        else
+        {
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Error",
+                Detail = "Failed to update country",
+                Duration = 4000
+            });
+        }
+    }
+
+    private void Cancel()
+    {
+        DialogService.Close(false);
+    }
+}

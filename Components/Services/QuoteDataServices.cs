@@ -31,17 +31,48 @@ namespace GCBQuotationSystem.Components.Services
 
 		public Quote newQuotation { get; set; }
 
-		public decimal CalculateMassTotal(Decimal liquor, Decimal LifeGBP)
+	public decimal CalculateMassTotal(Decimal liquor, Decimal LifeGBP)
+	{
+
+		return LifeGBP * liquor;
+	}
+
+	public decimal CalculateButterTotal(Decimal butter, Decimal LifeGBP)
+	{
+
+		return LifeGBP * butter;
+	}
+
+	// New methods for 100% logic
+	public decimal CalculateMassTotalWithPercentage(Decimal liquor, Decimal LifeGBP, Decimal cifliquor, List<RecipeIngredient> ingredients)
+	{
+		var cocoaMassIngredient = ingredients.FirstOrDefault(i => i.Material.MaterialName == "Cocoa Mass");
+		if (cocoaMassIngredient != null && cocoaMassIngredient.Amount == 100)
 		{
-
-			return LifeGBP * liquor;
+			return LifeGBP * cifliquor;
 		}
+		return LifeGBP * liquor;
+	}
 
-		public decimal CalculateButterTotal(Decimal butter, Decimal LifeGBP)
+	public decimal CalculateButterTotalWithPercentage(Decimal butter, Decimal LifeGBP, Decimal cifbutter, List<RecipeIngredient> ingredients)
+	{
+		var cocoaButterIngredient = ingredients.FirstOrDefault(i => i.Material.MaterialName == "Cocoa Butter");
+		if (cocoaButterIngredient != null && cocoaButterIngredient.Amount == 100)
 		{
-
-			return LifeGBP * butter;
+			return LifeGBP * cifbutter;
 		}
+		return LifeGBP * butter;
+	}
+
+	// Helper method to check if a recipe is a quote block (100% Cocoa Mass or Butter)
+	public bool IsQuoteBlock(List<RecipeIngredient> ingredients)
+	{
+		var cocoaMassIngredient = ingredients.FirstOrDefault(i => i.Material.MaterialName == "Cocoa Mass");
+		var cocoaButterIngredient = ingredients.FirstOrDefault(i => i.Material.MaterialName == "Cocoa Butter");
+		
+		return (cocoaMassIngredient != null && cocoaMassIngredient.Amount == 100) ||
+			   (cocoaButterIngredient != null && cocoaButterIngredient.Amount == 100);
+	}
 
 		public async Task<List<RecipeCostMatrix>> PrepareCostMatrix(List<RecipeTotalCost> recipeTotalCostList)
 		{
@@ -251,8 +282,9 @@ namespace GCBQuotationSystem.Components.Services
 							Butter = originalRecipe.QuotationTerminalCost.Butter,
 							Powder = originalRecipe.QuotationTerminalCost.Powder,
 							GhanaLiquor = originalRecipe.QuotationTerminalCost.GhanaLiquor,
-
-						}
+							Cifbutter = originalRecipe.QuotationTerminalCost.Cifbutter,
+							Cifliquor = originalRecipe.QuotationTerminalCost.Cifliquor
+                        }
 						: null,
 
 					QuotationPremiumCosts = originalRecipe.QuotationPremiumCosts?

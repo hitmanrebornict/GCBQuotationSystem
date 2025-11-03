@@ -3,11 +3,13 @@ using GCBQuotationSystem.Areas.Identity.Data;
 using GCBQuotationSystem.Components;
 using GCBQuotationSystem.Components.Services;
 using GCBQuotationSystem.Models;
+using GCBQuotationSystem.Middleware;
 using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Radzen;
+using System.Threading.RateLimiting;
 
 
 namespace GCBQuotationSystem
@@ -53,10 +55,34 @@ namespace GCBQuotationSystem
 
 			builder.Services.AddControllersWithViews();
 
-            builder.Services.AddDataProtection()
-			.SetApplicationName("GCBUKQuoteSystem") // same across all instances of THIS app
-			.PersistKeysToFileSystem(new DirectoryInfo("/var/app/dp-keys"))
-			.SetDefaultKeyLifetime(TimeSpan.FromDays(180));
+			// Configure rate limiting to prevent DDoS
+			builder.Services.AddRateLimiter(options =>
+			{
+				options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
+					RateLimitPartition.GetFixedWindowLimiter(
+						partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? httpContext.Connection.Id,
+						factory: partition => new FixedWindowRateLimiterOptions
+						{
+							AutoReplenishment = true,
+							PermitLimit = 10,
+							Window = TimeSpan.FromMinutes(1)
+						}));
+
+				options.AddPolicy("ApiRateLimit", httpContext =>
+					RateLimitPartition.GetFixedWindowLimiter(
+						partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? httpContext.Connection.Id,
+						factory: _ => new FixedWindowRateLimiterOptions
+						{
+							AutoReplenishment = true,
+							PermitLimit = 5,
+							Window = TimeSpan.FromMinutes(1)
+						}));
+			});
+
+   //         builder.Services.AddDataProtection()
+			//.SetApplicationName("GCBUKQuoteSystem") // same across all instances of THIS app
+			//.PersistKeysToFileSystem(new DirectoryInfo(Path.Combine(builder.Environment.ContentRootPath, "DataProtectionKeys")))
+			//.SetDefaultKeyLifetime(TimeSpan.FromDays(180));
 
             builder.Services.ConfigureApplicationCookie(options =>
 			{
@@ -83,7 +109,14 @@ namespace GCBQuotationSystem
                 app.UseHsts();
             }
 
+			//// Apply rate limiting
+			//app.UseRateLimiter();
+
+			// Apply API key authentication middleware for secure endpoints
+			app.UseApiKeyMiddleware();
+
 			app.MapControllers();
+
 			app.UseStaticFiles();
 
 			app.UseHttpsRedirection();

@@ -2,8 +2,63 @@
 
 @page "/DuplicateNewQuote"
 
+<style>
+    .premium-selection-section {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        border: 2px solid #dee2e6;
+        border-radius: 16px;
+        padding: 24px;
+        margin-bottom: 24px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        transition: all 0.3s ease;
+    }
+
+    .premium-selection-section:hover {
+        box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
+        transform: translateY(-2px);
+    }
+
+    .premium-header {
+        display: flex;
+        align-items: center;
+        margin-bottom: 12px;
+    }
+
+    .premium-icon {
+        color: #ffc107;
+        font-size: 24px;
+        margin-right: 12px;
+        filter: drop-shadow(0 2px 4px rgba(255, 193, 7, 0.3));
+    }
+
+    .premium-title {
+        color: #495057;
+        font-weight: 600;
+        margin: 0;
+    }
+
+    .premium-description {
+        color: #6c757d;
+        margin-bottom: 0;
+        line-height: 1.5;
+    }
+
+    .premium-selection-count {
+        margin-top: 12px;
+        padding: 8px 12px;
+        background: rgba(13, 110, 253, 0.1);
+        border-radius: 8px;
+        border-left: 4px solid #0d6efd;
+    }
+
+    .premium-selection-count .text-primary {
+        color: #0d6efd !important;
+    }
+</style>
+
 @inject QuoteDetailServices QuoteDetailService
 @inject QuoteDataServices QuoteDataService
+@inject MasterDataServices MasterDataService
 @inject GenerateQuoteServices GenerateQuoteService
 @inject NotificationService NotificationService
 @inject NavigationManager NavigationManager
@@ -21,7 +76,81 @@
 
     <hr class="my-3" />
 
-    <QuoteDetailPage @ref="quoteDetailPage"></QuoteDetailPage>
+    <!-- Quote Modification Section -->
+    <div class="mb-4">
+        <RadzenText TextStyle="TextStyle.H6" class="mb-3">Quote Modifications</RadzenText>
+        <RadzenText TextStyle="TextStyle.Body2" class="text-muted mb-3">
+            Modify the duplicated quote by selecting different premiums or other parameters.
+        </RadzenText>
+
+        <!-- Premium Selection Section -->
+        <div class="premium-selection-section">
+            <div class="premium-header">
+                <RadzenIcon Icon="star" class="premium-icon" />
+                <RadzenText TextStyle="TextStyle.Subtitle1" class="premium-title">Premium Selection</RadzenText>
+            </div>
+            <RadzenText TextStyle="TextStyle.Body2" class="premium-description">
+                Select new premiums to apply to all recipe periods in the duplicated quote.
+            </RadzenText>
+            <RadzenDropDown @bind-Value="selectedPremiums"
+                            Data="@availablePremiums"
+                            TextProperty="PremiumName"
+                            Multiple="true"
+                            Placeholder="Choose premiums to apply..."
+                            FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                            FilterOperator="StringFilterOperator.StartsWith"
+                            AllowFiltering="true"
+                            Style="width: 100%; margin-top: 1rem;" />
+            <div class="premium-selection-count">
+                <RadzenText TextStyle="TextStyle.Caption" class="text-muted">
+                    @if (selectedPremiums != null && selectedPremiums.Any())
+                    {
+                        <span class="text-primary fw-semibold">@selectedPremiums.Count premium(s) selected</span>
+                    }
+                    else
+                    {
+                        <span>No premiums selected</span>
+                    }
+                </RadzenText>
+            </div>
+        </div>
+
+        <!-- Additional Modification Sections (Placeholder) -->
+        <div class="mt-4">
+            <RadzenAccordion>
+                <RadzenAccordionItem Text="Delivery & Packaging Modifications" Icon="local_shipping">
+                    <div class="p-3">
+                        <RadzenText TextStyle="TextStyle.Body2" class="text-muted">
+                            Additional modification options for delivery addresses, packaging materials, and production costs will be available here.
+                        </RadzenText>
+                        <RadzenButton Text="Coming Soon" ButtonStyle="ButtonStyle.Secondary" Size="ButtonSize.Small" class="mt-2" Disabled="true" />
+                    </div>
+                </RadzenAccordionItem>
+                
+                <RadzenAccordionItem Text="Financial & Additional Costs" Icon="account_balance">
+                    <div class="p-3">
+                        <RadzenText TextStyle="TextStyle.Body2" class="text-muted">
+                            Options to modify financial costs, additional costs, and other financial parameters will be available here.
+                        </RadzenText>
+                        <RadzenButton Text="Coming Soon" ButtonStyle="ButtonStyle.Secondary" Size="ButtonSize.Small" class="mt-2" Disabled="true" />
+                    </div>
+                </RadzenAccordionItem>
+            </RadzenAccordion>
+        </div>
+
+        <!-- Apply Modifications Button -->
+        <div class="d-flex justify-content-end mt-3">
+            <RadzenButton Text="Apply Modifications" 
+                          Click="@ApplyModifications" 
+                          ButtonStyle="ButtonStyle.Info" 
+                          class="px-4"
+                          Disabled="@(!HasModifications())" />
+        </div>
+    </div>
+
+    <hr class="my-3" />
+
+    <QuoteDetailPage @ref="quoteDetailPage" DeliveryPostcode="@GetDeliveryPostcode()"></QuoteDetailPage>
 </RadzenCard>
 
 
@@ -29,6 +158,10 @@
 
 
 @code {
+
+    // Modification-related properties
+    private List<Premium> selectedPremiums = new();
+    private List<Premium> availablePremiums = new();
 
     private async void DuplicateButtonOnClick()
     {
@@ -86,6 +219,8 @@
                 recipe.QuotationTerminalCost.Butter = terminalCost.Butter;
                 recipe.QuotationTerminalCost.Powder = terminalCost.Powder;
                 recipe.QuotationTerminalCost.GhanaLiquor = terminalCost.GhanaLiquor;
+                recipe.QuotationTerminalCost.Cifliquor = terminalCost.Cifliquor;
+                recipe.QuotationTerminalCost.Cifbutter = terminalCost.Cifbutter;
 
                 // Get base raw material prices for the same period
                 var rawMaterialPrice = await GenerateQuoteService.GetRawMaterialCostByRecipeID(period);
@@ -95,11 +230,11 @@
                 {
                     if (rmp.Material.MaterialName == "Cocoa Mass")
                     {
-                        rmp.Price = QuoteDataService.CalculateMassTotal(recipe.QuotationTerminalCost.Liquor, recipe.QuotationTerminalCost.LifeGbp);
+                        rmp.Price = QuoteDataService.CalculateMassTotalWithPercentage(recipe.QuotationTerminalCost.Liquor, recipe.QuotationTerminalCost.LifeGbp, recipe.QuotationTerminalCost.Cifliquor, recipe.Recipe.RecipeIngredients.ToList());
                     }
                     else if (rmp.Material.MaterialName == "Cocoa Butter")
                     {
-                        rmp.Price = QuoteDataService.CalculateButterTotal(recipe.QuotationTerminalCost.Butter, recipe.QuotationTerminalCost.LifeGbp);
+                        rmp.Price = QuoteDataService.CalculateButterTotalWithPercentage(recipe.QuotationTerminalCost.Butter, recipe.QuotationTerminalCost.LifeGbp, recipe.QuotationTerminalCost.Cifbutter, recipe.Recipe.RecipeIngredients.ToList());
                     }
                     else if (rmp.Material.MaterialName == "Cocoa Powder")
                     {
@@ -160,5 +295,177 @@
                });
        }
     }
+
+    private string deliveryPostcode = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDeliveryPostcode();
+        await LoadModificationData();
+    }
+
+    private async Task LoadDeliveryPostcode()
+    {
+        if (QuoteDataService.newQuotation?.DeliveryDetailId != null)
+        {
+            try
+            {
+                var deliveryDetails = await MasterDataService.GetAllCustomerDeliveryDetailsAsync();
+                var deliveryDetail = deliveryDetails.FirstOrDefault(d => d.DeliveryId == QuoteDataService.newQuotation.DeliveryDetailId);
+                deliveryPostcode = deliveryDetail?.Postcode ?? string.Empty;
+            }
+            catch
+            {
+                deliveryPostcode = string.Empty;
+            }
+        }
+    }
+
+    private string GetDeliveryPostcode()
+    {
+        return deliveryPostcode;
+    }
+
+    private async Task LoadModificationData()
+    {
+        try
+        {
+            // Load available premiums
+            availablePremiums = await MasterDataService.GetAllPremiumsAsync();
+        }
+        catch (Exception ex)
+        {
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Error",
+                Detail = $"Failed to load modification data: {ex.Message}",
+                Duration = 5000
+            });
+        }
+    }
+
+
+    private async Task ApplyModifications()
+    {
+        if (!HasModifications())
+        {
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Warning,
+                Summary = "No Modifications",
+                Detail = "Please select at least one modification to apply.",
+                Duration = 3000
+            });
+            return;
+        }
+
+        try
+        {
+            bool hasChanges = false;
+
+            // Apply premium modifications
+            if (selectedPremiums != null && selectedPremiums.Any())
+            {
+                await ApplyPremiumModifications();
+                hasChanges = true;
+            }
+
+            if (hasChanges)
+            {
+                // Rebuild matrix with modifications
+                QuoteDataService.RecipeCostMatrix = await QuoteDataService.PrepareCostMatrix(QuoteDataService.RecipeTotalCostList);
+
+                // Refresh the embedded detail page
+                if (quoteDetailPage != null)
+                {
+                    await quoteDetailPage.Refresh();
+                }
+
+                NotificationService.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Success,
+                    Summary = "Modifications Applied",
+                    Detail = "Quote modifications have been successfully applied.",
+                    Duration = 3000
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Error",
+                Detail = $"Failed to apply modifications: {ex.Message}",
+                Duration = 5000
+            });
+        }
+    }
+
+    private async Task ApplyPremiumModifications()
+    {
+        if (QuoteDataService.RecipeTotalCostList == null || !QuoteDataService.RecipeTotalCostList.Any())
+            return;
+
+        foreach (var costEntry in QuoteDataService.RecipeTotalCostList)
+        {
+            var recipe = costEntry.QuotationRecipe1;
+            if (recipe?.Recipe == null)
+                continue;
+
+            // Clear existing premium costs
+            recipe.QuotationPremiumCosts.Clear();
+
+            // Add new premium costs
+            if (selectedPremiums != null && selectedPremiums.Any())
+            {
+                List<QuotationPremiumCost> quotationPremiumList = new List<QuotationPremiumCost>();
+
+                foreach (var selectedPremium in selectedPremiums)
+                {
+                    decimal PremiumCost = 0;
+
+                    if (selectedPremium.PremiumType == "Butter")
+                    {
+                        var butterIngredient = recipe.Recipe.RecipeIngredients.FirstOrDefault(r => r.MaterialId == 14);
+                        if (butterIngredient != null)
+                        {
+                            PremiumCost = butterIngredient.Amount / 100 * selectedPremium.PremiumCost;
+                        }
+                    }
+                    else if (selectedPremium.PremiumType == "Liquor")
+                    {
+                        var liquorIngredient = recipe.Recipe.RecipeIngredients.FirstOrDefault(r => r.MaterialId == 13);
+                        if (liquorIngredient != null)
+                        {
+                            PremiumCost = liquorIngredient.Amount / 100 * selectedPremium.PremiumCost;
+                        }
+                    }
+
+                    QuotationPremiumCost qpc = new QuotationPremiumCost()
+                    {
+                        PremiumName = selectedPremium.PremiumName,
+                        Cost = selectedPremium.PremiumCost,
+                        CostAmount = PremiumCost
+                    };
+
+                    quotationPremiumList.Add(qpc);
+                }
+
+                recipe.QuotationPremiumCosts = quotationPremiumList;
+            }
+
+            // Recalculate total cost
+            costEntry.TotalCost = QuoteDataService.CalculateTotalCost(recipe);
+        }
+    }
+
+
+    private bool HasModifications()
+    {
+        return selectedPremiums != null && selectedPremiums.Any();
+    }
+
     private QuoteDetailPage quoteDetailPage;
 }

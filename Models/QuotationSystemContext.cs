@@ -79,8 +79,6 @@ public partial class QuotationSystemContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        modelBuilder.UseCollation("Latin1_General_CI_AS");
-
         modelBuilder.Entity<AdditionalCost>(entity =>
         {
             entity.HasKey(e => e.AdditionalCostId).HasName("PK__Addition__545DECE4D6BF64C2");
@@ -433,6 +431,12 @@ public partial class QuotationSystemContext : DbContext
             entity.HasIndex(e => e.QuotationRecipeId, "UQ_QuotationTerminalCosts_QuotationRecipeID").IsUnique();
 
             entity.Property(e => e.Butter).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.Cifbutter)
+                .HasColumnType("decimal(18, 2)")
+                .HasColumnName("CIFButter");
+            entity.Property(e => e.Cifliquor)
+                .HasColumnType("decimal(18, 2)")
+                .HasColumnName("CIFLiquor");
             entity.Property(e => e.GhanaLiquor).HasColumnType("decimal(18, 2)");
             entity.Property(e => e.LifeGbp)
                 .HasColumnType("decimal(18, 2)")
@@ -576,7 +580,7 @@ public partial class QuotationSystemContext : DbContext
 
             entity.HasOne(d => d.Recipe).WithMany(p => p.RecipeIngredients)
                 .HasForeignKey(d => d.RecipeId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
+                .OnDelete(DeleteBehavior.Cascade)
                 .HasConstraintName("FK_RecipeIngredients_Recipes");
         });
 
@@ -587,6 +591,12 @@ public partial class QuotationSystemContext : DbContext
             entity.Property(e => e.TerminalCostId).HasColumnName("TerminalCostID");
             entity.Property(e => e.Active).HasDefaultValue(true);
             entity.Property(e => e.Butter).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.Cifbutter)
+                .HasColumnType("decimal(18, 2)")
+                .HasColumnName("CIFButter");
+            entity.Property(e => e.Cifliquor)
+                .HasColumnType("decimal(18, 2)")
+                .HasColumnName("CIFLiquor");
             entity.Property(e => e.GhanaLiquor).HasColumnType("decimal(18, 2)");
             entity.Property(e => e.LifeGbp)
                 .HasColumnType("decimal(18, 2)")

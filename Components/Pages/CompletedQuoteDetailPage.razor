@@ -125,7 +125,8 @@
             <QuoteDetailPage 
                 isInCompletedQuotePage="true"
                 QuoteRemark="@QuoteRemark"
-                CustomerRemark="@CustomerRemark" />
+                CustomerRemark="@CustomerRemark"
+                DeliveryPostcode="@GetDeliveryPostcode()" />
         }
         else
         {
@@ -196,12 +197,30 @@
                                             @if (IsExpanded($"{recipeSummary.RecipeCode}_premium"))
                                             {
                                                 <div class="ms-2 ms-md-3 mt-2" style="background-color: #f8f9fa; padding: 8px; border-radius: 5px;">
-                                                    @foreach (var premium in recipeSummary.PremiumCostBreakdown)
+                                                    @if (recipeSummary.PremiumTypeBreakdown.Any())
                                                     {
-                                                        <div class="d-flex justify-content-between align-items-center py-1">
-                                                            <small class="text-muted">@premium.Key:</small>
-                                                            <small class="fw-medium">@premium.Value.ToString("C0", UserPreferenceSetting.CultureInfo)</small>
-                                                        </div>
+                                                        @foreach (var premium in recipeSummary.PremiumTypeBreakdown)
+                                                        {
+                                                            <div class="d-flex justify-content-between align-items-center py-1">
+                                                                <div class="d-flex flex-column">
+                                                                    <small class="text-muted fw-medium">@premium.Value.PremiumName</small>
+                                                                    <small class="text-info" style="font-size: 0.75rem;">
+                                                                        <i class="rz-icon-star me-1"></i>@premium.Value.PremiumType
+                                                                    </small>
+                                                                </div>
+                                                                <div class="text-end">
+                                                                    <small class="fw-medium">@premium.Value.CostAmount.ToString("C0", UserPreferenceSetting.CultureInfo)</small>
+                                                                    <br>
+                                                                    <small class="text-muted" style="font-size: 0.75rem;">
+                                                                        @premium.Value.Cost.ToString("C0", UserPreferenceSetting.CultureInfo) per tonne
+                                                                    </small>
+                                                                </div>
+                                                            </div>
+                                                        }
+                                                    }
+                                                    else
+                                                    {
+                                                        <small class="text-muted">No premiums applied</small>
                                                     }
                                                 </div>
                                             }
@@ -525,6 +544,14 @@
         public decimal TotalCost => PeriodCosts.Values.Sum();  // Calculate the sum of all period costs
     }
 
+    public class PremiumTypeInfo
+    {
+        public string PremiumName { get; set; }
+        public string PremiumType { get; set; }
+        public decimal CostAmount { get; set; }
+        public decimal Cost { get; set; }
+    }
+
     public class RecipeCostSummary
     {
         public string RecipeCode { get; set; }
@@ -547,6 +574,7 @@
         public Dictionary<string, decimal> RawMaterialBreakdown { get; set; } = new();
         public Dictionary<string, decimal> AdditionalCostBreakdown { get; set; } = new();
         public Dictionary<string, decimal> PremiumCostBreakdown { get; set; } = new();
+        public Dictionary<string, PremiumTypeInfo> PremiumTypeBreakdown { get; set; } = new();
         public string PackagingDetails { get; set; } = "";
         public string DeliveryDetails { get; set; } = "";
         public string ProductionDetails { get; set; } = "";
@@ -572,6 +600,7 @@
             var rawMaterialBreakdown = new Dictionary<string, decimal>();
             var additionalCostBreakdown = new Dictionary<string, decimal>();
             var premiumCostBreakdown = new Dictionary<string, decimal>();
+            var premiumTypeBreakdown = new Dictionary<string, PremiumTypeInfo>();
             
             // Aggregate raw material costs by material name
             foreach (var recipe in recipes)
@@ -615,17 +644,36 @@
                 additionalCostBreakdown[key] = additionalCostBreakdown[key] / recipes.Count;
             }
             
-            // Aggregate premium costs by premium name
+            // Aggregate premium costs by premium name and type
             foreach (var recipe in recipes)
             {
                 if (recipe.QuotationRecipe1.QuotationPremiumCosts != null)
                 {
                     foreach (var pc in recipe.QuotationRecipe1.QuotationPremiumCosts)
                     {
+                        // Update cost breakdown (for backward compatibility)
                         if (premiumCostBreakdown.ContainsKey(pc.PremiumName))
                             premiumCostBreakdown[pc.PremiumName] += pc.CostAmount;
                         else
                             premiumCostBreakdown[pc.PremiumName] = pc.CostAmount;
+
+                        // Update premium type breakdown
+                        var key = $"{pc.PremiumName} ({GetPremiumTypeFromRecipe(recipe.QuotationRecipe1, pc.PremiumName)})";
+                        if (premiumTypeBreakdown.ContainsKey(key))
+                        {
+                            premiumTypeBreakdown[key].CostAmount += pc.CostAmount;
+                            premiumTypeBreakdown[key].Cost += pc.Cost;
+                        }
+                        else
+                        {
+                            premiumTypeBreakdown[key] = new PremiumTypeInfo
+                            {
+                                PremiumName = pc.PremiumName,
+                                PremiumType = GetPremiumTypeFromRecipe(recipe.QuotationRecipe1, pc.PremiumName),
+                                CostAmount = pc.CostAmount,
+                                Cost = pc.Cost
+                            };
+                        }
                     }
                 }
             }
@@ -634,6 +682,13 @@
             foreach (var key in premiumCostBreakdown.Keys.ToList())
             {
                 premiumCostBreakdown[key] = premiumCostBreakdown[key] / recipes.Count;
+            }
+
+            // Average the premium type costs
+            foreach (var key in premiumTypeBreakdown.Keys.ToList())
+            {
+                premiumTypeBreakdown[key].CostAmount = premiumTypeBreakdown[key].CostAmount / recipes.Count;
+                premiumTypeBreakdown[key].Cost = premiumTypeBreakdown[key].Cost / recipes.Count;
             }
             
             // Get sample details for single-value costs
@@ -676,12 +731,36 @@
                 RawMaterialBreakdown = rawMaterialBreakdown,
                 AdditionalCostBreakdown = additionalCostBreakdown,
                 PremiumCostBreakdown = premiumCostBreakdown,
+                PremiumTypeBreakdown = premiumTypeBreakdown,
                 PackagingDetails = packagingDetails,
                 DeliveryDetails = deliveryDetails,
                 ProductionDetails = productionDetails,
                 FinancialDetails = financialDetails
             };
         }).ToList();
+    }
+
+    private string GetPremiumTypeFromRecipe(QuotationRecipe recipe, string premiumName)
+    {
+        // For now, we'll use a simplified approach to determine premium type
+        // In a real implementation, you might want to store the premium type directly in QuotationPremiumCost
+        // or look it up from the master data
+        
+        // Check if this premium is applied to butter or liquor based on the cost calculation
+        if (recipe.Recipe?.RecipeIngredients != null)
+        {
+            var butterIngredient = recipe.Recipe.RecipeIngredients.FirstOrDefault(r => r.MaterialId == 14);
+            var liquorIngredient = recipe.Recipe.RecipeIngredients.FirstOrDefault(r => r.MaterialId == 13);
+            
+            if (butterIngredient != null && liquorIngredient != null)
+            {
+                // This is a simplified heuristic - in practice, you'd want to store the actual premium type
+                // For now, we'll return a generic type indicator
+                return "Applied";
+            }
+        }
+        
+        return "Standard";
     }
 
     private int GetRecipeCount()
@@ -1030,7 +1109,9 @@
         if (quote?.DeliveryDetailId != null && quote.Customer?.CustomerDeliveryDetails != null)
         {
 
-            var deliveryDetail = quote.Customer.CustomerDeliveryDetails.First();
+            // var deliveryDetail = quote.Customer.CustomerDeliveryDetails.First();
+            var deliveryDetail = quote.DeliveryDetail;
+
 
             
             if (deliveryDetail != null)
@@ -1056,5 +1137,14 @@
         }
         
         return "No delivery address specified";
+    }
+
+    private string GetDeliveryPostcode()
+    {
+        if (quote?.DeliveryDetail?.Postcode != null)
+        {
+            return quote.DeliveryDetail.Postcode;
+        }
+        return string.Empty;
     }
 }

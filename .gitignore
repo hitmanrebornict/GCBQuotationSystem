@@ -4,3 +4,14 @@ obj/
 .vs/
 Migrations/
 wwwroot/securefiles/
+SecureUploads/
+DataProtectionKeys/
+
+# API Documentation files (contain API keys in examples)
+API_Documentation.md
+README_CSV_Upload_API.md
+TEST_API_EXAMPLES.txt
+TEST_API_CMD_EXAMPLES.txt
+
+# API Swagger definition (contains example API keys)
+**/API_Swagger_Definition.json
